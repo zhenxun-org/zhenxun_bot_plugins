@@ -4,19 +4,20 @@ import time
 import ujson as json
 from nonebot import on_message
 from nonebot.plugin import PluginMetadata
-from nonebot_plugin_alconna import Hyper, Image, UniMsg
 from nonebot_plugin_session import EventSession
+from nonebot_plugin_alconna import Hyper, Image, UniMsg
 
-from zhenxun.configs.path_config import TEMP_PATH
-from zhenxun.configs.utils import PluginExtraData, RegisterConfig, Task
-from zhenxun.models.task_info import TaskInfo
 from zhenxun.services.log import logger
 from zhenxun.utils.enum import PluginType
-from zhenxun.utils.http_utils import AsyncHttpx
+from zhenxun.models.task_info import TaskInfo
 from zhenxun.utils.message import MessageUtils
+from zhenxun.utils.http_utils import AsyncHttpx
+from zhenxun.configs.path_config import TEMP_PATH
+from zhenxun.utils.common_utils import CommonUtils
+from zhenxun.configs.utils import Task, RegisterConfig, PluginExtraData
 
-from .information_container import InformationContainer
 from .parse_url import parse_bili_url
+from .information_container import InformationContainer
 
 __plugin_meta__ = PluginMetadata(
     name="B站内容解析",
@@ -46,7 +47,7 @@ __plugin_meta__ = PluginMetadata(
 
 
 async def _rule(session: EventSession) -> bool:
-    return not await TaskInfo.is_block("bilibili_parse", session.id3 or session.id2)
+    return not await CommonUtils.is_block("bilibili_parse", session.id3 or session.id2)
 
 
 _matcher = on_message(priority=1, block=False, rule=_rule)
@@ -73,6 +74,8 @@ async def _(session: EventSession, message: UniMsg):
         except (IndexError, KeyError):
             data = None
         if data:
+            if data.get("app") == "com.tencent.qun.invite":
+                return
             # 获取相关数据
             meta_data = data.get("meta", {})
             news_value = meta_data.get("news", {})

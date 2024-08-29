@@ -2,27 +2,26 @@ import re
 from typing import Any
 
 from nonebot.adapters import Bot
-from nonebot.adapters.onebot.v11 import unescape
+from nonebot.typing import T_State
+from nonebot.params import RegexGroup
+from nonebot_plugin_alconna import Image
+from nonebot.plugin import PluginMetadata
 from nonebot.exception import FinishedException
 from nonebot.internal.params import Arg, ArgStr
-from nonebot.params import RegexGroup
-from nonebot.plugin import PluginMetadata
-from nonebot.typing import T_State
-from nonebot_plugin_alconna import AlconnaQuery, Arparma
-from nonebot_plugin_alconna import Image
-from nonebot_plugin_alconna import Image as alcImage
-from nonebot_plugin_alconna import Match, Query, UniMsg
 from nonebot_plugin_session import EventSession
+from nonebot.adapters.onebot.v11 import unescape
+from nonebot_plugin_alconna import Image as alcImage
+from nonebot_plugin_alconna import Match, Query, UniMsg, Arparma, AlconnaQuery
 
-from zhenxun.configs.config import Config
-from zhenxun.configs.utils import PluginExtraData
 from zhenxun.services.log import logger
+from zhenxun.configs.config import Config
 from zhenxun.utils.message import MessageUtils
+from zhenxun.configs.utils import PluginExtraData
 
-from ._config import scope2int, type2int
-from ._data_source import WordBankManage, get_answer, get_img_and_at_list, get_problem
 from ._model import WordBank
+from ._config import WordType, ScopeType, type2int, scope2int
 from .command import _add_matcher, _del_matcher, _show_matcher, _update_matcher
+from ._data_source import WordBankManage, get_answer, get_problem, get_img_and_at_list
 
 base_config = Config.get("word_bank")
 
@@ -30,7 +29,7 @@ base_config = Config.get("word_bank")
 __plugin_meta__ = PluginMetadata(
     name="词库问答",
     description="自定义词条内容随机回复",
-    usage="""
+    usage=r"""
     usage：
         对指定问题的随机回答，对相同问题可以设置多个不同回答
         删除词条后每个词条的id可能会变化，请查看后再删除
@@ -43,7 +42,7 @@ __plugin_meta__ = PluginMetadata(
             添加词条 ?[模糊|正则|图片]问...答...：添加问答词条，可重复添加相同问题的不同回答
                 示例:
                     添加词条问你好答你也好
-                    添加图片词条问答看看涩图
+                    添加词条图片问答看看涩图
             删除词条 ?[问题] ?[序号] ?[回答序号]：删除指定词条指定或全部回答
                 示例:
                     删除词条 谁是萝莉           : 删除文字是 谁是萝莉 的词条
@@ -63,11 +62,11 @@ __plugin_meta__ = PluginMetadata(
                     查看词条 --id 2    : 查看词条序号为2的全部回答
                     查看词条 谁是萝莉 --all: 查看全局词条 谁是萝莉 的全部回答
                     查看词条 --id 2 --all: 查看全局词条序号为2的全部回答
-    """.strip(),
+    """.strip(),  # noqa: E501
     extra=PluginExtraData(
         author="HibiKier & yajiwa",
         version="0.1",
-        superuser_help="""
+        superuser_help=r"""
     在私聊中超级用户额外设置
         指令：
             (全局|私聊)?添加词条\s*?(模糊|正则|图片)?问\s*?(\S*\s?\S*)\s*?答\s?(\S*)：添加问答词条，可重复添加相同问题的不同回答
@@ -149,7 +148,7 @@ async def _(
     group_id = session.id3 or session.id2
     try:
         if word_type == "图片":
-            problem = [m for m in message if isinstance(m, alcImage)][0].url
+            problem = next(m for m in message if isinstance(m, alcImage)).url
         elif word_type == "正则" and problem:
             problem = unescape(problem)
             try:
@@ -158,7 +157,9 @@ async def _(
                 await MessageUtils.build_message(
                     f"添加词条失败，正则表达式 {problem} 非法！"
                 ).finish(reply_to=True)
-        # if str(event.user_id) in bot.config.superusers and isinstance(event, PrivateMessageEvent):
+        # if str(event.user_id) in bot.config.superusers and isinstance(
+        #     event, PrivateMessageEvent
+        # ):
         #     word_scope = "私聊"
         nickname = None
         if problem and bot.config.nickname:
@@ -172,8 +173,8 @@ async def _(
                 if group_id and (not word_scope or word_scope == "私聊")
                 else "0"
             ),
-            scope2int[word_scope] if word_scope else 1,
-            type2int[word_type] if word_type else 0,
+            scope2int[word_scope] if word_scope else ScopeType.GROUP,
+            type2int[word_type] if word_type else WordType.EXACT,
             problem,
             answer,
             nickname[0] if nickname else None,
@@ -220,9 +221,9 @@ async def _(
         await MessageUtils.build_message(
             "此命令之后需要跟随指定词条或id，通过“显示词条“查看"
         ).finish(reply_to=True)
-    word_scope = 1 if session.id3 or session.id2 else 2
+    word_scope = ScopeType.GROUP if session.id3 or session.id2 else ScopeType.PRIVATE
     if all.result:
-        word_scope = 0
+        word_scope = ScopeType.GLOBAL
     if gid := session.id3 or session.id2:
         result, _ = await WordBankManage.delete_word(
             problem.result,
@@ -259,9 +260,9 @@ async def _(
         await MessageUtils.build_message(
             "此命令之后需要跟随指定词条或id，通过“显示词条“查看"
         ).finish(reply_to=True)
-    word_scope = 1 if session.id3 or session.id2 else 2
+    word_scope = ScopeType.GROUP if session.id3 or session.id2 else ScopeType.PRIVATE
     if all.result:
-        word_scope = 0
+        word_scope = ScopeType.GLOBAL
     if gid := session.id3 or session.id2:
         result, old_problem = await WordBankManage.update_word(
             replace,
@@ -297,20 +298,18 @@ async def _(
     arparma: Arparma,
     all: Query[bool] = AlconnaQuery("all.value", False),
 ):
-    word_scope = 1 if session.id3 or session.id2 else 2
-    if all.result:
-        word_scope = 0
+    word_scope = ScopeType.GROUP if session.id3 or session.id2 else ScopeType.PRIVATE
     group_id = session.id3 or session.id2
+    if all.result:
+        word_scope = ScopeType.GLOBAL
     if gid.available:
         group_id = gid.result
     if problem.available:
-        if index.available:
-            if index.result < 0 or index.result > len(
-                await WordBank.get_problem_by_scope(2)
-            ):
-                await MessageUtils.build_message("id必须在范围内...").finish(
-                    reply_to=True
-                )
+        if index.available and (
+            index.result < 0
+            or index.result > len(await WordBank.get_problem_by_scope(word_scope))
+        ):
+            await MessageUtils.build_message("id必须在范围内...").finish(reply_to=True)
         result = await WordBankManage.show_word(
             problem.result,
             index.result if index.available else None,

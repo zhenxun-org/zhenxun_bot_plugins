@@ -3,18 +3,19 @@ import random
 from nonebot import on_message
 from nonebot.adapters import Event
 from nonebot.plugin import PluginMetadata
-from nonebot_plugin_alconna import Image as alcImg
 from nonebot_plugin_alconna import UniMsg
 from nonebot_plugin_session import EventSession
+from nonebot_plugin_alconna import Image as alcImg
 
-from zhenxun.configs.config import NICKNAME, Config
-from zhenxun.configs.path_config import TEMP_PATH
-from zhenxun.configs.utils import PluginExtraData, RegisterConfig, Task
-from zhenxun.models.task_info import TaskInfo
 from zhenxun.utils.enum import PluginType
-from zhenxun.utils.image_utils import get_download_image_hash
-from zhenxun.utils.message import MessageUtils
 from zhenxun.utils.rules import ensure_group
+from zhenxun.models.task_info import TaskInfo
+from zhenxun.utils.message import MessageUtils
+from zhenxun.configs.path_config import TEMP_PATH
+from zhenxun.utils.common_utils import CommonUtils
+from zhenxun.configs.config import Config, BotConfig
+from zhenxun.utils.image_utils import get_download_image_hash
+from zhenxun.configs.utils import Task, RegisterConfig, PluginExtraData
 
 __plugin_meta__ = PluginMetadata(
     name="复读",
@@ -100,7 +101,7 @@ _matcher = on_message(rule=ensure_group, priority=999)
 @_matcher.handle()
 async def _(message: UniMsg, event: Event, session: EventSession):
     group_id = session.id2 or ""
-    if await TaskInfo.is_block("fudu", group_id):
+    if await CommonUtils.is_block("fudu", group_id):
         return
     if event.is_tome():
         return
@@ -112,7 +113,7 @@ async def _(message: UniMsg, event: Event, session: EventSession):
                 image_list.append(m.url)
     if not plain_text and not image_list:
         return
-    if plain_text and plain_text.startswith(f"@可爱的{NICKNAME}"):
+    if plain_text and plain_text.startswith(f"@可爱的{BotConfig.self_nickname}"):
         await MessageUtils.build_message("复制粘贴的虚空艾特？").send(reply_to=True)
     if image_list:
         img_hash = await get_download_image_hash(image_list[0], group_id)
