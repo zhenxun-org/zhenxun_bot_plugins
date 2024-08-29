@@ -68,7 +68,7 @@ async def _(message: UniMsg, session: EventSession, uname: str = UserName()):
     ]:
         await hello().finish()
     if not session.id1:
-        await Text("用户id不存在...").finish()
+        await MessageUtils.build_message("用户id不存在...").finish()
     gid = session.id3 or session.id2
     if gid:
         nickname = await GroupInfoUser.get_user_nickname(session.id1, gid)
