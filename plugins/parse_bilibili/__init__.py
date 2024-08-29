@@ -9,7 +9,6 @@ from nonebot_plugin_alconna import Hyper, Image, UniMsg
 
 from zhenxun.services.log import logger
 from zhenxun.utils.enum import PluginType
-from zhenxun.models.task_info import TaskInfo
 from zhenxun.utils.message import MessageUtils
 from zhenxun.utils.http_utils import AsyncHttpx
 from zhenxun.configs.path_config import TEMP_PATH
@@ -47,7 +46,9 @@ __plugin_meta__ = PluginMetadata(
 
 
 async def _rule(session: EventSession) -> bool:
-    return not await CommonUtils.is_block("bilibili_parse", session.id3 or session.id2)
+    return not await CommonUtils.task_is_block(
+        "bilibili_parse", session.id3 or session.id2
+    )
 
 
 _matcher = on_message(priority=1, block=False, rule=_rule)

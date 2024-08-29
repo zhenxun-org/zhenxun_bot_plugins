@@ -3,19 +3,18 @@ import random
 from nonebot import on_message
 from nonebot.adapters import Event
 from nonebot.plugin import PluginMetadata
+from nonebot_plugin_alconna import Image as alcImg
 from nonebot_plugin_alconna import UniMsg
 from nonebot_plugin_session import EventSession
-from nonebot_plugin_alconna import Image as alcImg
 
-from zhenxun.utils.enum import PluginType
-from zhenxun.utils.rules import ensure_group
-from zhenxun.models.task_info import TaskInfo
-from zhenxun.utils.message import MessageUtils
+from zhenxun.configs.config import BotConfig, Config
 from zhenxun.configs.path_config import TEMP_PATH
+from zhenxun.configs.utils import PluginExtraData, RegisterConfig, Task
 from zhenxun.utils.common_utils import CommonUtils
-from zhenxun.configs.config import Config, BotConfig
+from zhenxun.utils.enum import PluginType
 from zhenxun.utils.image_utils import get_download_image_hash
-from zhenxun.configs.utils import Task, RegisterConfig, PluginExtraData
+from zhenxun.utils.message import MessageUtils
+from zhenxun.utils.rules import ensure_group
 
 __plugin_meta__ = PluginMetadata(
     name="复读",
@@ -101,7 +100,7 @@ _matcher = on_message(rule=ensure_group, priority=999)
 @_matcher.handle()
 async def _(message: UniMsg, event: Event, session: EventSession):
     group_id = session.id2 or ""
-    if await CommonUtils.is_block("fudu", group_id):
+    if await CommonUtils.task_is_block("fudu", group_id):
         return
     if event.is_tome():
         return
