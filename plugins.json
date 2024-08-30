@@ -429,6 +429,16 @@
         "plugin_type": "DEPENDANT",
         "is_dir": true
     },
+	"B站订阅": {
+        "module": "bilibili_sub",
+        "module_path": "plugins.bilibili_sub",
+        "description": "非常便利的B站订阅通知",
+        "usage": "B站直播，番剧，UP动态开播等提醒",
+        "author": "HibiKier",
+        "version": "0.1",
+        "plugin_type": "NORMAL",
+        "is_dir": true
+    },
     "测试": {
         "module": "test_test",
         "module_path": "test.test_test",
