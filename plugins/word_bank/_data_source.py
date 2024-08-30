@@ -1,14 +1,12 @@
-from nonebot_plugin_alconna import At
-from nonebot_plugin_alconna import Image
+from nonebot_plugin_alconna import At, Image, UniMessage, UniMsg
 from nonebot_plugin_alconna import At as alcAt
-from nonebot_plugin_alconna import Text as alcText
 from nonebot_plugin_alconna import Image as alcImage
-from nonebot_plugin_alconna import UniMsg, UniMessage
+from nonebot_plugin_alconna import Text as alcText
 
-from zhenxun.utils.message import MessageUtils
 from zhenxun.utils.image_utils import ImageTemplate
-from zhenxun.plugins.word_bank._config import ScopeType
+from zhenxun.utils.message import MessageUtils
 
+from ._config import ScopeType
 from ._model import WordBank
 
 
@@ -83,9 +81,9 @@ def get_answer(message: UniMsg) -> UniMessage | None:
             if "答" in msg:
                 answer += "答".join(msg.split("答")[1:])
                 break
-    if answer:
-        temp_message = message[index:]
-        temp_message.insert(0, alcText(answer))
+    # if answer:
+    temp_message = message[index:]
+    temp_message.insert(0, alcText(answer))
     return temp_message
 
 

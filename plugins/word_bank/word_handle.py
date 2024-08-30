@@ -2,26 +2,25 @@ import re
 from typing import Any
 
 from nonebot.adapters import Bot
-from nonebot.typing import T_State
-from nonebot.params import RegexGroup
-from nonebot_plugin_alconna import Image
-from nonebot.plugin import PluginMetadata
+from nonebot.adapters.onebot.v11 import unescape
 from nonebot.exception import FinishedException
 from nonebot.internal.params import Arg, ArgStr
-from nonebot_plugin_session import EventSession
-from nonebot.adapters.onebot.v11 import unescape
+from nonebot.params import RegexGroup
+from nonebot.plugin import PluginMetadata
+from nonebot.typing import T_State
+from nonebot_plugin_alconna import AlconnaQuery, Arparma, Image, Match, Query, UniMsg
 from nonebot_plugin_alconna import Image as alcImage
-from nonebot_plugin_alconna import Match, Query, UniMsg, Arparma, AlconnaQuery
+from nonebot_plugin_session import EventSession
 
-from zhenxun.services.log import logger
 from zhenxun.configs.config import Config
-from zhenxun.utils.message import MessageUtils
 from zhenxun.configs.utils import PluginExtraData
+from zhenxun.services.log import logger
+from zhenxun.utils.message import MessageUtils
 
+from ._config import ScopeType, WordType, scope2int, type2int
+from ._data_source import WordBankManage, get_answer, get_img_and_at_list, get_problem
 from ._model import WordBank
-from ._config import WordType, ScopeType, type2int, scope2int
 from .command import _add_matcher, _del_matcher, _show_matcher, _update_matcher
-from ._data_source import WordBankManage, get_answer, get_problem, get_img_and_at_list
 
 base_config = Config.get("word_bank")
 
@@ -146,53 +145,49 @@ async def _(
         await MessageUtils.build_message("用户id不存在...").finish()
     user_id = session.id1
     group_id = session.id3 or session.id2
-    try:
-        if word_type == "图片":
-            problem = next(m for m in message if isinstance(m, alcImage)).url
-        elif word_type == "正则" and problem:
-            problem = unescape(problem)
-            try:
-                re.compile(problem)
-            except re.error:
-                await MessageUtils.build_message(
-                    f"添加词条失败，正则表达式 {problem} 非法！"
-                ).finish(reply_to=True)
-        # if str(event.user_id) in bot.config.superusers and isinstance(
-        #     event, PrivateMessageEvent
-        # ):
-        #     word_scope = "私聊"
-        nickname = None
-        if problem and bot.config.nickname:
-            nickname = [nk for nk in bot.config.nickname if problem.startswith(nk)]
-        if not problem:
-            await MessageUtils.build_message("获取问题失败...").finish(reply_to=True)
-        await WordBank.add_problem_answer(
-            user_id,
-            (
-                group_id
-                if group_id and (not word_scope or word_scope == "私聊")
-                else "0"
-            ),
-            scope2int[word_scope] if word_scope else ScopeType.GROUP,
-            type2int[word_type] if word_type else WordType.EXACT,
-            problem,
-            answer,
-            nickname[0] if nickname else None,
-            session.platform,
-            session.id1,
-        )
-    except Exception as e:
-        if isinstance(e, FinishedException):
-            await _add_matcher.finish()
-        logger.error(
-            f"添加词条 {problem} 错误...",
-            "添加词条",
-            session=session,
-            e=e,
-        )
-        await MessageUtils.build_message(
-            f"添加词条 {problem if word_type != '图片' else '图片'} 发生错误！"
-        ).finish(reply_to=True)
+    # try:
+    if word_type == "图片":
+        problem = next(m for m in message if isinstance(m, alcImage)).url
+    elif word_type == "正则" and problem:
+        problem = unescape(problem)
+        try:
+            re.compile(problem)
+        except re.error:
+            await MessageUtils.build_message(
+                f"添加词条失败，正则表达式 {problem} 非法！"
+            ).finish(reply_to=True)
+    # if str(event.user_id) in bot.config.superusers and isinstance(
+    #     event, PrivateMessageEvent
+    # ):
+    #     word_scope = "私聊"
+    nickname = None
+    if problem and bot.config.nickname:
+        nickname = [nk for nk in bot.config.nickname if problem.startswith(nk)]
+    if not problem:
+        await MessageUtils.build_message("获取问题失败...").finish(reply_to=True)
+    await WordBank.add_problem_answer(
+        user_id,
+        (group_id if group_id and (not word_scope or word_scope == "私聊") else "0"),
+        scope2int[word_scope] if word_scope else ScopeType.GROUP,
+        type2int[word_type] if word_type else WordType.EXACT,
+        problem,
+        answer,
+        nickname[0] if nickname else None,
+        session.platform,
+        session.id1,
+    )
+    # except Exception as e:
+    #     if isinstance(e, FinishedException):
+    #         await _add_matcher.finish()
+    #     logger.error(
+    #         f"添加词条 {problem} 错误...",
+    #         "添加词条",
+    #         session=session,
+    #         e=e,
+    #     )
+    #     await MessageUtils.build_message(
+    #         f"添加词条 {problem if word_type != '图片' else '图片'} 发生错误！"
+    #     ).finish(reply_to=True)
     if word_type == "图片":
         result = MessageUtils.build_message(
             ["添加词条 ", Image(url=problem), " 成功！"]
