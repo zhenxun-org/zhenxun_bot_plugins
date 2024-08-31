@@ -63,7 +63,7 @@ class SetuManage:
         if base_config.get("ONLY_USE_LOCAL_SETU"):
             """仅使用本地色图"""
             flag = False
-            data_list = await cls.get_setu_list(tags=tags, is_r18=is_r18)
+            data_list = await cls.get_setu_list(tags=tags, num=num, is_r18=is_r18)
             if isinstance(data_list, str):
                 return data_list
             cls.save_data = data_list
@@ -89,7 +89,7 @@ class SetuManage:
         data_list = await cls.search_lolicon(tags, num, is_r18)
         if isinstance(data_list, str):
             """搜索失败, 从本地数据库中搜索"""
-            data_list = await cls.get_setu_list(tags=tags, is_r18=is_r18)
+            data_list = await cls.get_setu_list(tags=tags, num=num, is_r18=is_r18)
             if isinstance(data_list, str):
                 return data_list
         if not data_list:
@@ -141,6 +141,7 @@ class SetuManage:
         *,
         local_id: int | None = None,
         tags: list[str] | None = None,
+        num: int = 10,
         is_r18: bool = False,
     ) -> list[Setu] | str:
         """获取数据库中的色图数据
@@ -160,9 +161,9 @@ class SetuManage:
                 return f"超过当前上下限！({image_count})"
             image_list = [await Setu.query_image(local_id, r18=is_r18)]  # type: ignore
         elif tags:
-            image_list = await Setu.query_image(tags=tags, r18=is_r18)  # type: ignore
+            image_list = await Setu.query_image(tags=tags, r18=is_r18, limit=num)  # type: ignore
         else:
-            image_list = await Setu.query_image(r18=is_r18)  # type: ignore
+            image_list = await Setu.query_image(r18=is_r18, limit=num)  # type: ignore
         if not image_list:
             return "没找到符合条件的色图..."
         return image_list
