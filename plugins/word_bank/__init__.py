@@ -1,18 +1,29 @@
 from pathlib import Path
 
 import nonebot
+from nonebot.plugin import PluginMetadata
 
-from zhenxun.configs.config import Config
+from zhenxun.configs.utils import PluginExtraData, RegisterConfig
+from zhenxun.utils.enum import PluginType
 
-Config.add_plugin_config(
-    "word_bank",
-    "WORD_BANK_LEVEL",
-    5,
-    help="设置增删词库的权限等级",
-    default_value=5,
-    type=int,
+__plugin_meta__ = PluginMetadata(
+    name="词库",
+    description="",
+    usage="",
+    extra=PluginExtraData(
+        author="HibiKier",
+        version="0.2",
+        plugin_type=PluginType.PARENT,
+        configs=[
+            RegisterConfig(
+                key="WORD_BANK_LEVEL",
+                value=5,
+                default_value=5,
+                type=int,
+                help="设置增删词库的权限等级",
+            )
+        ],
+    ).dict(),
 )
-Config.set_name("word_bank", "词库问答")
-
 
 nonebot.load_plugins(str(Path(__file__).parent.resolve()))

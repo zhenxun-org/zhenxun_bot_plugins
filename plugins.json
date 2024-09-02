@@ -30,7 +30,7 @@
         "is_dir": false
     },
     "PIX": {
-        "module": "pix",
+        "module": "pix_gallery",
         "module_path": "plugins.pix_gallery",
         "description": "这里是PIX图库！",
         "usage": "指令：\n        pix ?*[tags]: 通过 tag 获取相似图片，不含tag时随机抽取\n        pid [uid]: 通过uid获取图片\n        pix pid[pid]: 查看图库中指定pid图片\n        示例：pix 萝莉 白丝\n        示例：pix 萝莉 白丝 10  （10为数量）\n        示例：pix #02      （当tag只有1个tag且为数字时，使用#标记，否则将被判定为数量）\n        示例：pix 34582394     （查询指定uid图片）\n        示例：pix pid:12323423     （查询指定pid图片）",
@@ -68,26 +68,6 @@
         "version": "0.1",
         "plugin_type": "NORMAL",
         "is_dir": false
-    },
-    "重启": {
-        "module": "restart",
-        "module_path": "plugins.restart",
-        "description": "执行脚本重启真寻",
-        "usage": "重启",
-        "author": "HibiKier",
-        "version": "0.1",
-        "plugin_type": "SUPERUSER",
-        "is_dir": true
-    },
-    "敏感词文本监听": {
-        "module": "black_watch",
-        "module_path": "plugins.black_word.black_watch",
-        "description": "敏感词文本监听",
-        "usage": "",
-        "author": "HibiKier",
-        "version": "0.1",
-        "plugin_type": "DEPENDANT",
-        "is_dir": true
     },
     "联系管理员": {
         "module": "dialogue",
@@ -191,7 +171,7 @@
     },
     "敏感词检测": {
         "module": "black_word",
-        "module_path": "plugins.black_word.black_word",
+        "module_path": "plugins.black_word",
         "description": "请注意你的发言！",
         "usage": "惩罚机制: 检测内容提示\n    设置惩罚 [uid] [id] [level]: 设置惩罚内容, 此id需要通过`记录名单 -u:uid`来获取\n    记录名单: 查看检测记录名单\n    记录名单:\n        -u [uid] 指定用户记录名单\n        -g [gid] 指定群组记录名单\n        -d [date] 指定日期\n        -dt ['=', '>', '<'] 大于小于等于指定日期\n\n    示例:\n        设置惩罚 123123123 0 1\n        记录名单 -u 123123123\n        记录名单 -g 333333\n        记录名单 -d 2022-11-11\n        记录名单 -d 2022-11-11 -dt >",
         "author": "HibiKier",
@@ -235,7 +215,7 @@
         "description": "自定义词条内容随机回复",
         "usage": "usage：\n        对指定问题的随机回答，对相同问题可以设置多个不同回答\n        删除词条后每个词条的id可能会变化，请查看后再删除\n        更推荐使用id方式删除\n        问题回答支持的类型：at, image\n        查看词条命令：群聊时为 群词条+全局词条，私聊时为 私聊词条+全局词条\n        添加词条正则：添加词条(模糊|正则|图片)?问\\s*?(\\S*\\s?\\S*)\\s*?答\\s?(\\S*)\n        正则问可以通过$1类推()捕获的组\n        指令：\n            添加词条 ?[模糊|正则|图片]问...答...：添加问答词条，可重复添加相同问题的不同回答\n                示例:\n                    添加词条问你好答你也好\n                    添加图片词条问答看看涩图\n            删除词条 ?[问题] ?[序号] ?[回答序号]：删除指定词条指定或全部回答\n                示例:\n                    删除词条 谁是萝莉           : 删除文字是 谁是萝莉 的词条\n                    删除词条 --id 2            : 删除序号为2的词条\n                    删除词条 谁是萝莉 --aid 2   : 删除 谁是萝莉 词条的第2个回答\n                    删除词条 --id 2 --aid 2    : 删除序号为2词条的第2个回答\n            修改词条 [替换文字] ?[旧词条文字] ?[序号]：修改词条问题\n                示例:\n                    修改词条 谁是萝莉 谁是萝莉啊？ : 将词条 谁是萝莉 修改为 谁是萝莉啊？\n                    修改词条 谁是萝莉 --id 2     : 将序号为2的词条修改为 谁是萝莉\n            查看词条 ?[问题] ?[序号]：查看全部词条或对应词条回答\n                示例:\n                    查看词条:\n                        (在群组中使用时): 查看当前群组词条和全局词条\n                        (在私聊中使用时): 查看当前私聊词条和全局词条\n                    查看词条 谁是萝莉   : 查看词条 谁是萝莉 的全部回答\n                    查看词条 --id 2    : 查看词条序号为2的全部回答\n                    查看词条 谁是萝莉 --all: 查看全局词条 谁是萝莉 的全部回答\n                    查看词条 --id 2 --all: 查看全局词条序号为2的全部回答",
         "author": "HibiKier & yajiwa",
-        "version": "0.1",
+        "version": "0.2",
         "plugin_type": "NORMAL",
         "is_dir": true
     },
@@ -288,16 +268,6 @@
         "version": "0.1",
         "plugin_type": "NORMAL",
         "is_dir": false
-    },
-    "自动更新": {
-        "module": "auto_update",
-        "module_path": "plugins.auto_update",
-        "description": "就算是真寻也会成长的",
-        "usage": "usage：\n        检查更新真寻最新版本，包括了自动更新\n        指令：\n            检查更新真寻",
-        "author": "HibiKier",
-        "version": "0.1",
-        "plugin_type": "SUPERUSER",
-        "is_dir": true
     },
     "古诗": {
         "module": "poetry",
@@ -358,16 +328,6 @@
         "version": "0.1",
         "plugin_type": "NORMAL",
         "is_dir": false
-    },
-    "WebUi": {
-        "module": "web_ui",
-        "module_path": "plugins.web_ui",
-        "description": "WebUi API",
-        "usage": "",
-        "author": "HibiKier",
-        "version": "0.1",
-        "plugin_type": "HIDDEN",
-        "is_dir": true
     },
     "搜番": {
         "module": "search_anime",

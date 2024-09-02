@@ -1,24 +1,24 @@
+import random
 import re
 import uuid
-import random
-from typing import Any
 from datetime import datetime
+from typing import Any
+
+from nonebot_plugin_alconna import At as alcAt
+from nonebot_plugin_alconna import Image as alcImage
+from nonebot_plugin_alconna import Text as alcText
+from nonebot_plugin_alconna import UniMessage
+from tortoise import Tortoise, fields
+from tortoise.expressions import Q
 from typing_extensions import Self
 
-from tortoise.expressions import Q
-from tortoise import Tortoise, fields
-from nonebot_plugin_alconna import UniMessage
-from nonebot_plugin_alconna import At as alcAt
-from nonebot_plugin_alconna import Text as alcText
-from nonebot_plugin_alconna import Image as alcImage
-
-from zhenxun.services.db_context import Model
-from zhenxun.utils.message import MessageUtils
-from zhenxun.utils.http_utils import AsyncHttpx
 from zhenxun.configs.path_config import DATA_PATH
+from zhenxun.services.db_context import Model
+from zhenxun.utils.http_utils import AsyncHttpx
 from zhenxun.utils.image_utils import get_img_hash
+from zhenxun.utils.message import MessageUtils
 
-from ._config import WordType, ScopeType, int2type
+from ._config import ScopeType, WordType, int2type
 
 path = DATA_PATH / "word_bank"
 
@@ -380,7 +380,7 @@ class WordBank(Model):
         f = cls.filter(
             problem=problem, word_scope=(word_scope or ScopeType.GLOBAL).value
         )
-        if group_id:
+        if group_id and word_scope != ScopeType.GLOBAL:
             f = f.filter(group_id=group_id)
         answer_list = await f.all()
         if not answer_list:

@@ -1,10 +1,12 @@
 from pathlib import Path
-from typing import List, Tuple
 
 import nonebot
+from nonebot.plugin import PluginMetadata
 
 from zhenxun.configs.config import Config
 from zhenxun.configs.path_config import IMAGE_PATH
+from zhenxun.configs.utils import PluginExtraData
+from zhenxun.utils.enum import PluginType
 
 Config.add_plugin_config(
     "image_management",
@@ -12,7 +14,7 @@ Config.add_plugin_config(
     ["美图", "萝莉", "壁纸"],
     help="公开图库列表，可自定义添加 [如果含有send_setu插件，请不要添加色图库]",
     default_value=[],
-    type=List[str],
+    type=list[str],
 )
 
 Config.add_plugin_config(
@@ -21,7 +23,7 @@ Config.add_plugin_config(
     (0, 1),
     help="自动撤回，参1：延迟撤回发送图库图片的时间(秒)，0 为关闭 | 参2：监控聊天类型，0(私聊) 1(群聊) 2(群聊+私聊)",
     default_value=(0, 1),
-    type=Tuple[int, int],
+    type=tuple[int, int],
 )
 
 Config.add_plugin_config(
@@ -61,6 +63,17 @@ Config.add_plugin_config(
 )
 
 Config.set_name("image_management", "图库操作")
+
+__plugin_meta__ = PluginMetadata(
+    name="图库",
+    description="",
+    usage="",
+    extra=PluginExtraData(
+        author="HibiKier",
+        version="0.1",
+        plugin_type=PluginType.PARENT,
+    ).dict(),
+)
 
 
 (IMAGE_PATH / "image_management").mkdir(parents=True, exist_ok=True)

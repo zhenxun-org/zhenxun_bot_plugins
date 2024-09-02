@@ -8,20 +8,20 @@ from nonebot.internal.params import Arg, ArgStr
 from nonebot.params import RegexGroup
 from nonebot.plugin import PluginMetadata
 from nonebot.typing import T_State
-from nonebot_plugin_alconna import AlconnaQuery, Arparma
-from nonebot_plugin_alconna import Image
+from nonebot_plugin_alconna import AlconnaQuery, Arparma, Image, Match, Query, UniMsg
 from nonebot_plugin_alconna import Image as alcImage
-from nonebot_plugin_alconna import Match, Query, UniMsg
 from nonebot_plugin_session import EventSession
+
 from zhenxun.configs.config import Config
 from zhenxun.configs.utils import PluginExtraData
 from zhenxun.services.log import logger
+from zhenxun.utils.enum import PluginType
 from zhenxun.utils.message import MessageUtils
 
+from ._command import _add_matcher, _del_matcher, _update_matcher
 from ._config import ScopeType, WordType, scope2int, type2int
 from ._data_source import WordBankManage, get_answer, get_img_and_at_list, get_problem
 from ._model import WordBank
-from .command import _add_matcher, _del_matcher, _show_matcher, _update_matcher
 
 base_config = Config.get("word_bank")
 
@@ -66,6 +66,7 @@ __plugin_meta__ = PluginMetadata(
     extra=PluginExtraData(
         author="HibiKier & yajiwa",
         version="0.1",
+        plugin_type=PluginType.SUPER_AND_ADMIN,
         superuser_help=r"""
     在私聊中超级用户额外设置
         指令：
@@ -284,45 +285,6 @@ async def _(
     await MessageUtils.build_message(result).send(reply_to=True)
     logger.info(
         f"更新词条词条: {old_problem} -> {replace}",
-        arparma.header_result,
-        session=session,
-    )
-
-
-@_show_matcher.handle()
-async def _(
-    session: EventSession,
-    problem: Match[str],
-    index: Match[int],
-    gid: Match[str],
-    arparma: Arparma,
-    all: Query[bool] = AlconnaQuery("all.value", False),
-):
-    word_scope = ScopeType.GROUP if session.id3 or session.id2 else ScopeType.PRIVATE
-    group_id = session.id3 or session.id2
-    if all.result:
-        word_scope = ScopeType.GLOBAL
-    if gid.available:
-        group_id = gid.result
-    if problem.available:
-        if index.available and (
-            index.result < 0
-            or index.result > len(await WordBank.get_problem_by_scope(word_scope))
-        ):
-            await MessageUtils.build_message("id必须在范围内...").finish(reply_to=True)
-        result = await WordBankManage.show_word(
-            problem.result,
-            index.result if index.available else None,
-            group_id,
-            word_scope,
-        )
-    else:
-        result = await WordBankManage.show_word(
-            None, index.result if index.available else None, group_id, word_scope
-        )
-    await result.send()
-    logger.info(
-        f"查看词条回答: {problem.result if problem.available else index.result}",
         arparma.header_result,
         session=session,
     )
