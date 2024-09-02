@@ -114,10 +114,10 @@ Config.add_plugin_config(
 )
 
 add_sub = on_alconna(Alconna("添加订阅", Args["sub_type", str]["sub_msg", str], meta=CommandMeta(compact=True)),
-                     aliases={"d", "添加", "添加订阅"},
+                     aliases={"d", "添加订阅"},
                      priority=5, block=True)
 del_sub = on_alconna(Alconna("删除订阅", Args["sub_type", str]["sub_msg", str], meta=CommandMeta(compact=True)),
-                     aliases={"td", "删除", "取消订阅"},
+                     aliases={"td", "取消订阅"},
                      priority=5, block=True)
 show_sub_info = on_alconna("查看订阅", priority=5, block=True)
 
