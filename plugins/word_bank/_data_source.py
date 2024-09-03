@@ -161,6 +161,8 @@ class WordBankManage:
         返回:
             tuple[str, str]: 处理消息，替换的旧词条
         """
+        if word_scope == ScopeType.GLOBAL:
+            group_id = None
         if index is not None:
             problem, code = await cls.__get_problem_str(index, group_id, word_scope)
             if code != 200:
