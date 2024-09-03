@@ -2,9 +2,17 @@ from nonebot.adapters import Bot
 from nonebot.plugin import PluginMetadata
 from nonebot.rule import to_me
 from nonebot.typing import T_State
-from nonebot_plugin_alconna import Alconna, Args, Arparma
+from nonebot_plugin_alconna import (
+    Alconna,
+    Args,
+    Arparma,
+    Match,
+    UniMessage,
+    UniMsg,
+    image_fetch,
+    on_alconna,
+)
 from nonebot_plugin_alconna import Image as alcImage
-from nonebot_plugin_alconna import Match, UniMessage, UniMsg, image_fetch, on_alconna
 from nonebot_plugin_session import EventSession
 
 from zhenxun.configs.config import Config
@@ -190,6 +198,7 @@ async def _(
                     session=session,
                 )
         await MessageUtils.build_message(
-            f"上传图片成功!共上传了{len(file_list)}张图片\n图库: {name}\n名称: {', '.join(file_list)}"
+            f"上传图片成功!共上传了{len(file_list)}张图片\n"
+            f"图库: {name}\n名称: {', '.join(file_list)}"
         ).finish()
     await MessageUtils.build_message("图片上传失败...").finish()
