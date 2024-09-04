@@ -138,8 +138,8 @@ async def _(
         try:
             await SetuManage.save_to_database()
             logger.info("色图数据自动存储数据库成功...")
-        except Exception:
-            pass
+        except Exception as e:
+            logger.error("色图数据自动存储数据库失败", e=e)
 
 
 _matcher = on_alconna(
@@ -191,6 +191,11 @@ async def _(
             await result.finish()
     is_r18 = arparma.find("r")
     _num = num.result if num.available else 1
+    max_once_num = base_config.get("MAX_ONCE_NUM")
+    if max_once_num < _num:
+        await MessageUtils.build_message(
+            f"单次发送的涩图不能超过 {max_once_num} 张哦！"
+        ).finish()
     if is_r18 and gid:
         """群聊中禁止查看r18"""
         if not base_config.get("ALLOW_GROUP_R18"):
@@ -215,7 +220,7 @@ async def _(
     max_once_num2forward = base_config.get("MAX_ONCE_NUM2FORWARD")
     platform = PlatformUtils.get_platform(bot)
     if (
-        "qq" == platform
+        platform == "qq"
         and gid
         and max_once_num2forward
         and len(result_list) >= max_once_num2forward
