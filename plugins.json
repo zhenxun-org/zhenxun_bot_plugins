@@ -189,16 +189,6 @@
         "plugin_type": "NORMAL",
         "is_dir": false
     },
-    "服务器自我检查": {
-        "module": "check",
-        "module_path": "plugins.check",
-        "description": "查看服务器当前状态",
-        "usage": "查看服务器当前状态\n    指令:\n        自检",
-        "author": "HibiKier",
-        "version": "0.1",
-        "plugin_type": "SUPERUSER",
-        "is_dir": true
-    },
     "识番": {
         "module": "what_anime",
         "module_path": "plugins.what_anime",
