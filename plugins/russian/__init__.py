@@ -40,7 +40,7 @@ __plugin_meta__ = PluginMetadata(
     """.strip(),
     extra=PluginExtraData(
         author="HibiKier",
-        version="0.1",
+        version="0.2",
         menu_type="群内小游戏",
         configs=[
             RegisterConfig(
@@ -86,6 +86,8 @@ async def _(
     if not gid:
         await MessageUtils.build_message("群组id为空...").finish()
     money = money.result if money.available else 200
+    if money <= 0:
+        await MessageUtils.build_message("赌注金额必须大于0!").finish(reply_to=True)
     if num in ["取消", "算了"]:
         await MessageUtils.build_message("已取消装弹...").finish()
     if not num.isdigit():
@@ -117,7 +119,7 @@ async def _(bot: Bot, session: EventSession, arparma: Arparma, uname: str = User
         await MessageUtils.build_message("群组id为空...").finish()
     result = await russian_manage.accept(bot, gid, session.id1, uname)
     await result.send()
-    logger.info(f"俄罗斯轮盘接受对决", arparma.header_result, session=session)
+    logger.info("俄罗斯轮盘接受对决", arparma.header_result, session=session)
 
 
 @_refuse_matcher.handle()
@@ -129,7 +131,7 @@ async def _(session: EventSession, arparma: Arparma, uname: str = UserName()):
         await MessageUtils.build_message("群组id为空...").finish()
     result = russian_manage.refuse(gid, session.id1, uname)
     await result.send()
-    logger.info(f"俄罗斯轮盘拒绝对决", arparma.header_result, session=session)
+    logger.info("俄罗斯轮盘拒绝对决", arparma.header_result, session=session)
 
 
 @_settlement_matcher.handle()
@@ -141,7 +143,7 @@ async def _(session: EventSession, arparma: Arparma):
         await MessageUtils.build_message("群组id为空...").finish()
     result = await russian_manage.settlement(gid, session.id1, session.platform)
     await result.send()
-    logger.info(f"俄罗斯轮盘结算", arparma.header_result, session=session)
+    logger.info("俄罗斯轮盘结算", arparma.header_result, session=session)
 
 
 @_shoot_matcher.handle()
@@ -157,7 +159,7 @@ async def _(bot: Bot, session: EventSession, arparma: Arparma, uname: str = User
     await result.send()
     if settle:
         await settle.send()
-    logger.info(f"俄罗斯轮盘开枪", arparma.header_result, session=session)
+    logger.info("俄罗斯轮盘开枪", arparma.header_result, session=session)
 
 
 @_record_matcher.handle()
@@ -179,7 +181,7 @@ async def _(session: EventSession, arparma: Arparma):
         f"赚取金币：{user.make_money}\n"
         f"输掉金币：{user.lose_money}",
     ).send(reply_to=True)
-    logger.info(f"俄罗斯轮盘查看战绩", arparma.header_result, session=session)
+    logger.info("俄罗斯轮盘查看战绩", arparma.header_result, session=session)
 
 
 @_rank_matcher.handle()
