@@ -1,7 +1,9 @@
+from typing_extensions import Self
+
 from tortoise import fields
-from tortoise.contrib.postgres.functions import Random
 
 from zhenxun.services.db_context import Model
+from zhenxun.utils.common_utils import SqlUtils
 
 
 class BuffSkin(Model):
@@ -45,12 +47,12 @@ class BuffSkin(Model):
     update_time = fields.DatetimeField(auto_add=True)
     """更新日期"""
 
-    class Meta:
+    class Meta:  # type: ignore
         table = "buff_skin"
         table_description = "Buff皮肤数据表"
         # unique_together = ("case_name", "name", "skin_name", "abrasion", "is_stattrak")
 
-    def __eq__(self, other: "BuffSkin"):
+    def __eq__(self, other: Self):  # type: ignore
 
         return self.skin_id == other.skin_id
 
@@ -83,13 +85,15 @@ class BuffSkin(Model):
         if case_name:
             query = query.filter(case_name__contains=case_name)
         query = query.filter(abrasion=abrasion, is_stattrak=is_stattrak, color=color)
-        skin_list = await query.annotate(rand=Random()).limit(num)  # type:ignore
+        sql = SqlUtils.random(query, num)
+        skin_list = await cls.raw(sql)  # type:ignore
         num_ = num
         cnt = 0
         while len(skin_list) < num:
             cnt += 1
             num_ = num - len(skin_list)
-            skin_list += await query.annotate(rand=Random()).limit(num_)
+            sql = SqlUtils.random(query, num_)
+            skin_list += await cls.raw(sql)
             if cnt > 10:
                 break
         return skin_list  # type: ignore

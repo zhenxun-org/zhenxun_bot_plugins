@@ -78,7 +78,7 @@ __plugin_meta__ = PluginMetadata(
                 value=True,
                 help="是否存储下载的色图，使用本地色图可以加快图片发送速度",
                 default_value=True,
-                type=float,
+                type=bool,
             ),
             RegisterConfig(
                 key="TIMEOUT",
@@ -244,5 +244,5 @@ async def _(
                     session,
                 )
     logger.info(
-        f"调用发送 {num}张 色图 tags: {_tags}", arparma.header_result, session=session
+        f"调用发送 {_num}张 色图 tags: {_tags}", arparma.header_result, session=session
     )

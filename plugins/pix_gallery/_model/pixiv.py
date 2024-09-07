@@ -1,7 +1,7 @@
 from tortoise import fields
-from tortoise.contrib.postgres.functions import Random
 
 from zhenxun.services.db_context import Model
+from zhenxun.utils.common_utils import SqlUtils
 
 
 class Pixiv(Model):
@@ -32,7 +32,7 @@ class Pixiv(Model):
     """图片pN"""
     is_r18 = fields.BooleanField()
 
-    class Meta:
+    class Meta:  # type: ignore
         table = "pixiv"
         table_description = "pix图库数据表"
         unique_together = ("pid", "img_url", "img_p")
@@ -70,8 +70,8 @@ class Pixiv(Model):
             query = query.filter(uid=uid)
         elif pid:
             query = query.filter(pid=pid)
-        query = query.annotate(rand=Random()).limit(num)
-        return await query.all()  # type: ignore
+        sql = SqlUtils.random(query, num)
+        return await cls.raw(sql)  # type: ignore
 
     @classmethod
     async def get_keyword_num(cls, tags: list[str] | None = None) -> tuple[int, int]:

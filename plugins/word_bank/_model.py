@@ -1,24 +1,25 @@
-import random
 import re
 import uuid
-from datetime import datetime
+import random
 from typing import Any
-
-from nonebot_plugin_alconna import At as alcAt
-from nonebot_plugin_alconna import Image as alcImage
-from nonebot_plugin_alconna import Text as alcText
-from nonebot_plugin_alconna import UniMessage
-from tortoise import Tortoise, fields
-from tortoise.expressions import Q
+from datetime import datetime
 from typing_extensions import Self
 
-from zhenxun.configs.path_config import DATA_PATH
-from zhenxun.services.db_context import Model
-from zhenxun.utils.http_utils import AsyncHttpx
-from zhenxun.utils.image_utils import get_img_hash
-from zhenxun.utils.message import MessageUtils
+from tortoise.expressions import Q
+from tortoise import Tortoise, fields
+from nonebot_plugin_alconna import UniMessage
+from nonebot_plugin_alconna import At as alcAt
+from nonebot_plugin_alconna import Text as alcText
+from nonebot_plugin_alconna import Image as alcImage
 
-from ._config import ScopeType, WordType, int2type
+from zhenxun.configs.config import BotConfig
+from zhenxun.services.db_context import Model
+from zhenxun.utils.message import MessageUtils
+from zhenxun.utils.http_utils import AsyncHttpx
+from zhenxun.configs.path_config import DATA_PATH
+from zhenxun.utils.image_utils import get_img_hash
+
+from ._config import WordType, ScopeType, int2type
 
 path = DATA_PATH / "word_bank"
 
@@ -249,14 +250,8 @@ class WordBank(Model):
         word_scope: ScopeType | None = None,
         word_type: WordType | None = None,
     ) -> Any:
-        """检测是否包含该问题并获取所有回答
+        """检测是否包含该问题并获取所有回答"""
 
-        参数:
-            group_id: 群组id
-            problem: 问题内容
-            word_scope: 词条范围
-            word_type: 词条类型
-        """
         query = cls
         if group_id:
             if word_scope:
@@ -272,6 +267,7 @@ class WordBank(Model):
             )
             if word_type:
                 query = query.filter(word_scope=word_type.value)
+
         # 完全匹配
         if data_list := await query.filter(
             Q(Q(word_type=WordType.EXACT.value) | Q(word_type=WordType.IMAGE.value)),
@@ -279,20 +275,55 @@ class WordBank(Model):
         ).all():
             return data_list
         db = Tortoise.get_connection("default")
-        # 模糊匹配
-        sql = (
-            query.filter(word_type=WordType.FUZZY.value).sql()
-            + " and POSITION(problem in $1) > 0"
-        )
-        data_list = await db.execute_query_dict(sql, [problem])
+        db_class_name = BotConfig.get_sql_type()
+        # 模糊匹配：处理 POSITION 和 INSTR 的差异
+        if "postgres" in db_class_name:
+            sql = (
+                query.filter(word_type=WordType.FUZZY.value).sql()
+                + " AND POSITION($1 IN problem) > 0"
+            )
+            params = [problem]
+        elif "sqlite" in db_class_name:
+            sql = (
+                query.filter(word_type=WordType.FUZZY.value).sql()
+                + " AND INSTR(problem, ?) > 0"
+            )
+            params = [problem]
+        elif "mysql" in db_class_name:
+            sql = (
+                query.filter(word_type=WordType.FUZZY.value).sql()
+                + " AND INSTR(problem, %s) > 0"
+            )
+            params = [problem]
+        else:
+            raise Exception(f"Unsupported database type: {db_class_name}")
+
+        data_list = await db.execute_query_dict(sql, params)
         if data_list:
             return [cls(**data) for data in data_list]
-        # 正则
-        sql = (
-            query.filter(word_type=WordType.REGEX.value, word_scope__not=999).sql()
-            + " and $1 ~ problem;"
-        )
-        data_list = await db.execute_query_dict(sql, [problem])
+
+        # 正则匹配
+        if "postgres" in db_class_name:
+            sql = (
+                query.filter(word_type=WordType.REGEX.value, word_scope__not=999).sql()
+                + " AND $1 ~ problem"
+            )
+            params = [problem]
+        elif "sqlite" in db_class_name:
+            # SQLite 不支持 REGEXP，使用 LIKE 替代
+            sql = (
+                query.filter(word_type=WordType.REGEX.value, word_scope__not=999).sql()
+                + " AND problem LIKE ?"
+            )
+            params = [f"%{problem}%"]
+        elif "mysql" in db_class_name:
+            sql = (
+                query.filter(word_type=WordType.REGEX.value, word_scope__not=999).sql()
+                + " AND problem REGEXP ?"
+            )
+            params = [problem]
+
+        data_list = await db.execute_query_dict(sql, params)
         return [cls(**data) for data in data_list] if data_list else None
 
     @classmethod

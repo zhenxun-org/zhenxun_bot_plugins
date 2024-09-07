@@ -1,8 +1,9 @@
-
 from tortoise import fields
-from tortoise.contrib.postgres.functions import Random
 
+from zhenxun.services.log import logger
+from zhenxun.configs.config import BotConfig
 from zhenxun.services.db_context import Model
+from zhenxun.utils.common_utils import SqlUtils
 
 
 class OmegaPixivIllusts(Model):
@@ -30,7 +31,7 @@ class OmegaPixivIllusts(Model):
     url = fields.CharField(255)
     """pixiv url链接"""
 
-    class Meta:
+    class Meta:  # type: ignore
         table = "omega_pixiv_illusts"
         table_description = "omega图库数据表"
         unique_together = ("pid", "url")
@@ -65,15 +66,15 @@ class OmegaPixivIllusts(Model):
             query = query.filter(uid=uid)
         elif pid:
             query = query.filter(pid=pid)
-        query = query.annotate(rand=Random()).limit(num)
-        return await query.all()  # type: ignore
+        sql = SqlUtils.random(query, num)
+        return await cls.raw(sql)  # type: ignore
 
     @classmethod
     async def get_keyword_num(
         cls, tags: list[str] | None = None
     ) -> tuple[int, int, int]:
         """获取相关关键词(keyword, tag)在图库中的数量
-        
+
         参数:
             tags: 关键词/Tag
         """

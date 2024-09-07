@@ -1,9 +1,10 @@
-from tortoise import fields
-from tortoise.contrib.postgres.functions import Random
-from tortoise.expressions import Q
 from typing_extensions import Self
 
+from tortoise import fields
+from tortoise.expressions import Q
+
 from zhenxun.services.db_context import Model
+from zhenxun.utils.common_utils import SqlUtils
 
 
 class Setu(Model):
@@ -27,7 +28,7 @@ class Setu(Model):
     tags = fields.TextField()
     """tags"""
 
-    class Meta:
+    class Meta:  # type: ignore
         table = "setu"
         table_description = "色图数据表"
         unique_together = ("pid", "img_url")
@@ -61,8 +62,8 @@ class Setu(Model):
                     | Q(title__contains=tag)
                     | Q(author__contains=tag)
                 )
-        query = query.annotate(rand=Random()).limit(limit)
-        return await query.all()
+        sql = SqlUtils.random(query, limit)
+        return await cls.raw(sql)  # type: ignore
 
     @classmethod
     async def delete_image(cls, pid: int, img_url: str) -> int:
@@ -74,7 +75,6 @@ class Setu(Model):
         返回:
             int: 删除返回的本地id
         """
-        print(pid)
         return_id = -1
         if query := await cls.get_or_none(pid=pid, img_url=img_url):
             num = await cls.filter(is_r18=query.is_r18).count()

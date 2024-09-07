@@ -1,5 +1,4 @@
 from tortoise import fields
-from tortoise.contrib.postgres.functions import Random
 
 from zhenxun.services.db_context import Model
 
@@ -31,7 +30,7 @@ class OpenCasesLog(Model):
     create_time = fields.DatetimeField(auto_add_now=True)
     """创建日期"""
 
-    class Meta:
+    class Meta:  # type: ignore
         table = "open_cases_log"
         table_description = "开箱日志表"
 
