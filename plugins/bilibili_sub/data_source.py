@@ -354,29 +354,6 @@ async def _get_season_status(id_) -> list:
     return msg_list
 
 
-async def get_user_dynamic(
-    uid: int, local_user: BilibiliSub
-) -> Tuple[bytes | None, int, str]:
-    """
-    获取用户动态
-    :param uid: 用户uid
-    :param local_user: 数据库存储的用户数据
-    :return: 最新动态截图与时间
-    """
-    dynamic_info = await get_user_dynamics(uid)
-    if dynamic_info.get("cards"):
-        dynamic_upload_time = dynamic_info["cards"][0]["desc"]["timestamp"]
-        dynamic_id = dynamic_info["cards"][0]["desc"]["dynamic_id"]
-        if local_user.dynamic_upload_time < dynamic_upload_time:
-            image = await get_dynamic_screenshot(dynamic_id)
-            return (
-                image,
-                dynamic_upload_time,
-                f"https://t.bilibili.com/{dynamic_id}",
-            )
-    return None, 0, ""
-
-
 class SubManager:
     def __init__(self):
         self.live_data = []
@@ -388,43 +365,48 @@ class SubManager:
         """
         重载数据
         """
-        if not self.live_data or not self.up_data or not self.season_data:
-            (
-                _live_data,
-                _up_data,
-                _season_data,
-            ) = await BilibiliSub.get_all_sub_data()
-            if not self.live_data:
-                self.live_data = _live_data
-            if not self.up_data:
-                self.up_data = _up_data
-            if not self.season_data:
-                self.season_data = _season_data
+        # 如果 live_data、up_data 和 season_data 全部为空，重新加载所有数据
+        if not (self.live_data and self.up_data and self.season_data):
+            self.live_data, self.up_data, self.season_data = await BilibiliSub.get_all_sub_data()
+
 
     async def random_sub_data(self) -> Optional[BilibiliSub]:
         """
-        随机获取一条数据
-        :return:
+        随机获取一条数据，保证所有 data 都轮询一次后再重载
+        :return: Optional[BilibiliSub]
         """
         sub = None
-        if not self.live_data and not self.up_data and not self.season_data:
-            return sub
-        self.current_index += 1
-        if self.current_index == 0:
-            if self.live_data:
+
+        # 计算所有数据的总量，确保所有数据轮询完毕后再考虑重载
+        total_data = sum([len(self.live_data), len(self.up_data), len(self.season_data)])
+        
+        # 如果所有列表都为空，重新加载一次数据以保证数据库非空
+        if total_data == 0:
+            await self.reload_sub_data()
+            total_data = sum([len(self.live_data), len(self.up_data), len(self.season_data)])
+            if total_data == 0:
+                return sub
+
+        attempts = 0
+
+        # 开始轮询，直到所有数据都被遍历一次
+        while attempts < total_data:
+            self.current_index = (self.current_index + 1) % 3  # 轮询 0, 1, 2 之间
+
+            # 根据 current_index 从相应的列表中随机取出数据
+            if self.current_index == 0 and self.live_data:
                 sub = random.choice(self.live_data)
                 self.live_data.remove(sub)
-        elif self.current_index == 1:
-            if self.up_data:
+                attempts += 1  # 成功从 live_data 获取数据
+            elif self.current_index == 1 and self.up_data:
                 sub = random.choice(self.up_data)
                 self.up_data.remove(sub)
-        elif self.current_index == 2:
-            if self.season_data:
+                attempts += 1  # 成功从 up_data 获取数据
+            elif self.current_index == 2 and self.season_data:
                 sub = random.choice(self.season_data)
                 self.season_data.remove(sub)
-        else:
-            self.current_index = -1
-        if sub:
-            return sub
-        await self.reload_sub_data()
-        return await self.random_sub_data()
+                attempts += 1  # 成功从 season_data 获取数据
+
+            # 如果成功找到数据，立即返回
+            if sub:
+                return sub
