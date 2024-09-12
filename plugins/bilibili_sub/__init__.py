@@ -318,24 +318,21 @@ async def _(uid: int):
 @scheduler.scheduled_job(
     "interval",
     seconds=base_config.get("CHECK_TIME") if base_config.get("CHECK_TIME") else 60,
+    max_instances=100
 )
 async def _():
     bots = nonebot.get_bots()
     for bot in bots.values():
         if bot:
-            # try:
-            # await sub_manager.reload_sub_data()
             sub = await sub_manager.random_sub_data()
             if sub:
-                logger.info(f"Bilibili订阅开始检测：{sub.sub_id}")
+                logger.info(f"Bilibili订阅开始检测：{sub.sub_id}， 类型：{sub.sub_type}")
                 msg_list = await get_sub_status(sub.sub_id, sub.sub_type)
                 if msg_list:
                     await send_sub_msg(msg_list, sub, bot)
                     if sub.sub_type == "live":
                         msg_list = await get_sub_status(sub.sub_id, "up")
                         await send_sub_msg(msg_list, sub, bot)
-            # except Exception as e:
-            #     logger.error(f"B站订阅推送发生错误 sub_id：{sub.sub_id if sub else 0} {type(e)}：{e}")
 
 
 async def send_sub_msg(msg_list: list, sub: BilibiliSub, bot: Bot):

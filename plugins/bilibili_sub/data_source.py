@@ -1,4 +1,6 @@
 import random
+import httpx
+import asyncio
 from asyncio.exceptions import TimeoutError
 from datetime import datetime
 from typing import Optional, Tuple
@@ -30,6 +32,13 @@ DYNAMIC_PATH = IMAGE_PATH / "bilibili_sub" / "dynamic"
 DYNAMIC_PATH.mkdir(exist_ok=True, parents=True)
 
 ResourceDirManager.add_temp_dir(DYNAMIC_PATH)
+
+# 获取图片bytes
+async def fetch_image_bytes(url: str) -> bytes:
+    async with httpx.AsyncClient() as client:
+        response = await client.get(url)
+        response.raise_for_status()  # 检查响应状态码是否为200
+        return response.content
 
 
 async def handle_video_info_error(video_info: dict):
@@ -267,7 +276,7 @@ async def _get_live_status(id_: int) -> list:
         await BilibiliSub.sub_handle(id_, live_status=live_status)
     if sub.live_status in [0, 2] and live_status == 1:
         msg_list = [
-            BuildImage(cover),
+            BuildImage(background=cover),
             "\n",
             f"{sub.uname} 开播啦！🎉\n",
             f"标题：{title}\n",
@@ -298,6 +307,7 @@ async def _get_up_status(id_: int) -> list:
     dividing_line = "\n-------------\n"
     if _user.uname != uname:
         await BilibiliSub.sub_handle(id_, uname=uname)
+    dynamic_img = None
     try:
         dynamic_img, dynamic_upload_time, link = await get_user_dynamic(_user.uid, _user)
     except ResponseCodeError as msg:
@@ -315,19 +325,26 @@ async def _get_up_status(id_: int) -> list:
         and video
         and _user.latest_video_created < latest_video_created
     ):
-        await BilibiliSub.sub_handle(id_, latest_video_created=latest_video_created)
-
-        if msg_list:
+        image = None
+        try:
+            image_bytes = await fetch_image_bytes(background=video["pic"])
+            image = BuildImage(image_bytes)
+        except Exception as e:
+            logger.info(f"图片构造失败，错误信息：{e}")
+        if msg_list and image:
             msg_list.append(dividing_line)
-        msg_list.append(BuildImage(video["pic"]))
-        msg_list.append(
-            "\n"
-            f"{uname} 投稿了新视频啦！🎉\n"
-            f"标题：{video['title']}\n"
-            f"Bvid：{video['bvid']}\n"
-            f"视频链接：https://www.bilibili.com/video/{video['bvid']}"
-        )
+            msg_list.append(image)
+            msg_list.append(
+                "\n"
+                f"{uname} 投稿了新视频啦！🎉\n"
+                f"标题：{video['title']}\n"
+                f"Bvid：{video['bvid']}\n"
+                f"视频链接：https://www.bilibili.com/video/{video['bvid']}"
+            )
+            await BilibiliSub.sub_handle(id_, latest_video_created=latest_video_created)
     return msg_list
+
+
 
 
 async def _get_season_status(id_) -> list:
@@ -346,12 +363,39 @@ async def _get_season_status(id_) -> list:
             id_, season_current_episode=new_ep, season_update_time=datetime.now()
         )
         msg_list = [
-            BuildImage(season_info["media"]["cover"]),
+            BuildImage(background=season_info["media"]["cover"]),
             "\n",
             f"[{title}] 更新啦！🎉\n",
             f"最新集数：{new_ep}",
         ]
     return msg_list
+
+
+async def get_user_dynamic(
+    uid: int, local_user: BilibiliSub
+) -> Tuple[bytes | None, int, str]:
+    """
+    获取用户动态
+    :param uid: 用户uid
+    :param local_user: 数据库存储的用户数据
+    :return: 最新动态截图与时间
+    """
+    try:
+        dynamic_info = await get_user_dynamics(uid)
+    except:
+        return None, 0, ""
+    if dynamic_info:
+        if dynamic_info.get("cards"):
+            dynamic_upload_time = dynamic_info["cards"][0]["desc"]["timestamp"]
+            dynamic_id = dynamic_info["cards"][0]["desc"]["dynamic_id"]
+            if local_user.dynamic_upload_time < dynamic_upload_time:
+                image = await get_dynamic_screenshot(dynamic_id)
+                return (
+                    image,
+                    dynamic_upload_time,
+                    f"https://t.bilibili.com/{dynamic_id}",
+                )
+    return None, 0, ""
 
 
 class SubManager:
@@ -410,3 +454,4 @@ class SubManager:
             # 如果成功找到数据，立即返回
             if sub:
                 return sub
+            

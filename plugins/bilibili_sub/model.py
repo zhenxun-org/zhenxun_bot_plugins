@@ -11,7 +11,7 @@ class BilibiliSub(Model):
 
     id = fields.IntField(pk=True, generated=True, auto_increment=True)
     """自增id"""
-    sub_id = fields.IntField()
+    sub_id = fields.CharField(255)
     """订阅id"""
     sub_type = fields.CharField(255)
     """订阅类型"""
@@ -186,4 +186,5 @@ class BilibiliSub(Model):
     async def _run_script(cls):
         return [
             "ALTER TABLE bilibili_sub ALTER COLUMN season_update_time TYPE timestamp with time zone USING season_update_time::timestamp with time zone;",
+            "ALTER TABLE bilibili_sub ALTER COLUMN sub_id TYPE BIGINT USING sub_id::BIGINT;",  # 添加修改sub_id为BigInt的SQL脚本
         ]
