@@ -186,5 +186,5 @@ class BilibiliSub(Model):
     async def _run_script(cls):
         return [
             "ALTER TABLE bilibili_sub ALTER COLUMN season_update_time TYPE timestamp with time zone USING season_update_time::timestamp with time zone;",
-            "ALTER TABLE bilibili_sub ALTER COLUMN sub_id TYPE BIGINT USING sub_id::BIGINT;",  # 添加修改sub_id为BigInt的SQL脚本
+            "ALTER TABLE bilibili_sub ALTER COLUMN sub_id TYPE character varying(255)T;",  # 添加修改sub_id为char的SQL脚本
         ]
