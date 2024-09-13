@@ -30,4 +30,4 @@ jobs:
           git config --local user.name "AkashiCoin"
           git add .
           git commit -m "chore: update plugin version" || echo "No changes to commit"
-          git push
+          git push origin HEAD:${{ github.head_ref }}
