@@ -1,6 +1,5 @@
 import time
 from io import BytesIO
-from typing import Optional
 
 import nonebot
 from nonebot import Driver
@@ -60,7 +59,7 @@ __plugin_meta__ = PluginMetadata(
         """.strip(),
     extra=PluginExtraData(
         author="HibiKier",
-        version="0.2-f7511a1",
+        version="0.3",
         superuser_help="""
     登录b站获取cookie防止风控：
             bil_check/检测b站

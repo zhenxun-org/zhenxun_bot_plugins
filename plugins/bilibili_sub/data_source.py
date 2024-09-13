@@ -272,9 +272,14 @@ async def _get_live_status(id_: int) -> list:
     msg_list = []
     if sub.live_status != live_status:
         await BilibiliSub.sub_handle(id_, live_status=live_status)
-    if sub.live_status in [0, 2] and live_status == 1:
+    try:
+        image_bytes = await fetch_image_bytes(background=cover)
+        image = BuildImage(image_bytes)
+    except Exception as e:
+            logger.info(f"图片构造失败，错误信息：{e}")
+    if sub.live_status in [0, 2] and live_status == 1 and image:
         msg_list = [
-            BuildImage(background=cover),
+            image,
             "\n",
             f"{sub.uname} 开播啦！🎉\n",
             f"标题：{title}\n",
@@ -356,12 +361,17 @@ async def _get_season_status(id_) -> list:
     _idx = (await BilibiliSub.get_or_none(sub_id=id_)).season_current_episode
     new_ep = season_info["media"]["new_ep"]["index"]
     msg_list = []
-    if new_ep != _idx:
+    try:
+        image_bytes = await fetch_image_bytes(season_info["media"]["cover"])
+        image = BuildImage(image_bytes)
+    except Exception as e:
+            logger.info(f"图片构造失败，错误信息：{e}")
+    if new_ep != _idx and image:
         await BilibiliSub.sub_handle(
             id_, season_current_episode=new_ep, season_update_time=datetime.now()
         )
         msg_list = [
-            BuildImage(background=season_info["media"]["cover"]),
+            image,
             "\n",
             f"[{title}] 更新啦！🎉\n",
             f"最新集数：{new_ep}",
@@ -380,7 +390,7 @@ async def get_user_dynamic(
     """
     try:
         dynamic_info = await get_user_dynamics(uid)
-    except:
+    except Exception:
         return None, 0, ""
     if dynamic_info:
         if dynamic_info.get("cards"):
