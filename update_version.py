@@ -7,7 +7,9 @@ import os
 def get_changed_files():
     # 获取当前分支与主分支的差异文件列表
     changed_files = (
-        subprocess.check_output(["git", "diff", "--name-only", "main"]).decode().split()
+        subprocess.check_output(["git", "diff", "--name-only", "origin/main"])
+        .decode()
+        .split()
     )
     return changed_files
 
