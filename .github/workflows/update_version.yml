@@ -11,6 +11,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Python 3.10
         uses: actions/setup-python@v5
@@ -18,7 +20,9 @@ jobs:
           python-version: '3.10'
 
       - name: Run script
-        run: python3 update_version.py
+        run: |
+          git fetch origin
+          python3 update_version.py
 
       - name: Commit and push changes
         run: |
@@ -26,4 +30,4 @@ jobs:
           git config --local user.name "AkashiCoin"
           git add .
           git commit -m "chore: update plugin version" || echo "No changes to commit"
-          git push
+          git push origin HEAD:${{ github.head_ref }}
