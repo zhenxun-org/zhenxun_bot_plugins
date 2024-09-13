@@ -1,28 +1,27 @@
 import random
-from asyncio.exceptions import TimeoutError
 from datetime import datetime
-from typing import Optional, Tuple
+from asyncio.exceptions import TimeoutError
 
+import httpx
 import nonebot
 from bilireq.exceptions import ResponseCodeError  # type: ignore
 
-from zhenxun.configs.path_config import IMAGE_PATH
 from zhenxun.services.log import logger
 from zhenxun.utils.http_utils import AsyncHttpx
-from zhenxun.utils.utils import ResourceDirManager
-from zhenxun.utils._build_image import BuildImage
 from zhenxun.utils.platform import PlatformUtils
+from zhenxun.utils._build_image import BuildImage
+from zhenxun.configs.path_config import IMAGE_PATH
+from zhenxun.utils.utils import ResourceDirManager
 
 from .model import BilibiliSub
 from .utils import (
     get_meta,
-    get_user_card,
-    get_room_info_by_id,
     get_videos,
+    get_user_card,
     get_user_dynamics,
+    get_room_info_by_id,
     get_dynamic_screenshot,
 )
-
 
 SEARCH_URL = "https://api.bilibili.com/x/web-interface/search/all/v2"
 
@@ -30,6 +29,14 @@ DYNAMIC_PATH = IMAGE_PATH / "bilibili_sub" / "dynamic"
 DYNAMIC_PATH.mkdir(exist_ok=True, parents=True)
 
 ResourceDirManager.add_temp_dir(DYNAMIC_PATH)
+
+
+# 获取图片bytes
+async def fetch_image_bytes(url: str) -> bytes:
+    async with httpx.AsyncClient() as client:
+        response = await client.get(url)
+        response.raise_for_status()  # 检查响应状态码是否为200
+        return response.content
 
 
 async def handle_video_info_error(video_info: dict):
@@ -267,7 +274,7 @@ async def _get_live_status(id_: int) -> list:
         await BilibiliSub.sub_handle(id_, live_status=live_status)
     if sub.live_status in [0, 2] and live_status == 1:
         msg_list = [
-            BuildImage(cover),
+            BuildImage(background=cover),
             "\n",
             f"{sub.uname} 开播啦！🎉\n",
             f"标题：{title}\n",
@@ -298,8 +305,11 @@ async def _get_up_status(id_: int) -> list:
     dividing_line = "\n-------------\n"
     if _user.uname != uname:
         await BilibiliSub.sub_handle(id_, uname=uname)
+    dynamic_img = None
     try:
-        dynamic_img, dynamic_upload_time, link = await get_user_dynamic(_user.uid, _user)
+        dynamic_img, dynamic_upload_time, link = await get_user_dynamic(
+            _user.uid, _user
+        )
     except ResponseCodeError as msg:
         logger.warning(f"Id：{id_} 获取信息失败...{msg}")
     if video_info["list"].get("vlist"):
@@ -315,18 +325,23 @@ async def _get_up_status(id_: int) -> list:
         and video
         and _user.latest_video_created < latest_video_created
     ):
-        await BilibiliSub.sub_handle(id_, latest_video_created=latest_video_created)
-
-        if msg_list:
+        image = None
+        try:
+            image_bytes = await fetch_image_bytes(background=video["pic"])
+            image = BuildImage(image_bytes)
+        except Exception as e:
+            logger.info(f"图片构造失败，错误信息：{e}")
+        if msg_list and image:
             msg_list.append(dividing_line)
-        msg_list.append(BuildImage(video["pic"]))
-        msg_list.append(
-            "\n"
-            f"{uname} 投稿了新视频啦！🎉\n"
-            f"标题：{video['title']}\n"
-            f"Bvid：{video['bvid']}\n"
-            f"视频链接：https://www.bilibili.com/video/{video['bvid']}"
-        )
+            msg_list.append(image)
+            msg_list.append(
+                "\n"
+                f"{uname} 投稿了新视频啦！🎉\n"
+                f"标题：{video['title']}\n"
+                f"Bvid：{video['bvid']}\n"
+                f"视频链接：https://www.bilibili.com/video/{video['bvid']}"
+            )
+            await BilibiliSub.sub_handle(id_, latest_video_created=latest_video_created)
     return msg_list
 
 
@@ -346,7 +361,7 @@ async def _get_season_status(id_) -> list:
             id_, season_current_episode=new_ep, season_update_time=datetime.now()
         )
         msg_list = [
-            BuildImage(season_info["media"]["cover"]),
+            BuildImage(background=season_info["media"]["cover"]),
             "\n",
             f"[{title}] 更新啦！🎉\n",
             f"最新集数：{new_ep}",
@@ -356,24 +371,28 @@ async def _get_season_status(id_) -> list:
 
 async def get_user_dynamic(
     uid: int, local_user: BilibiliSub
-) -> Tuple[bytes | None, int, str]:
+) -> tuple[bytes | None, int, str]:
     """
     获取用户动态
     :param uid: 用户uid
     :param local_user: 数据库存储的用户数据
     :return: 最新动态截图与时间
     """
-    dynamic_info = await get_user_dynamics(uid)
-    if dynamic_info.get("cards"):
-        dynamic_upload_time = dynamic_info["cards"][0]["desc"]["timestamp"]
-        dynamic_id = dynamic_info["cards"][0]["desc"]["dynamic_id"]
-        if local_user.dynamic_upload_time < dynamic_upload_time:
-            image = await get_dynamic_screenshot(dynamic_id)
-            return (
-                image,
-                dynamic_upload_time,
-                f"https://t.bilibili.com/{dynamic_id}",
-            )
+    try:
+        dynamic_info = await get_user_dynamics(uid)
+    except:
+        return None, 0, ""
+    if dynamic_info:
+        if dynamic_info.get("cards"):
+            dynamic_upload_time = dynamic_info["cards"][0]["desc"]["timestamp"]
+            dynamic_id = dynamic_info["cards"][0]["desc"]["dynamic_id"]
+            if local_user.dynamic_upload_time < dynamic_upload_time:
+                image = await get_dynamic_screenshot(dynamic_id)
+                return (
+                    image,
+                    dynamic_upload_time,
+                    f"https://t.bilibili.com/{dynamic_id}",
+                )
     return None, 0, ""
 
 
@@ -388,43 +407,55 @@ class SubManager:
         """
         重载数据
         """
-        if not self.live_data or not self.up_data or not self.season_data:
+        # 如果 live_data、up_data 和 season_data 全部为空，重新加载所有数据
+        if not (self.live_data and self.up_data and self.season_data):
             (
-                _live_data,
-                _up_data,
-                _season_data,
+                self.live_data,
+                self.up_data,
+                self.season_data,
             ) = await BilibiliSub.get_all_sub_data()
-            if not self.live_data:
-                self.live_data = _live_data
-            if not self.up_data:
-                self.up_data = _up_data
-            if not self.season_data:
-                self.season_data = _season_data
 
-    async def random_sub_data(self) -> Optional[BilibiliSub]:
+    async def random_sub_data(self) -> BilibiliSub | None:
         """
-        随机获取一条数据
-        :return:
+        随机获取一条数据，保证所有 data 都轮询一次后再重载
+        :return: Optional[BilibiliSub]
         """
         sub = None
-        if not self.live_data and not self.up_data and not self.season_data:
-            return sub
-        self.current_index += 1
-        if self.current_index == 0:
-            if self.live_data:
+
+        # 计算所有数据的总量，确保所有数据轮询完毕后再考虑重载
+        total_data = sum(
+            [len(self.live_data), len(self.up_data), len(self.season_data)]
+        )
+
+        # 如果所有列表都为空，重新加载一次数据以保证数据库非空
+        if total_data == 0:
+            await self.reload_sub_data()
+            total_data = sum(
+                [len(self.live_data), len(self.up_data), len(self.season_data)]
+            )
+            if total_data == 0:
+                return sub
+
+        attempts = 0
+
+        # 开始轮询，直到所有数据都被遍历一次
+        while attempts < total_data:
+            self.current_index = (self.current_index + 1) % 3  # 轮询 0, 1, 2 之间
+
+            # 根据 current_index 从相应的列表中随机取出数据
+            if self.current_index == 0 and self.live_data:
                 sub = random.choice(self.live_data)
                 self.live_data.remove(sub)
-        elif self.current_index == 1:
-            if self.up_data:
+                attempts += 1  # 成功从 live_data 获取数据
+            elif self.current_index == 1 and self.up_data:
                 sub = random.choice(self.up_data)
                 self.up_data.remove(sub)
-        elif self.current_index == 2:
-            if self.season_data:
+                attempts += 1  # 成功从 up_data 获取数据
+            elif self.current_index == 2 and self.season_data:
                 sub = random.choice(self.season_data)
                 self.season_data.remove(sub)
-        else:
-            self.current_index = -1
-        if sub:
-            return sub
-        await self.reload_sub_data()
-        return await self.random_sub_data()
+                attempts += 1  # 成功从 season_data 获取数据
+
+            # 如果成功找到数据，立即返回
+            if sub:
+                return sub

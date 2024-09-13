@@ -1,16 +1,18 @@
 import datetime
+import traceback
+from io import BytesIO
 
 import httpx  # type: ignore
-import traceback
+from bilireq.user import get_user_info  # type: ignore
+from nonebot_plugin_htmlrender import get_new_page  # type: ignore
+
+from zhenxun.utils.http_utils import AsyncHttpx
 from zhenxun.utils.image_utils import BuildImage
 from zhenxun.configs.path_config import IMAGE_PATH
-from zhenxun.utils.http_utils import AsyncHttpx
-from bilireq.user import get_user_info  # type: ignore
-from io import BytesIO
+
 from .auth import AuthManager
-from nonebot_plugin_htmlrender import get_new_page  # type: ignore
-from .Wbi import get_wbi_img, encode_wbi
 from ...services import logger
+from .Wbi import encode_wbi, get_wbi_img
 
 BORDER_PATH = IMAGE_PATH / "border"
 BORDER_PATH.mkdir(parents=True, exist_ok=True)

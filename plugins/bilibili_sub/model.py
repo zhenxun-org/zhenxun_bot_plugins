@@ -1,17 +1,15 @@
 from datetime import datetime
-from typing import List, Optional, Tuple
 
 from tortoise import fields
 
-from zhenxun.services.db_context import Model
 from zhenxun.services.log import logger
+from zhenxun.services.db_context import Model
 
 
 class BilibiliSub(Model):
-
     id = fields.IntField(pk=True, generated=True, auto_increment=True)
     """自增id"""
-    sub_id = fields.IntField()
+    sub_id = fields.CharField(255)
     """订阅id"""
     sub_type = fields.CharField(255)
     """订阅类型"""
@@ -47,19 +45,19 @@ class BilibiliSub(Model):
     async def sub_handle(
         cls,
         sub_id: int,
-        sub_type: Optional[str] = None,
+        sub_type: str | None = None,
         sub_user: str = "",
         *,
-        live_short_id: Optional[int] = None,
-        live_status: Optional[int] = None,
+        live_short_id: int | None = None,
+        live_status: int | None = None,
         dynamic_upload_time: int = 0,
-        uid: Optional[int] = None,
-        uname: Optional[str] = None,
-        latest_video_created: Optional[int] = None,
-        season_name: Optional[str] = None,
-        season_id: Optional[int] = None,
-        season_current_episode: Optional[str] = None,
-        season_update_time: Optional[datetime] = None,
+        uid: int | None = None,
+        uname: str | None = None,
+        latest_video_created: int | None = None,
+        season_name: str | None = None,
+        season_id: int | None = None,
+        season_current_episode: str | None = None,
+        season_update_time: datetime | None = None,
     ) -> bool:
         """
         说明:
@@ -131,7 +129,7 @@ class BilibiliSub(Model):
 
     @classmethod
     async def delete_bilibili_sub(
-        cls, sub_id: int, sub_user: str, sub_type: Optional[str] = None
+        cls, sub_id: int, sub_user: str, sub_type: str | None = None
     ) -> bool:
         """
         说明:
@@ -164,7 +162,7 @@ class BilibiliSub(Model):
     @classmethod
     async def get_all_sub_data(
         cls,
-    ) -> Tuple[List["BilibiliSub"], List["BilibiliSub"], List["BilibiliSub"]]:
+    ) -> tuple[list["BilibiliSub"], list["BilibiliSub"], list["BilibiliSub"]]:
         """
         说明:
             分类获取所有数据
@@ -186,4 +184,5 @@ class BilibiliSub(Model):
     async def _run_script(cls):
         return [
             "ALTER TABLE bilibili_sub ALTER COLUMN season_update_time TYPE timestamp with time zone USING season_update_time::timestamp with time zone;",
+            "ALTER TABLE bilibili_sub ALTER COLUMN sub_id TYPE character varying(255)T;",  # 添加修改sub_id为char的SQL脚本
         ]

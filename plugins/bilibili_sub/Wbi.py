@@ -1,16 +1,15 @@
 from __future__ import annotations
 
-import base64
-import hashlib
-import random
 import re
-import string
 import time
+import base64
+import random
+import string
+import hashlib
 import urllib.parse
 from typing import Any, TypedDict
 
-from httpx import AsyncClient # type: ignore
-
+from httpx import AsyncClient  # type: ignore
 
 
 class WbiImg(TypedDict):
@@ -21,9 +20,6 @@ class WbiImg(TypedDict):
 wbi_img_cache: WbiImg | None = None
 dm_img_str_cache: str = base64.b64encode("".join(random.choices(string.printable, k=random.randint(16, 64))).encode())[:-2].decode()  # fmt: skip
 dm_cover_img_str_cache: str = base64.b64encode("".join(random.choices(string.printable, k=random.randint(32, 128))).encode())[:-2].decode()  # fmt: skip
-
-
-
 
 
 async def get_wbi_img(client: AsyncClient) -> WbiImg:

@@ -1,44 +1,42 @@
-from typing import Optional
-from arclet.alconna.typing import CommandMeta
-import nonebot
-from nonebot.plugin import PluginMetadata
-from nonebot import Driver
-from nonebot_plugin_session import EventSession
-from nonebot_plugin_alconna import Alconna, Args, on_alconna, UniMessage
-from nonebot.adapters.onebot.v11 import Bot
-from nonebot_plugin_apscheduler import scheduler
-from nonebot.params import ArgStr
-from nonebot.typing import T_State
-from nonebot.log import logger
-from nonebot.permission import SUPERUSER
-
-from nonebot.matcher import Matcher
-from bilireq.login import Login
-from zhenxun.utils.platform import PlatformUtils
-
-from zhenxun.configs.config import Config
-from zhenxun.services.log import logger  # noqa: F811
-from zhenxun.utils.image_utils import text2image
-from zhenxun.utils.message import MessageUtils
-from zhenxun.configs.utils import PluginExtraData, RegisterConfig
-from zhenxun.models.group_console import GroupConsole
-
-from .data_source import (
-    BilibiliSub,
-    SubManager,
-    add_live_sub,
-    add_season_sub,
-    add_up_sub,
-    delete_sub,  # noqa: F401
-    get_media_id,
-    get_sub_status,
-)
-
 import time
 from io import BytesIO
+from typing import Optional
+
+import nonebot
+from nonebot import Driver
+from nonebot.log import logger
+from bilireq.login import Login
+from nonebot.params import ArgStr
+from nonebot.typing import T_State
+from nonebot.matcher import Matcher
+from nonebot.permission import SUPERUSER
+from nonebot.plugin import PluginMetadata
+from nonebot.adapters.onebot.v11 import Bot
+from arclet.alconna.typing import CommandMeta
+from nonebot_plugin_session import EventSession
+from nonebot_plugin_apscheduler import scheduler
+from nonebot_plugin_alconna import Args, Alconna, UniMessage, on_alconna
+
+from zhenxun.configs.config import Config
+from zhenxun.utils.message import MessageUtils
+from zhenxun.utils.image_utils import text2image
+from zhenxun.utils.platform import PlatformUtils
+from zhenxun.models.group_console import GroupConsole
+from zhenxun.services.log import logger  # noqa: F811
+from zhenxun.configs.utils import RegisterConfig, PluginExtraData
 
 from .auth import AuthManager
 from .utils import calc_time_total
+from .data_source import delete_sub  # noqa: F401
+from .data_source import (
+    SubManager,
+    BilibiliSub,
+    add_up_sub,
+    add_live_sub,
+    get_media_id,
+    add_season_sub,
+    get_sub_status,
+)
 
 base_config = Config.get("bilibili_sub")
 
@@ -62,7 +60,7 @@ __plugin_meta__ = PluginMetadata(
         """.strip(),
     extra=PluginExtraData(
         author="HibiKier",
-        version="0.2",
+        version="0.2-f7511a1",
         superuser_help="""
     登录b站获取cookie防止风控：
             bil_check/检测b站
@@ -80,8 +78,7 @@ __plugin_meta__ = PluginMetadata(
                 value=False,
                 help="直播提醒是否AT全体（仅在真寻是管理员时生效）",
                 default_value=False,
-                type=bool
-
+                type=bool,
             ),
             RegisterConfig(
                 module="bilibili_sub",
@@ -98,7 +95,7 @@ __plugin_meta__ = PluginMetadata(
                 help="b站检测时间间隔(秒)",
                 default_value=60,
                 type=int,
-            )
+            ),
         ],
         admin_level=base_config.get("GROUP_BILIBILI_SUB_LEVEL"),
     ).dict(),
@@ -113,28 +110,53 @@ Config.add_plugin_config(
     type=int,
 )
 
-add_sub = on_alconna(Alconna("添加订阅", Args["sub_type", str]["sub_msg", str], meta=CommandMeta(compact=True)),
-                     aliases={"d", "添加订阅"},
-                     priority=5, block=True)
-del_sub = on_alconna(Alconna("删除订阅", Args["sub_type", str]["sub_msg", str], meta=CommandMeta(compact=True)),
-                     aliases={"td", "取消订阅"},
-                     priority=5, block=True)
+add_sub = on_alconna(
+    Alconna(
+        "添加订阅",
+        Args["sub_type", str]["sub_msg", str],
+        meta=CommandMeta(compact=True),
+    ),
+    aliases={"d", "添加订阅"},
+    priority=5,
+    block=True,
+)
+del_sub = on_alconna(
+    Alconna(
+        "删除订阅",
+        Args["sub_type", str]["sub_msg", str],
+        meta=CommandMeta(compact=True),
+    ),
+    aliases={"td", "取消订阅"},
+    priority=5,
+    block=True,
+)
 show_sub_info = on_alconna("查看订阅", priority=5, block=True)
 
-blive_check = on_alconna(Alconna("bil_check"), aliases={"检测b站", "检测b站登录", "b站登录检测"}, permission=SUPERUSER,
-                         priority=5,
-                         block=True)
-blive_login = on_alconna(Alconna("bil_login"), aliases={"登录b站", "b站登录"}, permission=SUPERUSER,
-                         priority=5,
-                         block=True)
-blive_logout = on_alconna(
-    Alconna("bil_logout", Args["uid", int]), aliases={"退出b站", "退出b站登录", "b站登录退出"}, permission=SUPERUSER,
+blive_check = on_alconna(
+    Alconna("bil_check"),
+    aliases={"检测b站", "检测b站登录", "b站登录检测"},
+    permission=SUPERUSER,
     priority=5,
-    block=True, )
+    block=True,
+)
+blive_login = on_alconna(
+    Alconna("bil_login"),
+    aliases={"登录b站", "b站登录"},
+    permission=SUPERUSER,
+    priority=5,
+    block=True,
+)
+blive_logout = on_alconna(
+    Alconna("bil_logout", Args["uid", int]),
+    aliases={"退出b站", "退出b站登录", "b站登录退出"},
+    permission=SUPERUSER,
+    priority=5,
+    block=True,
+)
 
 driver: Driver = nonebot.get_driver()
 
-sub_manager: Optional[SubManager] = None
+sub_manager: SubManager | None = None
 
 
 @driver.on_startup
@@ -177,11 +199,11 @@ async def _(session: EventSession, state: T_State, sub_type: str, sub_msg: str):
 @add_sub.got("sub_user")
 @add_sub.got("id")
 async def _(
-        session: EventSession,
-        state: T_State,
-        id_: str = ArgStr("id"),
-        sub_type: str = ArgStr("sub_type"),
-        sub_user: str = ArgStr("sub_user"),
+    session: EventSession,
+    state: T_State,
+    id_: str = ArgStr("id"),
+    sub_type: str = ArgStr("sub_type"),
+    sub_user: str = ArgStr("sub_user"),
 ):
     if sub_type in ["season", "动漫", "番剧"] and state.get("season_data"):
         season_data = state["season_data"]
@@ -196,7 +218,9 @@ async def _(
     elif sub_type in ["season", "动漫", "番剧"]:
         await MessageUtils.build_message(await add_season_sub(id_, sub_user)).send()
     else:
-        await MessageUtils.build_message("参数错误，第一参数必须为：主播/up/番剧！").finish()
+        await MessageUtils.build_message(
+            "参数错误，第一参数必须为：主播/up/番剧！"
+        ).finish()
     gid = session.id3 or session.id2
     logger.info(
         f"(USER {session.id1}, GROUP "
@@ -209,10 +233,10 @@ async def _(
 @del_sub.got("sub_user")
 @del_sub.got("id")
 async def _(
-        session: EventSession,
-        id_: str = ArgStr("id"),
-        sub_type: str = ArgStr("sub_type"),
-        sub_user: str = ArgStr("sub_user"),
+    session: EventSession,
+    id_: str = ArgStr("id"),
+    sub_type: str = ArgStr("sub_type"),
+    sub_user: str = ArgStr("sub_user"),
 ):
     if sub_type in ["主播", "直播"]:
         result = await BilibiliSub.delete_bilibili_sub(int(id_), sub_user, "live")
@@ -243,7 +267,9 @@ async def _(session: EventSession):
     for x in data:
         if x.sub_type == "live":
             live_rst += (
-                f"\t直播间id：{x.sub_id}\n" f"\t名称：{x.uname}\n" f"------------------\n"
+                f"\t直播间id：{x.sub_id}\n"
+                f"\t名称：{x.uname}\n"
+                f"------------------\n"
             )
         if x.sub_type == "up":
             up_rst += f"\tUP：{x.uname}\n" f"\tuid：{x.uid}\n" f"------------------\n"
@@ -258,13 +284,9 @@ async def _(session: EventSession):
     up_rst = "当前订阅的UP：\n" + up_rst if up_rst else up_rst
     season_rst = "当前订阅的番剧：\n" + season_rst if season_rst else season_rst
     if not live_rst and not up_rst and not season_rst:
-        live_rst = (
-            "该群目前没有任何订阅..." if gid else "您目前没有任何订阅..."
-        )
+        live_rst = "该群目前没有任何订阅..." if gid else "您目前没有任何订阅..."
 
-    img = await text2image(
-        live_rst + up_rst + season_rst, padding=10, color="#f9f6f2"
-    )
+    img = await text2image(live_rst + up_rst + season_rst, padding=10, color="#f9f6f2")
     await MessageUtils.build_message(img).finish()
 
 
@@ -318,24 +340,23 @@ async def _(uid: int):
 @scheduler.scheduled_job(
     "interval",
     seconds=base_config.get("CHECK_TIME") if base_config.get("CHECK_TIME") else 60,
+    max_instances=100,
 )
 async def _():
     bots = nonebot.get_bots()
     for bot in bots.values():
         if bot:
-            # try:
-            await sub_manager.reload_sub_data()
             sub = await sub_manager.random_sub_data()
             if sub:
-                logger.info(f"Bilibili订阅开始检测：{sub.sub_id}")
+                logger.info(
+                    f"Bilibili订阅开始检测：{sub.sub_id}， 类型：{sub.sub_type}"
+                )
                 msg_list = await get_sub_status(sub.sub_id, sub.sub_type)
                 if msg_list:
                     await send_sub_msg(msg_list, sub, bot)
                     if sub.sub_type == "live":
                         msg_list = await get_sub_status(sub.sub_id, "up")
                         await send_sub_msg(msg_list, sub, bot)
-            # except Exception as e:
-            #     logger.error(f"B站订阅推送发生错误 sub_id：{sub.sub_id if sub else 0} {type(e)}：{e}")
 
 
 async def send_sub_msg(msg_list: list, sub: BilibiliSub, bot: Bot):
@@ -353,24 +374,34 @@ async def send_sub_msg(msg_list: list, sub: BilibiliSub, bot: Bot):
                     group_id = x.split(":")[1]
                     temp_group.append(group_id)
                     if (
-                            await bot.get_group_member_info(
-                                group_id=int(group_id), user_id=int(bot.self_id), no_cache=True
-                            )
+                        await bot.get_group_member_info(
+                            group_id=int(group_id),
+                            user_id=int(bot.self_id),
+                            no_cache=True,
+                        )
                     )["role"] in ["owner", "admin"]:
                         if (
-                                sub.sub_type == "live"
-                                and Config.get_config("bilibili_sub", "LIVE_MSG_AT_ALL")
+                            sub.sub_type == "live"
+                            and Config.get_config("bilibili_sub", "LIVE_MSG_AT_ALL")
                         ) or (
-                                sub.sub_type == "up"
-                                and Config.get_config("bilibili_sub", "UP_MSG_AT_ALL")
+                            sub.sub_type == "up"
+                            and Config.get_config("bilibili_sub", "UP_MSG_AT_ALL")
                         ):
                             msg_list.append(UniMessage.at_all())
                     if not await GroupConsole.is_block_plugin(group_id, "bilibili_sub"):
-                        await PlatformUtils.send_message(bot, user_id=None, group_id=group_id,
-                                                         message=MessageUtils.build_message(msg_list))
+                        await PlatformUtils.send_message(
+                            bot,
+                            user_id=None,
+                            group_id=group_id,
+                            message=MessageUtils.build_message(msg_list),
+                        )
 
                 else:
-                    await PlatformUtils.send_message(bot, user_id=x, group_id=None,
-                                                     message=MessageUtils.build_message(msg_list))
+                    await PlatformUtils.send_message(
+                        bot,
+                        user_id=x,
+                        group_id=None,
+                        message=MessageUtils.build_message(msg_list),
+                    )
             except Exception as e:
                 logger.error(f"B站订阅推送发生错误 sub_id：{sub.sub_id} {type(e)}：{e}")
