@@ -1,13 +1,13 @@
 import json
 import random
-from typing import Union
 
-from bilireq.auth import Auth # type: ignore
 from nonebot import get_driver
 from nonebot.log import logger
+from bilireq.auth import Auth  # type: ignore
 
 from zhenxun.configs.path_config import DATA_PATH
-BASE_PATH= DATA_PATH / "bilibili_sub"
+
+BASE_PATH = DATA_PATH / "bilibili_sub"
 BASE_PATH.mkdir(parents=True, exist_ok=True)
 auth_file = BASE_PATH / "bili_auth.json"
 auth_file.touch()
@@ -18,7 +18,7 @@ class AuthManager:
 
     @classmethod
     async def load_auths(cls) -> None:
-        data: Union[list[dict], dict] = json.loads(auth_file.read_bytes() or "[]")
+        data: list[dict] | dict = json.loads(auth_file.read_bytes() or "[]")
         data = data if isinstance(data, list) else [data]
         cls.grpc_auths.clear()
         for raw_auth in data:
@@ -51,7 +51,7 @@ class AuthManager:
         return {}
 
     @classmethod
-    def get_auth(cls) -> Union[Auth, None]:
+    def get_auth(cls) -> Auth | None:
         return random.choice(cls.grpc_auths).copy() if cls.grpc_auths else None
 
     @classmethod
@@ -64,7 +64,7 @@ class AuthManager:
         cls.dump_auths()
 
     @classmethod
-    def remove_auth(cls, uid: int) -> Union[str, None]:
+    def remove_auth(cls, uid: int) -> str | None:
         for old_auth in cls.grpc_auths:
             if old_auth.uid == uid:
                 cls.grpc_auths.remove(old_auth)

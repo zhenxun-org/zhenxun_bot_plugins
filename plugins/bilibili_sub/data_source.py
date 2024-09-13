@@ -1,30 +1,27 @@
 import random
-import httpx
-import asyncio
-from asyncio.exceptions import TimeoutError
 from datetime import datetime
-from typing import Optional, Tuple
+from asyncio.exceptions import TimeoutError
 
+import httpx
 import nonebot
 from bilireq.exceptions import ResponseCodeError  # type: ignore
 
-from zhenxun.configs.path_config import IMAGE_PATH
 from zhenxun.services.log import logger
 from zhenxun.utils.http_utils import AsyncHttpx
-from zhenxun.utils.utils import ResourceDirManager
-from zhenxun.utils._build_image import BuildImage
 from zhenxun.utils.platform import PlatformUtils
+from zhenxun.utils._build_image import BuildImage
+from zhenxun.configs.path_config import IMAGE_PATH
+from zhenxun.utils.utils import ResourceDirManager
 
 from .model import BilibiliSub
 from .utils import (
     get_meta,
-    get_user_card,
-    get_room_info_by_id,
     get_videos,
+    get_user_card,
     get_user_dynamics,
+    get_room_info_by_id,
     get_dynamic_screenshot,
 )
-
 
 SEARCH_URL = "https://api.bilibili.com/x/web-interface/search/all/v2"
 
@@ -32,6 +29,7 @@ DYNAMIC_PATH = IMAGE_PATH / "bilibili_sub" / "dynamic"
 DYNAMIC_PATH.mkdir(exist_ok=True, parents=True)
 
 ResourceDirManager.add_temp_dir(DYNAMIC_PATH)
+
 
 # 获取图片bytes
 async def fetch_image_bytes(url: str) -> bytes:
@@ -309,7 +307,9 @@ async def _get_up_status(id_: int) -> list:
         await BilibiliSub.sub_handle(id_, uname=uname)
     dynamic_img = None
     try:
-        dynamic_img, dynamic_upload_time, link = await get_user_dynamic(_user.uid, _user)
+        dynamic_img, dynamic_upload_time, link = await get_user_dynamic(
+            _user.uid, _user
+        )
     except ResponseCodeError as msg:
         logger.warning(f"Id：{id_} 获取信息失败...{msg}")
     if video_info["list"].get("vlist"):
@@ -345,8 +345,6 @@ async def _get_up_status(id_: int) -> list:
     return msg_list
 
 
-
-
 async def _get_season_status(id_) -> list:
     """
     获取 番剧 更新状态
@@ -373,7 +371,7 @@ async def _get_season_status(id_) -> list:
 
 async def get_user_dynamic(
     uid: int, local_user: BilibiliSub
-) -> Tuple[bytes | None, int, str]:
+) -> tuple[bytes | None, int, str]:
     """
     获取用户动态
     :param uid: 用户uid
@@ -411,10 +409,13 @@ class SubManager:
         """
         # 如果 live_data、up_data 和 season_data 全部为空，重新加载所有数据
         if not (self.live_data and self.up_data and self.season_data):
-            self.live_data, self.up_data, self.season_data = await BilibiliSub.get_all_sub_data()
+            (
+                self.live_data,
+                self.up_data,
+                self.season_data,
+            ) = await BilibiliSub.get_all_sub_data()
 
-
-    async def random_sub_data(self) -> Optional[BilibiliSub]:
+    async def random_sub_data(self) -> BilibiliSub | None:
         """
         随机获取一条数据，保证所有 data 都轮询一次后再重载
         :return: Optional[BilibiliSub]
@@ -422,12 +423,16 @@ class SubManager:
         sub = None
 
         # 计算所有数据的总量，确保所有数据轮询完毕后再考虑重载
-        total_data = sum([len(self.live_data), len(self.up_data), len(self.season_data)])
-        
+        total_data = sum(
+            [len(self.live_data), len(self.up_data), len(self.season_data)]
+        )
+
         # 如果所有列表都为空，重新加载一次数据以保证数据库非空
         if total_data == 0:
             await self.reload_sub_data()
-            total_data = sum([len(self.live_data), len(self.up_data), len(self.season_data)])
+            total_data = sum(
+                [len(self.live_data), len(self.up_data), len(self.season_data)]
+            )
             if total_data == 0:
                 return sub
 
@@ -454,4 +459,3 @@ class SubManager:
             # 如果成功找到数据，立即返回
             if sub:
                 return sub
-            
