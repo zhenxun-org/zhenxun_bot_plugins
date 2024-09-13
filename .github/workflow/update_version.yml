@@ -1,0 +1,29 @@
+name: Update Plugin Versions
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  update-version:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Run script
+        run: python3 update_version.py
+
+      - name: Commit and push changes
+        run: |
+          git config --local user.email "l1040186796@gmail.com"
+          git config --local user.name "AkashiCoin"
+          git add .
+          git commit -m "chore: update plugin version" || echo "No changes to commit"
+          git push
