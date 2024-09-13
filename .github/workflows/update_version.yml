@@ -1,7 +1,7 @@
 name: Update Plugin Versions
 
 on:
-  pull_request:
+  pull_request_target:
     branches:
       - main
 
@@ -12,7 +12,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.head_ref }}
+          ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Set up Python 3.10
         uses: actions/setup-python@v5
@@ -30,4 +30,5 @@ jobs:
           git config --local user.name "AkashiCoin"
           git add .
           git commit -m "chore: update plugin version" || echo "No changes to commit"
-          git push origin HEAD:${{ github.head_ref }}
+          git remote set-url origin https://${{ secrets.GH_GITHUB_TOKEN }}@github.com/${{ github.event.pull_request.head.repo.full_name }}.git
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
