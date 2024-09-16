@@ -6,12 +6,12 @@ import httpx  # type: ignore
 from bilireq.user import get_user_info  # type: ignore
 from nonebot_plugin_htmlrender import get_new_page  # type: ignore
 
+from zhenxun.services.log import logger
 from zhenxun.utils.http_utils import AsyncHttpx
 from zhenxun.utils.image_utils import BuildImage
 from zhenxun.configs.path_config import IMAGE_PATH
 
 from .auth import AuthManager
-from ...services import logger
 from .Wbi import encode_wbi, get_wbi_img
 
 BORDER_PATH = IMAGE_PATH / "border"
