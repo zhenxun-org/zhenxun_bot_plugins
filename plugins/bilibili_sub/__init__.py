@@ -59,7 +59,7 @@ __plugin_meta__ = PluginMetadata(
         """.strip(),
     extra=PluginExtraData(
         author="HibiKier",
-        version="0.3-fe77ad5",
+        version="0.3",
         superuser_help="""
     登录b站获取cookie防止风控：
             bil_check/检测b站
@@ -338,7 +338,7 @@ async def _(uid: int):
 # 推送
 @scheduler.scheduled_job(
     "interval",
-    seconds=base_config.get("CHECK_TIME") if base_config.get("CHECK_TIME") else 60,
+    seconds=base_config.get("CHECK_TIME") if base_config.get("CHECK_TIME") else 30,
     max_instances=100,
 )
 async def _():
