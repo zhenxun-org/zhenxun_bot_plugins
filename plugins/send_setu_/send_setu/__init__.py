@@ -1,6 +1,7 @@
 import random
 from typing import Tuple
 
+from cn2an import cn2an
 from nonebot.adapters import Bot
 from nonebot.matcher import Matcher
 from nonebot.message import run_postprocessor
@@ -142,11 +143,14 @@ async def _(
             logger.error("色图数据自动存储数据库失败", e=e)
 
 
+def chinese_to_digit(text):
+    return int(cn2an(text, mode='smart'))
+
 _matcher = on_alconna(
     Alconna(
         "色图",
         Args["tags?", str],
-        Option("-n", Args["num", int, 1], help_text="数量"),
+        Option("-n", Args["num", str, '1'], help_text="数量"),
         Option("-id", Args["local_id", int], help_text="本地id"),
         Option("-r", action=store_true, help_text="r18"),
     ),
@@ -156,7 +160,7 @@ _matcher = on_alconna(
 )
 
 _matcher.shortcut(
-    r".*?(?P<num>\d*)[份|发|张|个|次|点](?P<tags>.*)[瑟|色|涩]图.*?",
+     r"^(来|发|要|给).*?(?P<num>.*)[份|发|张|个|次|点](?P<tags>.*)[瑟|色|涩]图.*?",
     command="色图",
     arguments=["{tags}", "-n", "{num}"],
     prefix=True,
@@ -168,7 +172,7 @@ async def _(
     bot: Bot,
     session: EventSession,
     arparma: Arparma,
-    num: Match[int],
+    num: Match[str],
     tags: Match[str],
     local_id: Match[int],
 ):
@@ -190,7 +194,7 @@ async def _(
         if result := SetuManage.get_luo(float(user.impression)):
             await result.finish()
     is_r18 = arparma.find("r")
-    _num = num.result if num.available else 1
+    _num = chinese_to_digit(num.result) if num.available else 1
     max_once_num = base_config.get("MAX_ONCE_NUM")
     if max_once_num < _num:
         await MessageUtils.build_message(
