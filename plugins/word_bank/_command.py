@@ -32,10 +32,3 @@ _update_matcher = on_alconna(
         Option("--all", action=store_true, help_text="全局词条"),
     )
 )
-
-# _show_matcher.shortcut(
-#     r"查看全局词条",
-#     command="查看词条",
-#     arguments=["{%0}", "--all"],
-#     prefix=True,
-# )

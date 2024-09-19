@@ -7,10 +7,7 @@ from typing_extensions import Self
 
 from tortoise.expressions import Q
 from tortoise import Tortoise, fields
-from nonebot_plugin_alconna import UniMessage
-from nonebot_plugin_alconna import At as alcAt
-from nonebot_plugin_alconna import Text as alcText
-from nonebot_plugin_alconna import Image as alcImage
+from nonebot_plugin_alconna import UniMessage, At, Text, Image, AtAll
 
 from zhenxun.configs.config import BotConfig
 from zhenxun.services.db_context import Model
@@ -101,7 +98,7 @@ class WordBank(Model):
         word_scope: ScopeType,
         word_type: WordType,
         problem: str,
-        answer: list[str | alcText | alcAt | alcImage],
+        answer: list[str | Text | At | Image],
         to_me_nickname: str | None = None,
         platform: str = "",
         author: str = "",
@@ -154,7 +151,7 @@ class WordBank(Model):
     @classmethod
     async def _answer2format(
         cls,
-        answer: list[str | alcText | alcAt | alcImage],
+        answer: list[str | Text | At | Image],
         user_id: str,
         group_id: str | None,
     ) -> tuple[str, list[Any]]:
@@ -175,15 +172,15 @@ class WordBank(Model):
             placeholder = uuid.uuid1()
             if isinstance(seg, str):
                 text += seg
-            elif isinstance(seg, alcText):
+            elif isinstance(seg, Text):
                 text += seg.text
             elif seg.type == "face":  # TODO: face貌似无用...
                 text += f"[face:placeholder_{placeholder}]"
                 placeholder_list.append(seg.data["id"])
-            elif isinstance(seg, alcAt):
+            elif isinstance(seg, At):
                 text += f"[at:placeholder_{placeholder}]"
                 placeholder_list.append(seg.target)
-            elif isinstance(seg, alcImage) and seg.url:
+            elif isinstance(seg, Image) and seg.url:
                 text += f"[image:placeholder_{placeholder}]"
                 index += 1
                 _file = (
@@ -236,7 +233,10 @@ class WordBank(Model):
                     t = type_list[index]
                     p = placeholder_split[index]
                     if t == "at":
-                        result_list.append(alcAt(flag="user", target=p))
+                        if p == "0":
+                            result_list.append(AtAll())
+                        else:
+                            result_list.append(At(flag="user", target=p))
                     elif t == "image":
                         result_list.append(path / p)
             return MessageUtils.build_message(result_list)
@@ -280,19 +280,19 @@ class WordBank(Model):
         if "postgres" in db_class_name:
             sql = (
                 query.filter(word_type=WordType.FUZZY.value).sql()
-                + " AND POSITION($1 IN problem) > 0"
+                + " AND POSITION(problem IN $1) > 0"
             )
             params = [problem]
         elif "sqlite" in db_class_name:
             sql = (
                 query.filter(word_type=WordType.FUZZY.value).sql()
-                + " AND INSTR(problem, ?) > 0"
+                + " AND INSTR(?, problem) > 0"
             )
             params = [problem]
         elif "mysql" in db_class_name:
             sql = (
                 query.filter(word_type=WordType.FUZZY.value).sql()
-                + " AND INSTR(problem, %s) > 0"
+                + " AND INSTR(%s, problem) > 0"
             )
             params = [problem]
         else:
@@ -387,15 +387,15 @@ class WordBank(Model):
             # TODO: group_by和order_by不能同时使用
             if group_id and word_scope != ScopeType.GLOBAL:
                 _problem = (
-                    await cls.filter(group_id=group_id).order_by("create_time")
+                    await cls.filter(group_id=group_id)
+                    .order_by("create_time")
                     # .group_by("problem")
                     .values_list("problem", flat=True)
                 )
             else:
                 _problem = (
-                    await cls.filter(
-                        word_scope=(word_scope or ScopeType.GLOBAL).value
-                    ).order_by("create_time")
+                    await cls.filter(word_scope=(word_scope or ScopeType.GLOBAL).value)
+                    .order_by("create_time")
                     # .group_by("problem")
                     .values_list("problem", flat=True)
                 )
