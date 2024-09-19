@@ -249,7 +249,7 @@ async def get_sub_status(id_: int, sub_type: str) -> list | None:
         elif sub_type == "season":
             return await _get_season_status(id_)
     except ResponseCodeError as msg:
-        logger.info(f"Id：{id_} 获取信息失败...{msg}")
+        logger.error(f"Id：{id_} 获取信息失败...{msg}")
         return None
         # return f"Id：{id_} 获取信息失败...请检查订阅Id是否存在或稍后再试..."
     # except Exception as e:
@@ -276,7 +276,7 @@ async def _get_live_status(id_: int) -> list:
             image_bytes = await fetch_image_bytes(cover)
             image = BuildImage(background = image_bytes)
         except Exception as e:
-                logger.info(f"图片构造失败，错误信息：{e}")
+                logger.error(f"图片构造失败，错误信息：{e}")
     if sub.live_status in [0, 2] and live_status == 1 and image:
         await BilibiliSub.sub_handle(id_, live_status=live_status)
         msg_list = [
@@ -336,7 +336,7 @@ async def _get_up_status(id_: int) -> list:
             image_bytes = await fetch_image_bytes(video["pic"])
             image = BuildImage(background = image_bytes)
         except Exception as e:
-            logger.info(f"图片构造失败，错误信息：{e}")
+            logger.error(f"图片构造失败，错误信息：{e}")
         if msg_list and image:
             msg_list.append(dividing_line)
             msg_list.append(image)
@@ -368,7 +368,7 @@ async def _get_season_status(id_) -> list:
             image_bytes = await fetch_image_bytes(season_info["media"]["cover"])
             image = BuildImage(background = image_bytes)
         except Exception as e:
-                logger.info(f"图片构造失败，错误信息：{e}")
+                logger.error(f"图片构造失败，错误信息：{e}")
         if image:
             await BilibiliSub.sub_handle(
                 id_, season_current_episode=new_ep, season_update_time=datetime.now()
