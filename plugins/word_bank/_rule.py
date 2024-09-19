@@ -43,13 +43,10 @@ async def check(
         problem = temp
     if event.is_tome() and bot.config.nickname:
         if isinstance(message[0], alcAt) and message[0].target == bot.self_id:
-            problem = f"[at:{bot.self_id}]" + problem
-        else:
-            if problem and bot.config.nickname:
-                nickname = [
-                    nk for nk in bot.config.nickname if str(message).startswith(nk)
-                ]
-                problem = nickname[0] + problem if nickname else problem
+            problem = f"[at:{bot.self_id}]{problem}"
+        elif problem and bot.config.nickname:
+            nickname = [nk for nk in bot.config.nickname if str(message).startswith(nk)]
+            problem = nickname[0] + problem if nickname else problem
     if problem and (
         await WordBank.check_problem(session.id3 or session.id2, problem) is not None
     ):
