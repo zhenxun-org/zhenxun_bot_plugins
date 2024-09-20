@@ -59,7 +59,7 @@ __plugin_meta__ = PluginMetadata(
         """.strip(),
     extra=PluginExtraData(
         author="HibiKier",
-        version="0.3-4e1d0c7",
+        version="0.3-b101fbc",
         superuser_help="""
     登录b站获取cookie防止风控：
             bil_check/检测b站
