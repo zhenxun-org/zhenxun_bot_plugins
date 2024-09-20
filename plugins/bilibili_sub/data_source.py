@@ -271,6 +271,7 @@ async def _get_live_status(id_: int) -> list:
     sub = await BilibiliSub.get_or_none(sub_id=id_)
     msg_list = []
     if sub.live_status != live_status:
+        await BilibiliSub.sub_handle(id_, live_status=live_status)
         image = None
         try:
             image_bytes = await fetch_image_bytes(cover)
@@ -278,7 +279,6 @@ async def _get_live_status(id_: int) -> list:
         except Exception as e:
                 logger.error(f"图片构造失败，错误信息：{e}")
     if sub.live_status in [0, 2] and live_status == 1 and image:
-        await BilibiliSub.sub_handle(id_, live_status=live_status)
         msg_list = [
             image,
             "\n",
@@ -322,7 +322,7 @@ async def _get_up_status(id_: int) -> list:
         video = video_info["list"]["vlist"][0]
         latest_video_created = video["created"]
     msg_list = []
-    if dynamic_img:
+    if dynamic_img and _user.dynamic_upload_time < dynamic_upload_time:
         await BilibiliSub.sub_handle(id_, dynamic_upload_time=dynamic_upload_time)
         msg_list = [f"{uname} 发布了动态！📢\n", dynamic_img, f"\n查看详情：{link}"]
     if (
