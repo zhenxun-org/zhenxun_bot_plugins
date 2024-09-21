@@ -8,7 +8,16 @@ from nonebot.internal.params import Arg, ArgStr
 from nonebot.params import RegexGroup
 from nonebot.plugin import PluginMetadata
 from nonebot.typing import T_State
-from nonebot_plugin_alconna import AlconnaQuery, Arparma, Image, Match, Query, UniMsg
+from nonebot_plugin_alconna import (
+    AlconnaQuery,
+    Arparma,
+    Image,
+    Match,
+    Query,
+    Reply,
+    Text,
+    UniMsg,
+)
 from nonebot_plugin_alconna import Image as alcImage
 from nonebot_plugin_session import EventSession
 
@@ -38,6 +47,7 @@ __plugin_meta__ = PluginMetadata(
         查看词条命令：群聊时为 群词条+全局词条，私聊时为 私聊词条+全局词条
         添加词条正则：添加词条(模糊|正则|图片)?问\s*?(\S*\s?\S*)\s*?答\s?(\S*)
         正则问可以通过$1类推()捕获的组
+        注意：可以通过引用来提供回答， 如：（引用）添加词条问你好
         指令：
             添加词条 ?[模糊|正则|图片]问...答...：添加问答词条，可重复添加相同问题的不同回答
                 示例:
@@ -98,7 +108,7 @@ async def _(
     group_id = session.id3 or session.id2
     if not group_id and user_id not in bot.config.superusers:
         await MessageUtils.build_message("权限不足捏...").finish(reply_to=True)
-    word_scope, word_type, problem, answer = reg_group
+    word_scope, word_type, problem = reg_group
     if not word_scope and not group_id:
         word_scope = "私聊"
     if (
@@ -109,19 +119,18 @@ async def _(
         await MessageUtils.build_message("权限不足，无法添加该范围词条...").finish(
             reply_to=True
         )
+    if word_type != "图片":
+        state["problem_image"] = "YES"
+    if isinstance(message[0], Reply):
+        reply: Reply = message.pop(0)
+        if reply.msg:
+            message += Text("答") + MessageUtils.template2alc(reply.msg[1:])  # type: ignore
+    temp_problem = message.copy()
+    answer = get_answer(message.copy())
     if (not problem or not problem.strip()) and word_type != "图片":
         await MessageUtils.build_message("词条问题不能为空！").finish(reply_to=True)
     if (not answer or not answer.strip()) and not len(img_list) and not len(at_list):
         await MessageUtils.build_message("词条回答不能为空！").finish(reply_to=True)
-    if word_type != "图片":
-        state["problem_image"] = "YES"
-    temp_problem = message.copy()
-    # answer = message.copy()
-    # 对at问题对额外处理
-    # if at_list:
-    answer = get_answer(message.copy())
-    # text = str(message.pop(0)).split("答", maxsplit=1)[-1].strip()
-    # temp_problem.insert(0, alcMessageUtils.build_message(text))
     state["word_scope"] = word_scope
     state["word_type"] = word_type
     state["problem"] = get_problem(temp_problem)
@@ -158,10 +167,6 @@ async def _(
                 await MessageUtils.build_message(
                     f"添加词条失败，正则表达式 {problem} 非法！"
                 ).finish(reply_to=True)
-        # if str(event.user_id) in bot.config.superusers and isinstance(
-        #     event, PrivateMessageEvent
-        # ):
-        #     word_scope = "私聊"
         nickname = None
         if problem and bot.config.nickname:
             nickname = [nk for nk in bot.config.nickname if problem.startswith(nk)]
