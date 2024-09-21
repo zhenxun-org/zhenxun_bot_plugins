@@ -151,7 +151,7 @@ class WordBank(Model):
     @classmethod
     async def _answer2format(
         cls,
-        answer: list[str | Text | At | Image],
+        answer: list[str | Text | At | AtAll | Image],
         user_id: str,
         group_id: str | None,
     ) -> tuple[str, list[Any]]:
@@ -177,9 +177,9 @@ class WordBank(Model):
             elif seg.type == "face":  # TODO: face貌似无用...
                 text += f"[face:placeholder_{placeholder}]"
                 placeholder_list.append(seg.data["id"])
-            elif isinstance(seg, At):
+            elif isinstance(seg, At | AtAll):
                 text += f"[at:placeholder_{placeholder}]"
-                placeholder_list.append(seg.target)
+                placeholder_list.append(seg.target if isinstance(seg, At) else "0")
             elif isinstance(seg, Image) and seg.url:
                 text += f"[image:placeholder_{placeholder}]"
                 index += 1
