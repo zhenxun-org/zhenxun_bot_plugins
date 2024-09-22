@@ -224,7 +224,7 @@ class WordBank(Model):
             answer = str(query.answer)  # type: ignore
         if query and query.placeholder:
             type_list = re.findall(r"\[(.*?):placeholder_.*?]", answer)
-            answer_split = re.split(r"\[.*:placeholder_.*?]", answer)
+            answer_split = re.split(r"\[.*?:placeholder_.*?]", answer)
             placeholder_split = query.placeholder.split(",")
             result_list = []
             for index, ans in enumerate(answer_split):

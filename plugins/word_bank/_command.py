@@ -4,7 +4,7 @@ from nonebot_plugin_alconna import Alconna, Args, Option, on_alconna, store_true
 from zhenxun.utils.rules import admin_check
 
 _add_matcher = on_regex(
-    r"^(全局|私聊)?添加词条\s*?(模糊|正则|图片)?问\s*?(\S*\s?\S*)\s*?答\s?(\S*)",
+    r"^(全局|私聊)?添加词条\s*?(模糊|正则|图片)?问(\S*\s?\S*)",
     priority=5,
     block=True,
     rule=admin_check("word_bank", "WORD_BANK_LEVEL"),
