@@ -75,7 +75,7 @@
         "description": "跨越空间与时间跟管理员对话",
         "usage": "滴滴滴- ?[文本] ?[图片]\n        示例：滴滴滴- 我喜欢你",
         "author": "HibiKier",
-        "version": "0.1-4cabc8b",
+        "version": "0.1-e9cd887",
         "plugin_type": "NORMAL",
         "is_dir": true
     },
