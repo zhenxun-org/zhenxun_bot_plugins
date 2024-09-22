@@ -26,7 +26,7 @@ __plugin_meta__ = PluginMetadata(
     """.strip(),
     extra=PluginExtraData(
         author="HibiKier",
-        version="0.1-6fcedc5",
+        version="0.1-4cabc8b",
         menu_type="联系管理员",
         superuser_help="""
             /t: 查看当前存储的消息
