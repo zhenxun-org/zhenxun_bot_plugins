@@ -3,15 +3,15 @@ from nonebot import on_command
 from nonebot.adapters import Bot
 from nonebot.permission import SUPERUSER
 from nonebot.plugin import PluginMetadata
-from nonebot_plugin_alconna import At as alcAt
+from nonebot_plugin_alconna import At
 from nonebot_plugin_alconna import Target, Text, UniMsg
 from nonebot_plugin_session import EventSession
 from nonebot_plugin_userinfo import EventUserInfo, UserInfo
 
-from zhenxun.configs.config import BotConfig
 from zhenxun.configs.utils import PluginExtraData
 from zhenxun.models.group_console import GroupConsole
 from zhenxun.services.log import logger
+from zhenxun.utils.exception import NotFindSuperuser
 from zhenxun.utils.message import MessageUtils
 from zhenxun.utils.platform import PlatformUtils
 
@@ -26,7 +26,7 @@ __plugin_meta__ = PluginMetadata(
     """.strip(),
     extra=PluginExtraData(
         author="HibiKier",
-        version="0.1",
+        version="0.1-e9cd887",
         menu_type="联系管理员",
         superuser_help="""
             /t: 查看当前存储的消息
@@ -44,7 +44,6 @@ __plugin_meta__ = PluginMetadata(
 
 config = nonebot.get_driver().config
 
-
 _dialogue_matcher = on_command("滴滴滴-", priority=5, block=True)
 _reply_matcher = on_command("/t", priority=1, permission=SUPERUSER, block=True)
 
@@ -59,14 +58,6 @@ async def _(
     if session.id1:
         message[0] = Text(str(message[0]).replace("滴滴滴-", "", 1))
         platform = PlatformUtils.get_platform(bot)
-        superuser_id = None
-        try:
-            if platform:
-                superuser_id = BotConfig.get_superuser(platform)
-        except IndexError:
-            await MessageUtils.build_message("管理员失联啦...").finish()
-        if not superuser_id:
-            await MessageUtils.build_message("管理员失联啦...").finish()
         uname = user_info.user_displayname or user_info.user_name
         group_name = ""
         gid = session.id3 or session.id2
@@ -83,8 +74,13 @@ async def _(
         message.insert(0, Text(f"Id: {DialogueManage._index}\n"))
         message.insert(0, Text("*****一份交流报告*****\n"))
         DialogueManage.add(uname, session.id1, gid, group_name, message, platform)
-        await message.send(bot=bot, target=Target(superuser_id, private=True))
-        await MessageUtils.build_message("已成功发送给管理员啦!").send(reply_to=True)
+        try:
+            await PlatformUtils.send_superuser(bot, message)
+            await MessageUtils.build_message("已成功发送给管理员啦!").send(
+                reply_to=True
+            )
+        except NotFindSuperuser:
+            await MessageUtils.build_message("管理员失联了...").send(reply_to=True)
     else:
         await MessageUtils.build_message("用户id为空...").send()
 
@@ -145,7 +141,7 @@ async def _(
                 await MessageUtils.build_message("参数错误...").finish(at_sender=True)
             if group_id:
                 if user_id:
-                    message.insert(0, alcAt("user", user_id))
+                    message.insert(0, At("user", user_id))
                     message.insert(1, Text("\n管理员回复\n=======\n"))
                 await message.send(Target(group_id), bot)
                 await MessageUtils.build_message("消息发送成功!").finish(at_sender=True)
