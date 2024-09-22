@@ -12,7 +12,7 @@ __plugin_meta__ = PluginMetadata(
     usage="",
     extra=PluginExtraData(
         author="HibiKier",
-        version="0.5-4cabc8b",
+        version="0.5-f8a02fe",
         plugin_type=PluginType.PARENT,
         configs=[
             RegisterConfig(
