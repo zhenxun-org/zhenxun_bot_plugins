@@ -20,7 +20,6 @@ from nonebot_plugin_alconna import (
 )
 from nonebot_plugin_alconna import Image as alcImage
 from nonebot_plugin_session import EventSession
-
 from zhenxun.configs.config import Config
 from zhenxun.configs.utils import PluginExtraData
 from zhenxun.services.log import logger
@@ -124,7 +123,7 @@ async def _(
     if isinstance(message[0], Reply):
         reply: Reply = message.pop(0)
         if reply.msg:
-            message += Text("答") + MessageUtils.template2alc(reply.msg[1:])  # type: ignore
+            message += Text("答") + MessageUtils.template2alc(reply.msg)  # type: ignore
     temp_problem = message.copy()
     answer = get_answer(message.copy())
     if (not problem or not problem.strip()) and word_type != "图片":
