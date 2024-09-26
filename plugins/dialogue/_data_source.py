@@ -1,11 +1,8 @@
-from typing import Dict
-
 from nonebot_plugin_alconna import UniMsg
 from pydantic import BaseModel
 
 
 class DialogueData(BaseModel):
-
     name: str
     """用户名称"""
     user_id: str
@@ -21,8 +18,7 @@ class DialogueData(BaseModel):
 
 
 class DialogueManage:
-
-    _data: Dict[int, DialogueData] = {}
+    _data: dict[int, DialogueData] = {}  # noqa: RUF012
     _index = 0
 
     @classmethod
