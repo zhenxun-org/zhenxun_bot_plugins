@@ -7,7 +7,7 @@ import os
 def get_changed_files():
     # 获取当前分支与主分支的差异文件列表
     changed_files = (
-        subprocess.check_output(["git", "diff", "--name-only", "origin/main"])
+        subprocess.check_output(["git", "diff", "--name-only", "HEAD~1"])
         .decode()
         .split()
     )
@@ -19,22 +19,20 @@ def update_version_in_init(file_path, current_version, commit_hash):
         content = file.read()
 
     new_version = f"{current_version}-{commit_hash}"
-    old_version_match = re.search(r'version\s*=\s*"(.*?)"', content)
-    if old_version_match:
-        old_version = old_version_match.group(1)
+    if old_version_match := re.search(r'version\s*=\s*"(.*?)"', content):
+        old_version = old_version_match[1]
         old_version = old_version.split("-")[0]
-        if old_version == current_version:
-            new_content = re.sub(
-                r'version\s*=\s*"(.*?)"', f'version="{new_version}"', content
-            )
-
-            with open(file_path, "w", encoding="utf-8") as file:
-                file.write(new_content)
-
-            return new_version
-        else:
+        if old_version != current_version:
             return old_version
 
+        new_content = re.sub(
+            r'version\s*=\s*"(.*?)"', f'version="{new_version}"', content
+        )
+
+        with open(file_path, "w", encoding="utf-8") as file:
+            file.write(new_content)
+
+        return new_version
     return current_version
 
 
