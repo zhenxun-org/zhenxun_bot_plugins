@@ -85,7 +85,7 @@
         "description": "刷屏禁言相关操作",
         "usage": "刷屏禁言相关操作，需要 {NICKNAME} 有群管理员权限\n    指令：\n        设置刷屏: 查看当前设置\n        -c [count]: 检测最大次数\n        -t [time]: 规定时间内\n        -d [duration]: 禁言时长\n        示例:\n            设置刷屏 -c 10: 设置最大次数为10\n            设置刷屏 -t 100 -d 20: 设置规定时间和禁言时长\n            设置刷屏 -d 10: 设置禁言时长为10\n        * 即 X 秒内发送同样消息 N 次，禁言 M 分钟 *",
         "author": "HibiKier",
-        "version": "0.1",
+        "version": "0.1-ea238a0",
         "plugin_type": "ADMIN",
         "is_dir": true
     },
