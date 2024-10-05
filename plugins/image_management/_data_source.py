@@ -15,7 +15,6 @@ BASE_PATH = IMAGE_PATH / "image_management"
 
 
 class ImageManagementManage:
-
     @classmethod
     async def random_image(cls, name: str, file_id: int | None = None) -> Path | None:
         """随机图片
@@ -60,8 +59,9 @@ class ImageManagementManage:
         path.mkdir(exist_ok=True, parents=True)
         _file_name = 0
         if file_list := os.listdir(path):
+            file_list = [int(i.split(".")[0]) for i in file_list if i.endswith(".jpg")]
             file_list.sort()
-            _file_name = int(file_list[-1].split(".")[0]) + 1
+            _file_name = file_list[-1] + 1
         _file_path = path / f"{_file_name}.jpg"
         try:
             await ImageManagementLog.create(
