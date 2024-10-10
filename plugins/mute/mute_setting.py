@@ -28,7 +28,7 @@ __plugin_meta__ = PluginMetadata(
     """.strip(),
     extra=PluginExtraData(
         author="HibiKier",
-        version="0.1",
+        version="0.1-473ecd8",
         menu_type="其他",
         plugin_type=PluginType.ADMIN,
         admin_level=base_config.get("MUTE_LEVEL", 5),
