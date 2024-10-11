@@ -5,6 +5,7 @@ from nonebot import on_notice
 from nonebot.adapters.onebot.v11 import PokeNotifyEvent
 from nonebot.adapters.onebot.v11.message import MessageSegment
 from nonebot.plugin import PluginMetadata
+from nonebot.rule import to_me
 from zhenxun.configs.config import Config
 from zhenxun.configs.path_config import IMAGE_PATH, RECORD_PATH
 from zhenxun.configs.utils import PluginExtraData
@@ -53,7 +54,7 @@ REPLY_MESSAGE = [
 
 _clmt = CountLimiter(3)
 
-poke_ = on_notice(priority=5, block=False, rule=notice_rule(PokeNotifyEvent))
+poke_ = on_notice(priority=5, block=False, rule=notice_rule(PokeNotifyEvent) & to_me())
 depend_image_management = "image_management"
 depend_send_voice = "send_voice"
 IMAGE_MANAGEMENT = IMAGE_PATH / "image_management"
