@@ -221,7 +221,7 @@
     },
     "钉宫骂我": {
         "module": "dinggong",
-        "module_path": "plugins.send_voice.dinggong",
+        "module_path": "plugins.dinggong",
         "description": "请狠狠的骂我一次！",
         "usage": "多骂我一点，球球了\n    指令：\n        骂老子",
         "author": "HibiKier",
