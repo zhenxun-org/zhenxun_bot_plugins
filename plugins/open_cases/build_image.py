@@ -9,10 +9,10 @@ from zhenxun.utils._build_mat import BuildMat, MatType
 from zhenxun.utils.image_utils import BuildImage
 from zhenxun.utils.utils import cn2py
 
+from .buff import CaseManager
 from .config import CASE_BACKGROUND, COLOR2COLOR, COLOR2NAME
 from .models.buff_skin import BuffSkin
 from .models.buff_skin_log import BuffSkinLog
-from .open_cases.buff import CaseManager
 
 BASE_PATH = IMAGE_PATH / "csgo_cases"
 
