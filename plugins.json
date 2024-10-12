@@ -5,7 +5,7 @@
         "description": "喏，亲手为你煮的鸡汤",
         "usage": "不喝点什么感觉有点不舒服\n    指令：\n        鸡汤",
         "author": "HibiKier",
-        "version": "0.1",
+        "version": "0.1-eb2b7db",
         "plugin_type": "NORMAL",
         "is_dir": false
     },
@@ -25,7 +25,7 @@
         "description": "生了个人，我很抱歉",
         "usage": "到点了，还是防不了下塔\n    指令：\n        网易云热评/到点了/12点了",
         "author": "HibiKier",
-        "version": "0.1",
+        "version": "0.1-eb2b7db",
         "plugin_type": "NORMAL",
         "is_dir": false
     },
@@ -85,7 +85,7 @@
         "description": "刷屏禁言相关操作",
         "usage": "刷屏禁言相关操作，需要 {NICKNAME} 有群管理员权限\n    指令：\n        设置刷屏: 查看当前设置\n        -c [count]: 检测最大次数\n        -t [time]: 规定时间内\n        -d [duration]: 禁言时长\n        示例:\n            设置刷屏 -c 10: 设置最大次数为10\n            设置刷屏 -t 100 -d 20: 设置规定时间和禁言时长\n            设置刷屏 -d 10: 设置禁言时长为10\n        * 即 X 秒内发送同样消息 N 次，禁言 M 分钟 *",
         "author": "HibiKier",
-        "version": "0.1",
+        "version": "0.1-eb2b7db",
         "plugin_type": "ADMIN",
         "is_dir": true
     },
@@ -135,7 +135,7 @@
         "description": "csgo模拟开箱[戒赌]",
         "usage": "指令：\n        开箱 ?[武器箱]\n        [1-30]连开箱 ?[武器箱]\n        我的开箱\n        我的金色\n        群开箱统计\n        查看武器箱?[武器箱]\n        * 不包含[武器箱]时随机开箱 *\n        示例: 查看武器箱\n        示例: 查看武器箱英勇",
         "author": "HibiKier",
-        "version": "0.1",
+        "version": "0.1-eb2b7db",
         "plugin_type": "NORMAL",
         "is_dir": true
     },
@@ -155,7 +155,7 @@
         "description": "上传/删除/移动到指定图片与发送图片",
         "usage": "多指令",
         "author": "HibiKier",
-        "version": "0.2",
+        "version": "0.2-eb2b7db",
         "plugin_type": "ADMIN",
         "is_dir": true
     },
@@ -205,7 +205,7 @@
         "description": "自定义词条内容随机回复",
         "usage": "usage：\n        对指定问题的随机回答，对相同问题可以设置多个不同回答\n        删除词条后每个词条的id可能会变化，请查看后再删除\n        更推荐使用id方式删除\n        问题回答支持的类型：at, image\n        查看词条命令：群聊时为 群词条+全局词条，私聊时为 私聊词条+全局词条\n        添加词条正则：添加词条(模糊|正则|图片)?问\\s*?(\\S*\\s?\\S*)\\s*?答\\s?(\\S*)\n        正则问可以通过$1类推()捕获的组\n        指令：\n            添加词条 ?[模糊|正则|图片]问...答...：添加问答词条，可重复添加相同问题的不同回答\n                示例:\n                    添加词条问你好答你也好\n                    添加图片词条问答看看涩图\n            删除词条 ?[问题] ?[序号] ?[回答序号]：删除指定词条指定或全部回答\n                示例:\n                    删除词条 谁是萝莉           : 删除文字是 谁是萝莉 的词条\n                    删除词条 --id 2            : 删除序号为2的词条\n                    删除词条 谁是萝莉 --aid 2   : 删除 谁是萝莉 词条的第2个回答\n                    删除词条 --id 2 --aid 2    : 删除序号为2词条的第2个回答\n            修改词条 [替换文字] ?[旧词条文字] ?[序号]：修改词条问题\n                示例:\n                    修改词条 谁是萝莉 谁是萝莉啊？ : 将词条 谁是萝莉 修改为 谁是萝莉啊？\n                    修改词条 谁是萝莉 --id 2     : 将序号为2的词条修改为 谁是萝莉\n            查看词条 ?[问题] ?[序号]：查看全部词条或对应词条回答\n                示例:\n                    查看词条:\n                        (在群组中使用时): 查看当前群组词条和全局词条\n                        (在私聊中使用时): 查看当前私聊词条和全局词条\n                    查看词条 谁是萝莉   : 查看词条 谁是萝莉 的全部回答\n                    查看词条 --id 2    : 查看词条序号为2的全部回答\n                    查看词条 谁是萝莉 --all: 查看全局词条 谁是萝莉 的全部回答\n                    查看词条 --id 2 --all: 查看全局词条序号为2的全部回答",
         "author": "HibiKier & yajiwa",
-        "version": "0.5-f8a02fe",
+        "version": "0.5-eb2b7db",
         "plugin_type": "NORMAL",
         "is_dir": true
     },
@@ -375,7 +375,7 @@
         "description": "戳一戳发送语音美图萝莉图不美哉？",
         "usage": "戳一戳随机掉落语音或美图萝莉图",
         "author": "HibiKier",
-        "version": "0.1-4c17056",
+        "version": "0.1-eb2b7db",
         "plugin_type": "DEPENDANT",
         "is_dir": true
     },

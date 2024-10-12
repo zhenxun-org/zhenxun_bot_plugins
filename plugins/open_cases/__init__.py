@@ -52,7 +52,7 @@ __plugin_meta__ = PluginMetadata(
     """.strip(),
     extra=PluginExtraData(
         author="HibiKier",
-        version="0.1",
+        version="0.1-eb2b7db",
         superuser_help="""
         更新皮肤指令
         重置开箱： 重置今日开箱所有次数
