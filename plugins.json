@@ -135,7 +135,7 @@
         "description": "csgo模拟开箱[戒赌]",
         "usage": "指令：\n        开箱 ?[武器箱]\n        [1-30]连开箱 ?[武器箱]\n        我的开箱\n        我的金色\n        群开箱统计\n        查看武器箱?[武器箱]\n        * 不包含[武器箱]时随机开箱 *\n        示例: 查看武器箱\n        示例: 查看武器箱英勇",
         "author": "HibiKier",
-        "version": "0.1",
+        "version": "0.1-eb2b7db",
         "plugin_type": "NORMAL",
         "is_dir": true
     },
@@ -155,7 +155,7 @@
         "description": "上传/删除/移动到指定图片与发送图片",
         "usage": "多指令",
         "author": "HibiKier",
-        "version": "0.2",
+        "version": "0.2-eb2b7db",
         "plugin_type": "ADMIN",
         "is_dir": true
     },
@@ -375,7 +375,7 @@
         "description": "戳一戳发送语音美图萝莉图不美哉？",
         "usage": "戳一戳随机掉落语音或美图萝莉图",
         "author": "HibiKier",
-        "version": "0.1-4c17056",
+        "version": "0.1-eb2b7db",
         "plugin_type": "DEPENDANT",
         "is_dir": true
     },
