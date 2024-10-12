@@ -1,7 +1,6 @@
 from nonebot.plugin import PluginMetadata
 from nonebot_plugin_alconna import Alconna, Args, Arparma, Match, Option, on_alconna
 from nonebot_plugin_session import EventSession
-
 from zhenxun.configs.config import BotConfig
 from zhenxun.configs.utils import PluginExtraData, RegisterConfig
 from zhenxun.services.log import logger
@@ -14,22 +13,22 @@ from ._data_source import base_config, mute_manage
 __plugin_meta__ = PluginMetadata(
     name="刷屏禁言",
     description="刷屏禁言相关操作",
-    usage="""
+    usage=f"""
     刷屏禁言相关操作，需要 {BotConfig.self_nickname} 有群管理员权限
     指令：
-        设置刷屏: 查看当前设置
+        刷屏设置: 查看当前设置
         -c [count]: 检测最大次数
         -t [time]: 规定时间内
         -d [duration]: 禁言时长
         示例:
-            设置刷屏 -c 10: 设置最大次数为10
-            设置刷屏 -t 100 -d 20: 设置规定时间和禁言时长
-            设置刷屏 -d 10: 设置禁言时长为10
+            刷屏设置 -c 10: 设置最大次数为10
+            刷屏设置 -t 100 -d 20: 设置规定时间和禁言时长
+            刷屏设置 -d 10: 设置禁言时长为10
         * 即 X 秒内发送同样消息 N 次，禁言 M 分钟 *
     """.strip(),
     extra=PluginExtraData(
         author="HibiKier",
-        version="0.1",
+        version="0.1-473ecd8",
         menu_type="其他",
         plugin_type=PluginType.ADMIN,
         admin_level=base_config.get("MUTE_LEVEL", 5),

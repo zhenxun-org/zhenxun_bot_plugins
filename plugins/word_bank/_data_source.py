@@ -62,7 +62,7 @@ def get_problem(message: UniMsg) -> str:
     return problem
 
 
-def get_answer(message: UniMsg) -> UniMessage | None:
+def get_answer(message: UniMsg) -> UniMessage:
     """获取at时回答
 
     参数:

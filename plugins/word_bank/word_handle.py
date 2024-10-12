@@ -20,10 +20,12 @@ from nonebot_plugin_alconna import (
 )
 from nonebot_plugin_alconna import Image as alcImage
 from nonebot_plugin_session import EventSession
+
 from zhenxun.configs.config import Config
 from zhenxun.configs.utils import PluginExtraData
 from zhenxun.services.log import logger
 from zhenxun.utils.enum import PluginType
+from .exception import ImageDownloadError
 from zhenxun.utils.message import MessageUtils
 
 from ._command import _add_matcher, _del_matcher, _update_matcher
@@ -133,7 +135,7 @@ async def _(
     state["word_scope"] = word_scope
     state["word_type"] = word_type
     state["problem"] = get_problem(temp_problem)
-    state["answer"] = answer
+    state["answer"] = answer.strip()
     logger.info(
         f"添加词条 范围: {word_scope} 类型: {word_type} 问题: {problem} 回答: {answer}",
         "添加词条",
@@ -186,6 +188,15 @@ async def _(
             session.platform,
             session.id1,
         )
+    except ImageDownloadError:
+        logger.error(
+            f"添加词条 {problem} 错误，图片资源下载失败...",
+            "添加词条",
+            session=session,
+        )
+        await MessageUtils.build_message(
+            f"添加词条 {problem} 错误，图片资源下载失败..."
+        ).finish()
     except Exception as e:
         if isinstance(e, FinishedException):
             await _add_matcher.finish()
