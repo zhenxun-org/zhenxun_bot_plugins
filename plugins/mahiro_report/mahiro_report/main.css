@@ -1,0 +1,304 @@
+body {
+  position: absolute;
+  left: -8px;
+  top: -8px;
+}
+
+@font-face {
+  font-family: "Noto Sans SC B";
+  src: url("./res/font/NotoSansSC-Bold.otf") format("opentype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Noto Sans SC";
+  src: url("./res/font/NotoSansSC-Regular.otf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "SSFangTangTi";
+  src: url("./res/font/SSFangTangTi.ttf");
+}
+
+.wrapper {
+  height: 1885px;
+  width: 578px;
+  background-color: #ffc0cb;
+  position: relative;
+  padding: 10px;
+}
+
+.main {
+  height: 1860px;
+  width: 555px;
+  background-color: #fffbfc;
+  position: relative;
+  border-radius: 10px;
+  padding: 10px;
+}
+
+.top-border {
+  display: flex;
+}
+
+.zx-img {
+  height: 155px;
+}
+
+.top-title {
+  position: relative;
+  width: 322px;
+}
+
+.zx-title {
+  font-family: "SSFangTangTi";
+  color: #f7a0b5;
+  font-size: 87px;
+  position: absolute;
+  top: -73px;
+  left: -10px;
+}
+
+.zx-tip {
+  color: #f7c1d4;
+  font-family: "Noto Sans SC B";
+  font-size: 33px;
+  position: absolute;
+  top: 73px;
+  left: 20px;
+}
+
+.top-date {
+  background-color: #fdf1f5;
+  border-radius: 10px;
+  height: 108px;
+  width: 120px;
+  margin-top: 30px;
+  /* margin-left: 67px; */
+  position: relative;
+  box-shadow: 4px 4px 8px rgba(208, 178, 188, 0.7);
+}
+
+.top-date-week {
+  color: #f384a7;
+  font-size: 35px;
+  font-family: "Noto Sans SC B";
+  position: absolute;
+  left: 40px;
+  top: -34px;
+}
+
+.top-date-date {
+  color: white;
+  font-family: "Noto Sans SC B";
+  font-size: 12px;
+  background-color: #f8a1b8;
+  margin-top: 50px;
+  height: 25px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.top-date-cn {
+  font-family: "Noto Sans SC B";
+  color: #f384a7;
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+}
+
+.one-border {
+  display: flex;
+  height: 320px;
+  margin-top: 50px;
+  font-family: "Noto Sans SC";
+}
+
+.moyu-border {
+  font-family: "Noto Sans SC";
+  height: 240px;
+  padding: 15px 10px;
+  border-radius: 10px;
+  border: #e5aabe 3px solid;
+  width: 157px;
+  position: relative;
+}
+
+.moyu-title {
+  border: #e5aabe 2px solid;
+  position: absolute;
+  background-color: #fefbfc;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  color: #fd9fb5;
+  padding: 5px 10px;
+  font-size: 14px;
+  font-family: "Noto Sans SC B";
+  top: -19px;
+  left: 37px;
+  display: flex;
+}
+
+.title-img {
+  height: 15px;
+  width: 15px;
+  margin-right: 5px;
+}
+
+.moyu-inner {
+  display: flex;
+  line-height: 15px;
+  font-size: 13px;
+}
+
+.moyu-day {
+  width: 37px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.moyu-day-name {
+  color: #dda6b8;
+  background-color: #fff9fb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 55px;
+}
+
+.bili-border {
+  font-family: "Noto Sans SC";
+  border: #e5aabe 3px solid;
+  height: 240px;
+  margin-left: 15px;
+  padding: 15px 10px 15px 40px;
+  border-radius: 10px;
+  width: 300px;
+  position: relative;
+  font-size: 13px;
+}
+
+.bili-text {
+  display: flex;
+  align-items: center;
+  line-height: 5px;
+  margin-top: 7px;
+  margin-bottom: 6px;
+}
+
+.hot-text {
+  background-color: #e38c84;
+  height: 17px;
+  width: 17px;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 5px;
+  border-radius: 2px;
+}
+
+.two-border {
+  border: #e5aabe 3px solid;
+  width: 512px;
+  height: 370px;
+  border-radius: 10px;
+  position: relative;
+  float: left;
+  padding: 17px;
+  font-family: "Noto Sans SC";
+  background-color: #fffbfc;
+}
+
+.anime-border {
+  height: 170px;
+  width: 105px;
+  font-size: 10px;
+  font-size: 13px;
+  text-align: center;
+  line-height: 3px;
+  float: left;
+  margin: 8px 10px;
+  line-height: 15px;
+}
+
+.anime-text {
+  overflow: hidden;
+  margin-top: 3px;
+  height: 48px;
+}
+
+.anime-img {
+  height: 130px;
+  width: 105px;
+}
+
+.three-border {
+  border: #e5aabe 3px solid;
+  width: 512px;
+  height: 300px;
+  border-radius: 10px;
+  position: relative;
+  float: left;
+  padding: 17px;
+  font-family: "Noto Sans SC";
+  margin-top: 46px;
+  background-color: #fffbfc;
+  font-size: 15px;
+}
+
+.four-border {
+  border: #e5aabe 3px solid;
+  width: 512px;
+  height: 300px;
+  border-radius: 10px;
+  position: relative;
+  float: left;
+  padding: 17px;
+  font-family: "Noto Sans SC";
+  margin-top: 46px;
+  background-color: #fffbfc;
+  font-size: 15px;
+}
+
+.five-border {
+  border: #e5aabe 3px solid;
+  width: 520px;
+  border-radius: 10px;
+  position: relative;
+  float: left;
+  padding: 13px;
+  font-family: "Noto Sans SC";
+  margin-top: 46px;
+  font-size: 19px;
+  color: #efacc3;
+  font-weight: 600;
+  line-height: 5px;
+  background-color: #fffbfc;
+}
+
+.normal-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 450px;
+}
+
+ul {
+  list-style-position: inside; /* 将项目符号放在内容内部 */
+  width: 450px;
+}
+
+li::marker {
+  display: inline-block; /* 确保项目符号可见 */
+}

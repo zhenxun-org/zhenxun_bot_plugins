@@ -1,26 +1,27 @@
 import asyncio
-from datetime import datetime
+import random
 import re
+from datetime import datetime
+
 from nonebot_plugin_alconna import UniMessage
+from nonebot_plugin_session import EventSession
+from tortoise.functions import Sum
+from zhenxun.configs.config import Config
 from zhenxun.configs.path_config import IMAGE_PATH
 from zhenxun.models.sign_user import SignUser
-from zhenxun.utils._image_template import ImageTemplate
-from zhenxun.utils.utils import cn2py
-from .models.open_cases_log import OpenCasesLog
 from zhenxun.services.log import logger
 from zhenxun.utils._build_image import BuildImage
-from nonebot_plugin_session import EventSession
+from zhenxun.utils._image_template import ImageTemplate
 from zhenxun.utils.message import MessageUtils
-from .models.open_cases_user import OpenCasesUser
-from .models.buff_skin import BuffSkin
-from zhenxun.configs.config import Config
-from .build_image import draw_card
-from .utils import random_skin
-from .buff import BuffUpdateManager, CaseManager
-from tortoise.functions import Sum
-from .config import CASE2ID, COLOR2CN
-import random
+from zhenxun.utils.utils import cn2py
 
+from .buff import BuffUpdateManager, CaseManager
+from .build_image import draw_card
+from .config import CASE2ID, COLOR2CN
+from .models.buff_skin import BuffSkin
+from .models.open_cases_log import OpenCasesLog
+from .models.open_cases_user import OpenCasesUser
+from .utils import random_skin
 
 base_config = Config.get("open_cases")
 
@@ -477,4 +478,5 @@ async def auto_update():
                 )
                 await asyncio.sleep(rand)
             except Exception as e:
+                logger.error(f"自动更新武器箱: {case_name}", e=e)
                 logger.error(f"自动更新武器箱: {case_name}", e=e)
