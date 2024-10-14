@@ -398,5 +398,15 @@
         "version": "0.1",
         "plugin_type": "NORMAL",
         "is_dir": true
+    },
+    "真寻日报": {
+        "module": "mahiro_report",
+        "module_path": "plugins.mahiro_report",
+        "description": "嗨嗨，这里是小记者真寻哦",
+        "usage": "真寻日报",
+        "author": "HibiKier",
+        "version": "0.1",
+        "plugin_type": "NORMAL",
+        "is_dir": true
     }
 }
