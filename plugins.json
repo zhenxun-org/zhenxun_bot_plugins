@@ -135,7 +135,7 @@
         "description": "csgo模拟开箱[戒赌]",
         "usage": "指令：\n        开箱 ?[武器箱]\n        [1-30]连开箱 ?[武器箱]\n        我的开箱\n        我的金色\n        群开箱统计\n        查看武器箱?[武器箱]\n        * 不包含[武器箱]时随机开箱 *\n        示例: 查看武器箱\n        示例: 查看武器箱英勇",
         "author": "HibiKier",
-        "version": "0.1",
+        "version": "0.1-eb2b7db",
         "plugin_type": "NORMAL",
         "is_dir": true
     },
@@ -155,7 +155,7 @@
         "description": "上传/删除/移动到指定图片与发送图片",
         "usage": "多指令",
         "author": "HibiKier",
-        "version": "0.2",
+        "version": "0.2-eb2b7db",
         "plugin_type": "ADMIN",
         "is_dir": true
     },
@@ -221,7 +221,7 @@
     },
     "钉宫骂我": {
         "module": "dinggong",
-        "module_path": "plugins.send_voice.dinggong",
+        "module_path": "plugins.dinggong",
         "description": "请狠狠的骂我一次！",
         "usage": "多骂我一点，球球了\n    指令：\n        骂老子",
         "author": "HibiKier",
@@ -375,7 +375,7 @@
         "description": "戳一戳发送语音美图萝莉图不美哉？",
         "usage": "戳一戳随机掉落语音或美图萝莉图",
         "author": "HibiKier",
-        "version": "0.1-4c17056",
+        "version": "0.1-eb2b7db",
         "plugin_type": "DEPENDANT",
         "is_dir": true
     },
@@ -394,6 +394,16 @@
         "module_path": "plugins.pa",
         "description": "爬爬爬表情包",
         "usage": "爬爬爬爬爬",
+        "author": "HibiKier",
+        "version": "0.1",
+        "plugin_type": "NORMAL",
+        "is_dir": true
+    },
+    "真寻日报": {
+        "module": "mahiro_report",
+        "module_path": "plugins.mahiro_report",
+        "description": "嗨嗨，这里是小记者真寻哦",
+        "usage": "真寻日报",
         "author": "HibiKier",
         "version": "0.1",
         "plugin_type": "NORMAL",

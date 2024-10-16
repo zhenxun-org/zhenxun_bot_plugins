@@ -1,5 +1,5 @@
 from nonebot.permission import SUPERUSER
-from nonebot_plugin_alconna import Alconna, Args, Option, on_alconna, store_true
+from nonebot_plugin_alconna import Alconna, Args, on_alconna
 
 from zhenxun.utils.rules import ensure_group
 
@@ -38,19 +38,8 @@ _multiple_matcher.shortcut(
 )
 
 _update_matcher = on_alconna(
-    Alconna(
-        "更新武器箱",
-        Args["name?", str],
-        Option("-s", action=store_true, help_text="是否必定更新所属箱子"),
-    ),
+    Alconna("更新武器箱", Args["name?", str]),
     aliases={"更新皮肤"},
-    priority=1,
-    permission=SUPERUSER,
-    block=True,
-)
-
-_update_image_matcher = on_alconna(
-    Alconna("更新武器箱图片", Args["name?", str]),
     priority=1,
     permission=SUPERUSER,
     block=True,
@@ -63,8 +52,6 @@ _show_case_matcher = on_alconna(
 _knifes_matcher = on_alconna(
     Alconna("我的金色"), priority=5, block=True, rule=ensure_group
 )
-
-_show_skin_matcher = on_alconna(Alconna("查看皮肤"), priority=5, block=True)
 
 _price_matcher = on_alconna(
     Alconna(

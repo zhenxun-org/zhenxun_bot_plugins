@@ -1,10 +1,14 @@
-import random
 from enum import Enum
 
-from zhenxun.configs.path_config import IMAGE_PATH
-from zhenxun.services.log import logger
+from pydantic import BaseModel
 
-from .models.buff_skin import BuffSkin
+from zhenxun.configs.path_config import IMAGE_PATH
+
+BUFF_URL = "https://buff.163.com/api/market/goods"
+
+BUFF_SELL_URL = "https://buff.163.com/goods"
+
+BASE_PATH = IMAGE_PATH / "csgo_cases"
 
 BLUE = 0.7981
 BLUE_ST = 0.0699
@@ -154,100 +158,135 @@ CASE2ID = {
 }
 
 
-def get_wear(rand: float) -> str:
-    """判断磨损度
+RESULT_MESSAGE = {
+    "BLUE": ["这样看着才舒服", "是自己人，大伙把刀收好", "非常舒适~"],
+    "PURPLE": ["还行吧，勉强接受一下下", "居然不是蓝色，太假了", "运气-1-1-1-1-1..."],
+    "PINK": ["开始不适....", "你妈妈买菜必涨价！涨三倍！", "你最近不适合出门，真的"],
+    "RED": [
+        "已经非常不适",
+        "好兄弟你开的什么箱子啊，一般箱子不是只有蓝色的吗",
+        "开始拿阳寿开箱子了？",
+    ],
+    "KNIFE": [
+        "你的好运我收到了，你可以去喂鲨鱼了",
+        "最近该吃啥就迟点啥吧，哎，好好的一个人怎么就....哎",
+        "众所周知，欧皇寿命极短.",
+    ],
+}
 
-    Args:
-        rand (float): 随机rand
+COLOR2NAME = {
+    "BLUE": "军规",
+    "PURPLE": "受限",
+    "PINK": "保密",
+    "RED": "隐秘",
+    "KNIFE": "罕见",
+}
 
-    Returns:
-        str: 磨损名称
+COLOR2CN = {"BLUE": "蓝", "PURPLE": "紫", "PINK": "粉", "RED": "红", "KNIFE": "金"}
+
+
+class Tag(BaseModel):
+    """标签"""
+
+    category: str
+    """分类"""
+    id: int
+    """标签id"""
+    internal_name: str
+    """内部名称"""
+    localized_name: str
+    """本地化名称"""
+
+
+class InnerInfo(BaseModel):
+    """内部信息"""
+
+    tags: dict[str, Tag]
+    """标签"""
+
+
+class GoodsInfo(BaseModel):
     """
-    if rand <= FACTORY_NEW_E:
-        return "崭新出厂"
-    if MINIMAL_WEAR_S <= rand <= MINIMAL_WEAR_E:
-        return "略有磨损"
-    if FIELD_TESTED_S <= rand <= FIELD_TESTED_E:
-        return "久经沙场"
-    if WELL_WORN_S <= rand <= WELL_WORN_E:
-        return "破损不堪"
-    return "战痕累累"
-
-
-def random_color_and_st(rand: float) -> tuple[str, bool]:
-    """获取皮肤品质及是否暗金
-
-    参数:
-        rand (float): 随机rand
-
-    返回:
-        tuple[str, bool]: 品质，是否暗金
+    BUFF商品信息
     """
-    if rand <= KNIFE:
-        if random.random() <= KNIFE_ST:
-            return ("KNIFE", True)
-        return ("KNIFE", False)
-    elif KNIFE < rand <= RED:
-        if random.random() <= RED_ST:
-            return ("RED", True)
-        return ("RED", False)
-    elif RED < rand <= PINK:
-        if random.random() <= PINK_ST:
-            return ("PINK", True)
-        return ("PINK", False)
-    elif PINK < rand <= PURPLE:
-        if random.random() <= PURPLE_ST:
-            return ("PURPLE", True)
-        return ("PURPLE", False)
-    else:
-        if random.random() <= BLUE_ST:
-            return ("BLUE", True)
-        return ("BLUE", False)
+
+    icon_url: str
+    """商品图片"""
+    item_id: str | None
+    """Item id"""
+    original_icon_url: str
+    """商品原始图片"""
+    steam_price: float
+    """steam价格"""
+    steam_price_cny: float
+    """steam价格人民币"""
+    info: InnerInfo
+    """信息"""
+
+    @property
+    def tags(self) -> dict[str, Tag]:
+        return self.info.tags
 
 
-async def random_skin(num: int, case_name: str) -> list[tuple[BuffSkin, float]]:
+class BuffItem(BaseModel):
+    """buff商品"""
+
+    appid: int
+    """游戏id"""
+    bookmarked: bool
+    """是否收藏"""
+    buy_max_price: float
+    """最高购买价格"""
+    buy_num: int
+    """购买数量"""
+    can_bargain: bool
+    """是否可议价"""
+    can_search_by_tournament: bool
+    """是否可搜索锦标赛"""
+    description: str | None
+    """描述"""
+    game: str
+    """游戏名称"""
+    goods_info: GoodsInfo
+    """商品信息"""
+    has_buff_price_history: bool
+    """是否有价格历史"""
+    id: int
+    """皮肤id"""
+    market_hash_name: str
+    """皮肤英文hash名"""
+    market_min_price: str
+    """最低市场价格"""
+    name: str
+    """皮肤名称"""
+    quick_price: float
+    """快速购买价格"""
+    sell_min_price: float
+    """最低出售价格"""
+    sell_num: int
+    """出售数量"""
+    sell_reference_price: float
+    """出售参考价格"""
+    short_name: str
+    """皮肤短名称"""
+    steam_market_url: str
+    """steam市场链接"""
+    transacted_num: int
+    """交易数量"""
+
+
+class BuffResponse(BaseModel):
     """
-    随机抽取皮肤
+    Buff返回体
     """
-    case_name = case_name.replace("武器箱", "").replace(" ", "")
-    color_map = {}
-    for _ in range(num):
-        rand = random.random()
-        # 尝试降低磨损
-        if rand > MINIMAL_WEAR_E:
-            for _ in range(2):
-                if random.random() < 0.5:
-                    logger.debug(f"[START]开箱随机磨损触发降低磨损条件: {rand}")
-                    if random.random() < 0.2:
-                        rand /= 3
-                    else:
-                        rand /= 2
-                    logger.debug(f"[END]开箱随机磨损触发降低磨损条件: {rand}")
-                    break
-        abrasion = get_wear(rand)
-        logger.debug(f"开箱随机磨损: {rand} | {abrasion}")
-        color, is_stattrak = random_color_and_st(rand)
-        if not color_map.get(color):
-            color_map[color] = {}
-        if is_stattrak:
-            if not color_map[color].get(f"{abrasion}_st"):
-                color_map[color][f"{abrasion}_st"] = []
-            color_map[color][f"{abrasion}_st"].append(rand)
-        else:
-            if not color_map[color].get(abrasion):
-                color_map[color][f"{abrasion}"] = []
-            color_map[color][f"{abrasion}"].append(rand)
-    skin_list = []
-    for color in color_map:
-        for abrasion in color_map[color]:
-            rand_list = color_map[color][abrasion]
-            is_stattrak = "_st" in abrasion
-            abrasion = abrasion.replace("_st", "")
-            skin_list_ = await BuffSkin.random_skin(
-                len(rand_list), color, abrasion, is_stattrak, case_name
-            )
-            skin_list += [(skin, rand) for skin, rand in zip(skin_list_, rand_list)]
-    return skin_list
 
-
-# M249（StatTrak™） | 等高线
+    items: list[BuffItem]
+    """数据列表"""
+    page_num: int
+    """当前页数"""
+    page_size: int
+    """当前页数内容数量"""
+    total_count: int
+    """总共数量"""
+    total_page: int
+    """总页数"""
