@@ -123,5 +123,5 @@ class Report:
             anime = Anime(**res.json()[week])
         except IndexError:
             anime = Anime(**res.json()[-1])
-        data_list.extend((data.name_cn, data.image) for data in anime.items)
+        data_list.extend((data.name_cn if data.name_cn else data.name, data.image) for data in anime.items)
         return data_list[:8] if len(data_list) > 8 else data_list
