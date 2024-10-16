@@ -118,6 +118,10 @@ class Report:
         """获取动漫数据"""
         res = await AsyncHttpx.get(cls.anime_url)
         data_list = []
-        anime = Anime(**res.json()[-1])
+        week = datetime.now().weekday()
+        try:
+            anime = Anime(**res.json()[week])
+        except IndexError:
+            anime = Anime(**res.json()[-1])
         data_list.extend((data.name_cn, data.image) for data in anime.items)
         return data_list[:8] if len(data_list) > 8 else data_list
