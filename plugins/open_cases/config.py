@@ -65,6 +65,7 @@ COLOR2NAME = {
     "PINK": "保密",
     "RED": "隐秘",
     "KNIFE": "非凡",
+    "CASE": "武器箱",
 }
 
 COLOR2COLOR = {
@@ -75,6 +76,7 @@ COLOR2COLOR = {
     "PINK": (255, 0, 162),
     "RED": (255, 34, 0),
     "KNIFE": (255, 225, 0),
+    "CASE": (255, 225, 0),
 }
 
 ABRASION_SORT = ["崭新出厂", "略有磨损", "久经沙场", "破损不堪", "战横累累"]
@@ -180,6 +182,7 @@ COLOR2NAME = {
     "PINK": "保密",
     "RED": "隐秘",
     "KNIFE": "罕见",
+    "CASE": "武器箱",
 }
 
 COLOR2CN = {"BLUE": "蓝", "PURPLE": "紫", "PINK": "粉", "RED": "红", "KNIFE": "金"}

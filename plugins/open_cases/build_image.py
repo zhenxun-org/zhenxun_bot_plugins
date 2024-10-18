@@ -1,6 +1,6 @@
 import os
 import random
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from tortoise.functions import Count
 from zhenxun.configs.path_config import IMAGE_PATH
@@ -83,9 +83,19 @@ async def generate_skin(skin: BuffSkin | str, update_count: int) -> BuildImage |
         case_bk = BuildImage(
             700, 200, color=(25, 25, 25, 100), font_size=25, font="CJGaoDeGuo.otf"
         )
-        # if file_path.exists():
-        #     skin_img = BuildImage(200, 200, background=file_path)
-        #     await case_bk.paste(skin_img, (10, 10))
+        case_data = await BuffSkin.get_or_none(case_name=skin, color="CASE")
+        if case_data:
+            name = f"{case_data.name}-{case_data.skin_name}-{case_data.abrasion}"
+            file_path = (
+                BASE_PATH
+                / cn2py(case_data.case_name.split(",")[0])
+                / f"{cn2py(name)}.jpg"
+            )
+            if not file_path.exists():
+                logger.warning(f"皮肤图片: {name} 不存在", "查看武器箱")
+            else:
+                skin_img = BuildImage(200, 200, background=file_path)
+                await case_bk.paste(skin_img, (10, 10))
         await case_bk.line((250, 10, 250, 190))
         await case_bk.line((280, 160, 660, 160))
         name_icon = BuildImage(30, 30, background=ICON_PATH / "box_white.png")
@@ -101,7 +111,12 @@ async def generate_skin(skin: BuffSkin | str, update_count: int) -> BuildImage |
         price_icon = BuildImage(30, 30, background=ICON_PATH / "price_white.png")
         await case_bk.paste(price_icon, (260, 114))
         await case_bk.text((295, 120), "单价:", (255, 255, 255))
-        await case_bk.text((340, 120), "unknown", (0, 255, 98), font_size=30)
+        await case_bk.text(
+            (340, 120),
+            str(case_data.sell_reference_price) if case_data else "unknown",
+            (0, 255, 98),
+            font_size=30,
+        )
 
         update_count_icon = BuildImage(
             40, 40, background=ICON_PATH / "reload_white.png"
@@ -112,15 +127,38 @@ async def generate_skin(skin: BuffSkin | str, update_count: int) -> BuildImage |
         num_icon = BuildImage(30, 30, background=ICON_PATH / "num_white.png")
         await case_bk.paste(num_icon, (455, 70))
         await case_bk.text((490, 75), "在售:", (255, 255, 255))
-        await case_bk.text((535, 75), "unknown", (144, 0, 255), font_size=30)
+        await case_bk.text(
+            (535, 75),
+            str(case_data.sell_num) if case_data else "unknown",
+            (144, 0, 255),
+            font_size=30,
+        )
 
         want_buy_icon = BuildImage(30, 30, background=ICON_PATH / "want_buy_white.png")
         await case_bk.paste(want_buy_icon, (455, 114))
         await case_bk.text((490, 120), "求购:", (255, 255, 255))
-        await case_bk.text((535, 120), "unknown", (144, 0, 255), font_size=30)
+        await case_bk.text(
+            (535, 120),
+            str(case_data.buy_num) if case_data else "unknown",
+            (144, 0, 255),
+            font_size=30,
+        )
 
-        await case_bk.text((275, 165), "更新时间", (255, 255, 255), font_size=22)
-        date = "unknown"
+        await case_bk.text(
+            (275, 165),
+            "更新日期: ",
+            (255, 255, 255),
+            font_size=22,
+        )
+        date = (
+            str(
+                case_data.update_time.replace(microsecond=0).astimezone(
+                    timezone(timedelta(hours=8))
+                )
+            ).split("+")[0]
+            if case_data
+            else "unknown"
+        )
         await case_bk.text(
             (350, 165),
             date,
@@ -150,9 +188,7 @@ async def generate_skin(skin: BuffSkin | str, update_count: int) -> BuildImage |
         await skin_bk.text((175, 15), str(update_count), (255, 255, 255))
         await skin_bk.text((10, 185), f"{skin.skin_name}", (255, 255, 255), "width")
         await skin_bk.text((10, 218), "品质:", (255, 255, 255))
-        await skin_bk.text(
-            (55, 218), COLOR2NAME[skin.color][:2], COLOR2COLOR[skin.color]
-        )
+        await skin_bk.text((55, 218), COLOR2NAME[skin.color], COLOR2COLOR[skin.color])
         await skin_bk.text((100, 218), "类型:", (255, 255, 255))
         await skin_bk.text((145, 218), skin.weapon_type, (255, 255, 255))
         return skin_bk

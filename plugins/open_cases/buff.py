@@ -33,7 +33,9 @@ class CaseManager:
 
     @classmethod
     async def reload(cls):
-        cls.CURRENT_CASES = list(
+        cls.CURRENT_CASES = await BuffSkin.filter(color="CASE").values_list(
+            "case_name", flat=True
+        ) or list(
             set(
                 await BuffSkin.filter(case_name__not="未知武器箱")
                 .annotate()

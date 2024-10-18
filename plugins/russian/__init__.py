@@ -1,4 +1,5 @@
 from nonebot.adapters import Bot
+from zhenxun.configs.config import BotConfig
 from nonebot.plugin import PluginMetadata
 from nonebot_plugin_alconna import Arparma
 from nonebot_plugin_alconna import At as alcAt
@@ -9,6 +10,7 @@ from zhenxun.configs.utils import PluginExtraData, RegisterConfig
 from zhenxun.services.log import logger
 from zhenxun.utils.depends import UserName
 from zhenxun.utils.message import MessageUtils
+from zhenxun.utils.platform import PlatformUtils
 
 from .command import (
     _accept_matcher,
@@ -74,7 +76,7 @@ async def _(
     message: UniMsg,
     arparma: Arparma,
     num: str,
-    money:  Match[int],
+    money: Match[int],
     at_user: Match[alcAt],
     uname: str = UserName(),
 ):
@@ -85,10 +87,10 @@ async def _(
         await MessageUtils.build_message("用户id为空...").finish()
     if not gid:
         await MessageUtils.build_message("群组id为空...").finish()
-    money = money.result if money.available else 200
-    if money <= 0:
+    money_ = money.result if money.available else 200
+    if money_ <= 0:
         await MessageUtils.build_message("赌注金额必须大于0!").finish(reply_to=True)
-    if num in ["取消", "算了"]:
+    if num in {"取消", "算了"}:
         await MessageUtils.build_message("已取消装弹...").finish()
     if not num.isdigit():
         await MessageUtils.build_message("输入的子弹数必须是数字！").finish(
@@ -99,7 +101,7 @@ async def _(
         await MessageUtils.build_message("子弹数量必须在1-6之间!").finish(reply_to=True)
     _at_user = at_user.result.target if at_user.available else None
     rus = Russian(
-        at_user=_at_user, player1=(session.id1, uname), money=money, bullet_num=b_num
+        at_user=_at_user, player1=(session.id1, uname), money=money_, bullet_num=b_num
     )
     result = await russian_manage.add_russian(bot, gid, rus)
     await result.send()
@@ -156,9 +158,12 @@ async def _(bot: Bot, session: EventSession, arparma: Arparma, uname: str = User
     result, settle = await russian_manage.shoot(
         bot, gid, session.id1, uname, session.platform
     )
-    await result.send()
     if settle:
-        await settle.send()
+        if PlatformUtils.is_qbot(bot):
+            result.extend(settle)
+            await result.send()
+        else:
+            await settle.send()
     logger.info("俄罗斯轮盘开枪", arparma.header_result, session=session)
 
 
