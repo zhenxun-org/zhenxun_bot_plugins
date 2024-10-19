@@ -16,6 +16,7 @@ from .config import REPORT_PATH, Anime, Hitokoto, favs_arr, favs_list
 class Report:
     hitokoto_url = "https://v1.hitokoto.cn/?c=a"
     six_url = "https://v2.alapi.cn/api/zaobao"
+    game_url = "https://www.4gamers.com.tw/rss/latest-news"
     bili_url = "https://s.search.bilibili.com/main/hotword"
     it_url = "https://www.ithome.com/rss/"
     anime_url = "https://api.bgm.tv/calendar"
