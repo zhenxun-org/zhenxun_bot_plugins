@@ -1,16 +1,12 @@
 from nonebot.adapters import Bot
-from zhenxun.configs.config import BotConfig
 from nonebot.plugin import PluginMetadata
-from nonebot_plugin_alconna import Arparma
+from nonebot_plugin_alconna import Arparma, Match, UniMsg
 from nonebot_plugin_alconna import At as alcAt
-from nonebot_plugin_alconna import Match, UniMsg
 from nonebot_plugin_session import EventSession
-
 from zhenxun.configs.utils import PluginExtraData, RegisterConfig
 from zhenxun.services.log import logger
 from zhenxun.utils.depends import UserName
 from zhenxun.utils.message import MessageUtils
-from zhenxun.utils.platform import PlatformUtils
 
 from .command import (
     _accept_matcher,
@@ -158,12 +154,9 @@ async def _(bot: Bot, session: EventSession, arparma: Arparma, uname: str = User
     result, settle = await russian_manage.shoot(
         bot, gid, session.id1, uname, session.platform
     )
+    await result.send()
     if settle:
-        if PlatformUtils.is_qbot(bot):
-            result.extend(settle)
-            await result.send()
-        else:
-            await settle.send()
+        await settle.send()
     logger.info("俄罗斯轮盘开枪", arparma.header_result, session=session)
 
 

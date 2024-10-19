@@ -3,7 +3,6 @@ import time
 from io import BytesIO
 
 from pydantic import BaseModel
-
 from zhenxun.models.group_member_info import GroupInfoUser
 from zhenxun.models.user_console import UserConsole
 from zhenxun.utils.image_utils import BuildImage
@@ -111,7 +110,7 @@ class RedBag(BaseModel):
                 ]
                 await user_background.text((225, 15), name[0] if name else "")
                 amount_image = await BuildImage.build_text_image(
-                    f"{amount} 元", size=30, font_color="#cdac72"
+                    f"{amount} 金币", size=30, font_color="#cdac72"
                 )
                 await user_background.paste(
                     amount_image, (user_background.width - amount_image.width - 20, 50)
