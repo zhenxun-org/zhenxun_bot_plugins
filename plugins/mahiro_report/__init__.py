@@ -39,7 +39,7 @@ __plugin_meta__ = PluginMetadata(
                 module="alapi",
                 key="ALAPI_TOKEN",
                 value=None,
-                help="在https://admin.alapi.cn/user/login登录后获取token并填写到config.yaml中",
+                help="在https://admin.alapi.cn/user/login登录后获取token",
             )
         ]
     ).dict(),
