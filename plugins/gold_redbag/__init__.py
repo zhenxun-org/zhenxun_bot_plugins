@@ -221,7 +221,7 @@ async def _(
             else MessageUtils.build_message("没有红包给你开！")
         )
         await send_msg.send(reply_to=True)
-        if settlement_list and PlatformUtils.is_qbot(session):
+        if settlement_list:
             for red_bag in settlement_list:
                 result_image = await red_bag.build_amount_rank(rank_num, platform)
                 await MessageUtils.build_message(

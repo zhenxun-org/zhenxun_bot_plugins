@@ -170,8 +170,10 @@ class OpenCaseManager:
             case_name = random.choice(CaseManager.CURRENT_CASES)  # type: ignore
         if case_name and case_name not in CaseManager.CURRENT_CASES:
             return (
-                "武器箱未收录, 当前可用武器箱:\n"
-                + ", ".join(CaseManager.CURRENT_CASES),  # type: ignore
+                MessageUtils.build_message(
+                    "武器箱未收录, 当前可用武器箱:\n"
+                    + ", ".join(CaseManager.CURRENT_CASES)  # type: ignore
+                ),
                 "",
                 0,
             )
@@ -331,6 +333,11 @@ class OpenCaseManager:
         )
         if not isinstance(user, OpenCasesUser):
             return user
+        if user.today_open_total + num > max_count:
+            return MessageUtils.build_message(
+                "当前剩余开箱次数不足，"
+                f"当前剩余开箱次数: {max_count - user.today_open_total}"
+            )
         logger.debug(f"尝试开启武器箱: {case_name}", "开箱", session=session)
         return await cls.__start_open_one(case_name, user, num, max_count, session)
 

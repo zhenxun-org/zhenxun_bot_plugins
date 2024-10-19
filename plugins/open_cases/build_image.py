@@ -354,6 +354,7 @@ async def build_case_image(case_name: str | None) -> BuildImage | str:
 
     if h + img_h + 100 < A.height:
         await A.crop((0, 0, A.width, h + img_h + 100))
+    await A.resize(0.5)
     return A
 
 
