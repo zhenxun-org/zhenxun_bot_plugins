@@ -2,15 +2,15 @@ import asyncio
 import os
 import random
 from io import BytesIO
-from typing import Dict
 
 from nonebot.adapters import Bot
 from nonebot.exception import ActionFailed
 from nonebot_plugin_alconna import UniMessage
-
+from nonebot_plugin_uninfo import Uninfo
 from zhenxun.configs.config import BotConfig, Config
 from zhenxun.configs.path_config import IMAGE_PATH
 from zhenxun.models.user_console import UserConsole
+from zhenxun.services.log import logger
 from zhenxun.utils.image_utils import BuildImage
 from zhenxun.utils.message import MessageUtils
 from zhenxun.utils.platform import PlatformUtils
@@ -19,8 +19,7 @@ from .config import FestiveRedBagManage, GroupRedBag, RedBag
 
 
 class RedBagManager:
-
-    _data: Dict[str, GroupRedBag] = {}
+    _data: dict[str, GroupRedBag] = {}  # noqa: RUF012
 
     @classmethod
     def get_group_data(cls, group_id: str) -> GroupRedBag:
@@ -65,7 +64,7 @@ class RedBagManager:
                     ]
                 ).send(target=target, bot=bot)
             except ActionFailed:
-                pass
+                logger.error(f"发送节日红包结算消息失败，群组id: {group_id}")
 
     @classmethod
     async def end_red_bag(
@@ -112,11 +111,14 @@ class RedBagManager:
                 )
 
     @classmethod
-    async def check_gold(cls, user_id: str, amount: int, platform: str) -> str | None:
+    async def check_gold(
+        cls, user_id: str, num: int, amount: int, platform: str
+    ) -> str | None:
         """检查金币数量是否合法
 
         参数:
             user_id: 用户id
+            num: 数量
             amount: 金币数量
             platform: 所属平台
 
@@ -126,20 +128,20 @@ class RedBagManager:
         user = await UserConsole.get_user(user_id, platform)
         if amount < 1:
             return "小气鬼，要别人倒贴金币给你嘛！"
-        if user.gold < amount:
-            return "没有金币的话请不要发红包..."
-        return None
+        if num < 0:
+            return "数量不能小于0哦！"
+        return "没有金币的话请不要发红包..." if user.gold < amount else None
 
     @classmethod
     async def random_red_bag_background(
-        cls, user_id: str, msg: str = "恭喜发财 大吉大利", platform: str = ""
+        cls, session: Uninfo, msg: str = "恭喜发财 大吉大利", is_festival: bool = False
     ) -> BuildImage:
         """构造发送红包图片
 
         参数:
-            user_id: 用户id
+            session: Uninfo
             msg: 红包消息.
-            platform: 平台.
+            is_festival: 是否为节日红包
 
         异常:
             ValueError: 图片背景列表为空
@@ -157,12 +159,15 @@ class RedBagManager:
             font_size=38,
             background=IMAGE_PATH / "prts" / "redbag_2" / random_redbag,
         )
-        ava_byte = await PlatformUtils.get_user_avatar(user_id, platform)
-        ava = None
-        if ava_byte:
+        platform = PlatformUtils.get_platform(session)
+        ava = BuildImage(65, 65, color=(0, 0, 0))
+        if is_festival:
+            if bot_id := BotConfig.get_qbot_uid(session.self_id):
+                ava_byte = await PlatformUtils.get_user_avatar(bot_id, platform)
+        elif ava_byte := await PlatformUtils.get_user_avatar(
+            session.user.id, platform, session.self_id
+        ):
             ava = BuildImage(65, 65, background=BytesIO(ava_byte))
-        else:
-            ava = BuildImage(65, 65, color=(0, 0, 0))
         await ava.circle()
         await redbag.text(
             (int((redbag.size[0] - redbag.getsize(msg)[0]) / 2), 210),
@@ -174,15 +179,14 @@ class RedBagManager:
 
     @classmethod
     async def build_open_result_image(
-        cls, red_bag: RedBag, user_id: str, amount: int, platform: str
+        cls, red_bag: RedBag, session: Uninfo, amount: int
     ) -> BuildImage:
         """构造红包开启图片
 
         参数:
             red_bag: RedBag
-            user_id: 开启红包用户id
+            session: Uninfo
             amount: 开启红包获取的金额
-            platform: 平台
 
         异常:
             ValueError: 图片背景列表为空
@@ -203,18 +207,21 @@ class RedBagManager:
         size = BuildImage.get_text_size(red_bag.name, font_size=50)
         ava_bk = BuildImage(100 + size[0], 66, (255, 255, 255, 0), font_size=50)
 
-        ava_byte = await PlatformUtils.get_user_avatar(user_id, platform)
-        ava = None
-        if ava_byte:
-            ava = BuildImage(66, 66, background=BytesIO(ava_byte))
+        platform = PlatformUtils.get_platform(session)
+        if ava_byte := await PlatformUtils.get_user_avatar(
+            session.user.id, platform, session.self_id
+        ):
+            ava = BuildImage(65, 65, background=BytesIO(ava_byte))
         else:
-            ava = BuildImage(66, 66, color=(0, 0, 0))
+            ava = BuildImage(65, 65, color=(0, 0, 0))
         await ava_bk.paste(ava)
         await ava_bk.text((100, 7), red_bag.name)
-        ava_bk_w, ava_bk_h = ava_bk.size
+        ava_bk_w, _ = ava_bk.size
         await head.paste(ava_bk, (int((1000 - ava_bk_w) / 2), 300))
         size = BuildImage.get_text_size(str(amount), font_size=150)
-        amount_image = BuildImage(size[0], size[1], (255, 255, 255, 0), font_size=150)
+        amount_image = BuildImage(
+            size[0], size[1] + 50, (255, 255, 255, 0), font_size=150
+        )
         await amount_image.text((0, 0), str(amount), fill=(209, 171, 108))
         # 金币中文
         await head.paste(amount_image, (int((1000 - size[0]) / 2) - 50, 460))

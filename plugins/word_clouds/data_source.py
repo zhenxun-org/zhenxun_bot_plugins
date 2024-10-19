@@ -11,11 +11,10 @@ from emoji import replace_emoji  # type: ignore
 from nonebot.utils import run_sync
 from PIL import Image as IMG
 from wordcloud import ImageColorGenerator, WordCloud
-
 from zhenxun.configs.config import Config
 from zhenxun.configs.path_config import FONT_PATH, IMAGE_PATH
 from zhenxun.models.chat_history import ChatHistory
-from zhenxun.services import logger
+from zhenxun.services.log import logger
 from zhenxun.utils.http_utils import AsyncHttpx
 
 

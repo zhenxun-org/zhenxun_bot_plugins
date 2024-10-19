@@ -1,28 +1,22 @@
-from datetime import datetime, timedelta
-import nonebot
-
-from zhenxun.utils.common_utils import CommonUtils
-from zhenxun.utils.platform import broadcast_group
-
-from .build_image import build_case_image, build_skin_trends
-from zhenxun.utils.depends import UserName
-
-
-from .config import CASE2ID, KNIFE2ID
-from .exception import NotLoginRequired
-from .buff import BuffUpdateManager, CaseManager
 import asyncio
-from nonebot_plugin_apscheduler import scheduler
 import random
+from datetime import datetime, timedelta
+
+import nonebot
 from nonebot.plugin import PluginMetadata
 from nonebot_plugin_alconna import Arparma, Match
+from nonebot_plugin_apscheduler import scheduler
 from nonebot_plugin_session import EventSession
-
 from zhenxun.configs.utils import PluginCdBlock, PluginExtraData, RegisterConfig, Task
 from zhenxun.services.log import logger
+from zhenxun.utils.common_utils import CommonUtils
+from zhenxun.utils.depends import UserName
 from zhenxun.utils.image_utils import text2image
 from zhenxun.utils.message import MessageUtils
-from .data_source import OpenCaseManager, auto_update, reset_count_daily
+from zhenxun.utils.platform import broadcast_group
+
+from .buff import BuffUpdateManager, CaseManager
+from .build_image import build_case_image, build_skin_trends
 from .command import (
     _group_open_matcher,
     _knifes_matcher,
@@ -34,6 +28,9 @@ from .command import (
     _show_case_matcher,
     _update_matcher,
 )
+from .config import CASE2ID, KNIFE2ID
+from .data_source import OpenCaseManager, auto_update, reset_count_daily
+from .exception import NotLoginRequired
 
 __plugin_meta__ = PluginMetadata(
     name="CSGO开箱",
@@ -292,8 +289,8 @@ async def _():
     await CaseManager.reload()
 
 
-async def check(group_id: str) -> bool:
-    return not await CommonUtils.task_is_block("open_case_reset_remind", group_id)
+async def check(bot, group_id: str) -> bool:
+    return not await CommonUtils.task_is_block(bot, "open_case_reset_remind", group_id)
 
 
 @scheduler.scheduled_job(

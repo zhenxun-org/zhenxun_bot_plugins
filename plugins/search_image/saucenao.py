@@ -3,7 +3,7 @@ from pathlib import Path
 
 from zhenxun.configs.config import Config
 from zhenxun.configs.path_config import TEMP_PATH
-from zhenxun.services import logger
+from zhenxun.services.log import logger
 from zhenxun.utils.http_utils import AsyncHttpx
 
 API_URL_SAUCENAO = "https://saucenao.com/search.php"
