@@ -7,21 +7,22 @@ from nonebot_plugin_htmlrender import template_to_pic
 
 from zhenxun.utils.http_utils import AsyncHttpx
 from zhenxun.utils._build_image import BuildImage
-from zhenxun.configs.config import Config
 from zhenxun.configs.path_config import TEMPLATE_PATH
+from zhenxun.configs.config import Config
 
-from .config import REPORT_PATH, Anime, Hitokoto, favs_arr, favs_list
+
+from .config import REPORT_PATH, Anime, SixData, Hitokoto, favs_arr, favs_list
 
 
 class Report:
     hitokoto_url = "https://v1.hitokoto.cn/?c=a"
-    six_url = "https://v2.alapi.cn/api/zaobao"
+    six_url = "https://60s.viki.moe/?v2=1"
     game_url = "https://www.4gamers.com.tw/rss/latest-news"
     bili_url = "https://s.search.bilibili.com/main/hotword"
     it_url = "https://www.ithome.com/rss/"
     anime_url = "https://api.bgm.tv/calendar"
 
-    week = {
+    week = {  # noqa: RUF012
         0: "一",
         1: "二",
         2: "三",
@@ -98,16 +99,20 @@ class Report:
     @classmethod
     async def get_six(cls) -> list[str]:
         """获取60s看时间数据"""
-        token = Config.get_config("alapi", "ALAPI_TOKEN")#从配置中获取alapi
-        payload = {"token": token, "format": "json"}
-        headers = {'Content-Type': "application/x-www-form-urlencoded"}
-        res = await AsyncHttpx.post(cls.six_url, data=payload, headers=headers)
-        if res.status_code == 200:
-            data = res.json()
-            news_items = data.get("data", {}).get("news", [])
-            return news_items[:11] if len(news_items) > 11 else news_items
-        else:
-            return ["Error: Unable to fetch data"]
+        token = Config.get_config("alapi", "ALAPI_TOKEN")  # 从配置中获取alapi token
+        if token:  # 如果配置了token
+            payload = {"token": token}
+            res = await AsyncHttpx.post("https://v2.alapi.cn/api/zaobao", json=payload)
+            if res.status_code == 200:
+                data = res.json()
+                news_items = data.get("data", {}).get("news", [])
+                return news_items[:11] if len(news_items) > 11 else news_items
+            else:
+                return ["Error: Unable to fetch data using ALAPI"]
+        else:  # 如果没有配置token，使用默认的方式获取数据
+            res = await AsyncHttpx.get(cls.six_url)
+            data = SixData(**res.json())
+            return data.data.news[:11] if len(data.data.news) > 11 else data.data.news
 
     @classmethod
     async def get_it(cls) -> list[str]:
@@ -121,7 +126,6 @@ class Report:
                 titles.append(title_element.text)
         return titles[:11] if len(titles) > 11 else titles
 
-
     @classmethod
     async def get_anime(cls) -> list[tuple[str, str]]:
         """获取动漫数据"""
@@ -134,4 +138,3 @@ class Report:
             anime = Anime(**res.json()[-1])
         data_list.extend((data.name_cn or data.name, data.image) for data in anime.items)
         return data_list[:8] if len(data_list) > 8 else data_list
-
