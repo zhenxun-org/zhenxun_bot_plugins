@@ -5,8 +5,7 @@ from nonebot.adapters import Event
 from nonebot.plugin import PluginMetadata
 from nonebot_plugin_alconna import Image as alcImg
 from nonebot_plugin_alconna import UniMsg
-from nonebot_plugin_session import EventSession
-
+from nonebot_plugin_uninfo import Uninfo
 from zhenxun.configs.config import BotConfig, Config
 from zhenxun.configs.path_config import TEMP_PATH
 from zhenxun.configs.utils import PluginExtraData, RegisterConfig, Task
@@ -98,18 +97,14 @@ _matcher = on_message(rule=ensure_group, priority=999)
 
 
 @_matcher.handle()
-async def _(message: UniMsg, event: Event, session: EventSession):
-    group_id = session.id2 or ""
-    if await CommonUtils.task_is_block("fudu", group_id):
+async def _(message: UniMsg, event: Event, session: Uninfo):
+    group_id = session.group.id if session.group else ""
+    if await CommonUtils.task_is_block(session, "fudu", group_id):
         return
     if event.is_tome():
         return
     plain_text = message.extract_plain_text()
-    image_list = []
-    for m in message:
-        if isinstance(m, alcImg):
-            if m.url:
-                image_list.append(m.url)
+    image_list = [m.url for m in message if isinstance(m, alcImg) and m.url]
     if not plain_text and not image_list:
         return
     if plain_text and plain_text.startswith(f"@可爱的{BotConfig.self_nickname}"):
@@ -118,7 +113,7 @@ async def _(message: UniMsg, event: Event, session: EventSession):
         img_hash = await get_download_image_hash(image_list[0], group_id)
     else:
         img_hash = ""
-    add_msg = plain_text + "|-|" + img_hash
+    add_msg = f"{plain_text}|-|{img_hash}"
     if _manage.size(group_id) == 0:
         _manage.append(group_id, add_msg)
     elif _manage.check(group_id, add_msg):
@@ -126,26 +121,26 @@ async def _(message: UniMsg, event: Event, session: EventSession):
     else:
         _manage.clear(group_id)
         _manage.append(group_id, add_msg)
-    if _manage.size(group_id) > 2:
-        if random.random() < base_config.get(
-            "FUDU_PROBABILITY"
-        ) and not _manage.is_repeater(group_id):
-            if random.random() < 0.2:
-                if plain_text.startswith("打断施法"):
-                    await MessageUtils.build_message("打断" + plain_text).finish()
-                else:
-                    await MessageUtils.build_message("打断施法！").finish()
-            _manage.set_repeater(group_id)
-            rst = None
-            if image_list and plain_text:
-                rst = MessageUtils.build_message(
-                    [plain_text, TEMP_PATH / f"compare_download_{group_id}_img.jpg"]
-                )
-            elif image_list:
-                rst = MessageUtils.build_message(
-                    TEMP_PATH / f"compare_download_{group_id}_img.jpg"
-                )
-            elif plain_text:
-                rst = MessageUtils.build_message(plain_text)
-            if rst:
-                await rst.finish()
+    if _manage.size(group_id) > 2 and (
+        random.random() < base_config.get("FUDU_PROBABILITY")
+        and not _manage.is_repeater(group_id)
+    ):
+        if random.random() < 0.2:
+            if plain_text.startswith("打断施法"):
+                await MessageUtils.build_message(f"打断{plain_text}").finish()
+            else:
+                await MessageUtils.build_message("打断施法！").finish()
+        _manage.set_repeater(group_id)
+        rst = None
+        if image_list and plain_text:
+            rst = MessageUtils.build_message(
+                [plain_text, TEMP_PATH / f"compare_download_{group_id}_img.jpg"]
+            )
+        elif image_list:
+            rst = MessageUtils.build_message(
+                TEMP_PATH / f"compare_download_{group_id}_img.jpg"
+            )
+        elif plain_text:
+            rst = MessageUtils.build_message(plain_text)
+        if rst:
+            await rst.finish()
