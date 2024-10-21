@@ -8,6 +8,8 @@ from nonebot_plugin_htmlrender import template_to_pic
 from zhenxun.utils.http_utils import AsyncHttpx
 from zhenxun.utils._build_image import BuildImage
 from zhenxun.configs.path_config import TEMPLATE_PATH
+from zhenxun.configs.config import Config
+
 
 from .config import REPORT_PATH, Anime, SixData, Hitokoto, favs_arr, favs_list
 
@@ -97,9 +99,20 @@ class Report:
     @classmethod
     async def get_six(cls) -> list[str]:
         """获取60s看时间数据"""
-        res = await AsyncHttpx.get(cls.six_url)
-        data = SixData(**res.json())
-        return data.data.news[:11] if len(data.data.news) > 11 else data.data.news
+        token = Config.get_config("alapi", "ALAPI_TOKEN")  # 从配置中获取alapi token
+        if token:  # 如果配置了token
+            payload = {"token": token}
+            res = await AsyncHttpx.post("https://v2.alapi.cn/api/zaobao", json=payload)
+            if res.status_code == 200:
+                data = res.json()
+                news_items = data.get("data", {}).get("news", [])
+                return news_items[:11] if len(news_items) > 11 else news_items
+            else:
+                return ["Error: Unable to fetch data using ALAPI"]
+        else:  # 如果没有配置token，使用默认的方式获取数据
+            res = await AsyncHttpx.get(cls.six_url)
+            data = SixData(**res.json())
+            return data.data.news[:11] if len(data.data.news) > 11 else data.data.news
 
     @classmethod
     async def get_it(cls) -> list[str]:
