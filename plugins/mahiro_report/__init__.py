@@ -17,7 +17,6 @@ from zhenxun.utils.platform import broadcast_group
 from zhenxun.services.plugin_init import PluginInit
 from zhenxun.configs.path_config import TEMPLATE_PATH
 from zhenxun.configs.utils import Task, PluginExtraData, RegisterConfig
-from zhenxun.configs.config import Config  # 引入 Config 用于获取 ALAPI_TOKEN
 
 from .config import REPORT_PATH
 from .data_source import Report
@@ -45,7 +44,6 @@ __plugin_meta__ = PluginMetadata(
     ).dict(),
 )
 
-
 RESOURCE_PATH = TEMPLATE_PATH / "mahiro_report"
 
 _matcher = on_alconna(Alconna("真寻日报"), priority=5, block=True, use_origin=True)
@@ -66,12 +64,6 @@ async def _(session: EventSession, arparma: Arparma):
 
 @_matcher.handle()
 async def _(session: EventSession, arparma: Arparma):
-    # 检查 ALAPI_TOKEN 是否存在
-    alapi_token = Config.get_config("alapi", "ALAPI_TOKEN")
-    if not alapi_token:
-        await MessageUtils.build_message("缺失ALAPI TOKEN，请在config.yaml中填写！").send(at_sender=True)
-        return  # 停止执行
-
     try:
         await MessageUtils.build_message(await Report.get_report_image()).send()
         logger.info("查看真寻日报", arparma.header_result, session=session)
@@ -114,7 +106,7 @@ async def _():
             logger.info("自动生成日报成功...")
             break
         except TimeoutError:
-            logger.warning("自动生成日报失败...")
+            logger.warning("自动是生成日报失败...")
 
 
 @scheduler.scheduled_job(
