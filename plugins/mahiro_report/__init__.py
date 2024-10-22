@@ -14,7 +14,9 @@ from zhenxun.services.log import logger
 from zhenxun.utils.message import MessageUtils
 from zhenxun.utils.common_utils import CommonUtils
 from zhenxun.utils.platform import broadcast_group
-
+from zhenxun.services.plugin_init import PluginInit
+from zhenxun.configs.path_config import TEMPLATE_PATH
+from zhenxun.configs.utils import Task, PluginExtraData, RegisterConfig
 
 from .config import REPORT_PATH
 from .data_source import Report
@@ -88,8 +90,8 @@ class MyPluginInit(PluginInit):
 driver = nonebot.get_driver()
 
 
-async def check(group_id: str) -> bool:
-    return not await CommonUtils.task_is_block("mahiro_report", group_id)
+async def check(bot: Bot, group_id: str) -> bool:
+    return not await CommonUtils.task_is_block(bot, "mahiro_report", group_id)
 
 
 @scheduler.scheduled_job(
