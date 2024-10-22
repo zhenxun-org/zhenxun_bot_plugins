@@ -66,12 +66,6 @@ async def _(session: EventSession, arparma: Arparma):
 
 @_matcher.handle()
 async def _(session: EventSession, arparma: Arparma):
-    # 检查 ALAPI_TOKEN 是否存在
-    alapi_token = Config.get_config("alapi", "ALAPI_TOKEN")
-    if not alapi_token:
-        await MessageUtils.build_message("缺失ALAPI TOKEN，请在config.yaml中填写！").send(at_sender=True)
-        return  # 停止执行
-
     try:
         await MessageUtils.build_message(await Report.get_report_image()).send()
         logger.info("查看真寻日报", arparma.header_result, session=session)
@@ -98,8 +92,8 @@ class MyPluginInit(PluginInit):
 driver = nonebot.get_driver()
 
 
-async def check(group_id: str) -> bool:
-    return not await CommonUtils.task_is_block("mahiro_report", group_id)
+async def check(bot: Bot, group_id: str) -> bool:
+    return not await CommonUtils.task_is_block(bot, "mahiro_report", group_id)
 
 
 @scheduler.scheduled_job(
