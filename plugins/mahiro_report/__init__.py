@@ -14,9 +14,7 @@ from zhenxun.services.log import logger
 from zhenxun.utils.message import MessageUtils
 from zhenxun.utils.common_utils import CommonUtils
 from zhenxun.utils.platform import broadcast_group
-from zhenxun.services.plugin_init import PluginInit
-from zhenxun.configs.path_config import TEMPLATE_PATH
-from zhenxun.configs.utils import Task, PluginExtraData, RegisterConfig
+
 
 from .config import REPORT_PATH
 from .data_source import Report
