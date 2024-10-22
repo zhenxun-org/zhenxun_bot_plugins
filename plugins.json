@@ -375,7 +375,7 @@
         "description": "戳一戳发送语音美图萝莉图不美哉？",
         "usage": "戳一戳随机掉落语音或美图萝莉图",
         "author": "HibiKier",
-        "version": "0.1-eb2b7db",
+        "version": "0.1-5fbfdd5",
         "plugin_type": "DEPENDANT",
         "is_dir": true
     },
@@ -405,7 +405,7 @@
         "description": "嗨嗨，这里是小记者真寻哦",
         "usage": "真寻日报",
         "author": "HibiKier",
-        "version": "0.1",
+        "version": "0.1-606459a",
         "plugin_type": "NORMAL",
         "is_dir": true
     }
