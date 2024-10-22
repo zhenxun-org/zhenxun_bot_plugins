@@ -40,6 +40,7 @@ class Report:
         for f in REPORT_PATH.iterdir():
             f.unlink()
         zhdata = ZhDate.from_datetime(now)
+        alapi_token = Config.get_config("alapi", "ALAPI_TOKEN")
         data = {
             "data_festival": cls.festival_calculation(),
             "data_hitokoto": await cls.get_hitokoto(),
@@ -95,8 +96,8 @@ class Report:
         return [item["keyword"] for item in data["list"]]
 
     @classmethod
-    async def get_six(cls) -> list[str]:
-        """获取60s看时间数据"""
+    async def get_alapi_data(cls) -> list[str]:
+        """获取alapi数据"""
         token = Config.get_config("alapi", "ALAPI_TOKEN")#从配置中获取alapi
         payload = {"token": token, "format": "json"}
         headers = {'Content-Type': "application/x-www-form-urlencoded"}
@@ -107,6 +108,15 @@ class Report:
             return news_items[:11] if len(news_items) > 11 else news_items
         else:
             return ["Error: Unable to fetch data"]
+
+    @classmethod
+    async def get_six(cls) -> list[str]:
+        """获取60s数据"""
+        if Config.get_config("alapi", "ALAPI_TOKEN"):
+           return await cls.get_alapi_data()
+        res = await AsyncHttpx.get(cls.six_url)
+        data = SixData(**res.json())
+        return data.data.news[:11] if len(data.data.news) > 11 else data.data.news
 
     @classmethod
     async def get_it(cls) -> list[str]:
