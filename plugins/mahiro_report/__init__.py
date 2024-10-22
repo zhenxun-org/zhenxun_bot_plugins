@@ -3,6 +3,7 @@ from pathlib import Path
 from datetime import datetime
 
 import nonebot
+from nonebot.adapters import Bot
 from nonebot.permission import SUPERUSER
 from nonebot.plugin import PluginMetadata
 from playwright.async_api import TimeoutError
