@@ -3,6 +3,7 @@ from pathlib import Path
 from datetime import datetime
 
 import nonebot
+from nonebot.adapters import Bot
 from nonebot.permission import SUPERUSER
 from nonebot.plugin import PluginMetadata
 from playwright.async_api import TimeoutError
@@ -14,10 +15,10 @@ from zhenxun.services.log import logger
 from zhenxun.utils.message import MessageUtils
 from zhenxun.utils.common_utils import CommonUtils
 from zhenxun.utils.platform import broadcast_group
+from zhenxun.services.plugin_init import PluginInit
 from zhenxun.configs.path_config import TEMPLATE_PATH
 from zhenxun.configs.utils import Task, PluginExtraData, RegisterConfig
 from zhenxun.configs.config import Config  # 引入 Config 用于获取 ALAPI_TOKEN
-
 
 from .config import REPORT_PATH
 from .data_source import Report
@@ -31,7 +32,7 @@ __plugin_meta__ = PluginMetadata(
     """.strip(),
     extra=PluginExtraData(
         author="HibiKier",
-        version="0.2",
+        version="0.1-606459a",
         superuser_help="""重置真寻日报""",
         tasks=[Task(module="mahiro_report", name="真寻日报")],
         configs=[  # 添加配置项提示用户如何获取和填写ALAPI_TOKEN
@@ -41,9 +42,10 @@ __plugin_meta__ = PluginMetadata(
                 value=None,
                 help="在https://admin.alapi.cn/user/login登录后获取token",
             )
-        ],
+        ]
     ).dict(),
 )
+
 
 RESOURCE_PATH = TEMPLATE_PATH / "mahiro_report"
 
@@ -107,7 +109,7 @@ async def _():
             logger.info("自动生成日报成功...")
             break
         except TimeoutError:
-            logger.warning("自动是生成日报失败...")
+            logger.warning("自动生成日报失败...")
 
 
 @scheduler.scheduled_job(
