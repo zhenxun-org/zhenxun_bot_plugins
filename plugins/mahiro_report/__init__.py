@@ -32,7 +32,7 @@ __plugin_meta__ = PluginMetadata(
     """.strip(),
     extra=PluginExtraData(
         author="HibiKier",
-        version="0.1-606459a",
+        version="0.2",
         superuser_help="""重置真寻日报""",
         tasks=[Task(module="mahiro_report", name="真寻日报")],
         configs=[  # 添加配置项提示用户如何获取和填写ALAPI_TOKEN
@@ -42,7 +42,7 @@ __plugin_meta__ = PluginMetadata(
                 value=None,
                 help="在https://admin.alapi.cn/user/login登录后获取token",
             )
-        ]
+        ],
     ).dict(),
 )
 
