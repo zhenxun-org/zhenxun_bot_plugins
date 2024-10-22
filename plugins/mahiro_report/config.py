@@ -67,11 +67,11 @@ class WeekDay(BaseModel):
 class AnimeItem(BaseModel):
     name: str
     name_cn: str
-    images: dict
+    images: dict | None
 
     @property
     def image(self) -> str:
-        return self.images["large"]
+        return self.images["large"] if self.images else ""
 
 
 class Anime(BaseModel):
