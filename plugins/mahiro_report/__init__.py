@@ -14,6 +14,9 @@ from zhenxun.services.log import logger
 from zhenxun.utils.message import MessageUtils
 from zhenxun.utils.common_utils import CommonUtils
 from zhenxun.utils.platform import broadcast_group
+from zhenxun.configs.path_config import TEMPLATE_PATH
+from zhenxun.configs.utils import Task, PluginExtraData, RegisterConfig
+from zhenxun.configs.config import Config  # 引入 Config 用于获取 ALAPI_TOKEN
 
 
 from .config import REPORT_PATH
