@@ -2,6 +2,7 @@ import os
 import random
 
 from nonebot import on_notice
+from nonebot.rule import to_me
 from nonebot.adapters.onebot.v11 import PokeNotifyEvent
 from nonebot.adapters.onebot.v11.message import MessageSegment
 from nonebot.plugin import PluginMetadata
@@ -32,7 +33,7 @@ __plugin_meta__ = PluginMetadata(
 )
 
 REPLY_MESSAGE = [
-    f"lsp你再戳？",
+    "lsp你再戳？",
     "连个可爱美少女都要戳的肥宅真恶心啊。",
     "你再戳！",
     "？再戳试试？",
@@ -47,7 +48,7 @@ REPLY_MESSAGE = [
     "再戳一下试试？",
     "???",
     "正在关闭对您的所有服务...关闭成功",
-    f"啊呜，太舒服刚刚竟然睡着了。什么事？",
+    "啊呜，太舒服刚刚竟然睡着了。什么事？",
     "正在定位您的真实地址...定位成功。轰炸机已起飞",
     f"别戳了，别戳了，{BotConfig.self_nickname}的呆毛要掉拉！",
     f"{BotConfig.self_nickname}在呢！",
@@ -69,7 +70,7 @@ REPLY_MESSAGE = [
 
 _clmt = CountLimiter(3)
 
-poke_ = on_notice(priority=5, block=False, rule=notice_rule(PokeNotifyEvent))
+poke_ = on_notice(priority=5, block=False, rule=notice_rule(PokeNotifyEvent) & to_me())
 depend_image_management = "image_management"
 depend_send_voice = "send_voice"
 IMAGE_MANAGEMENT = IMAGE_PATH / "image_management"
@@ -107,7 +108,7 @@ async def _(event: PokeNotifyEvent):
             ]
         ).send()
         logger.info(
-            f"戳了戳我", "戳一戳", session=event.user_id, group_id=event.group_id
+            "戳了戳我", "戳一戳", session=event.user_id, group_id=event.group_id
         )
     elif depend_send_voice in loaded_plugins and 0.3 < rand < 0.6:
         voice = random.choice(os.listdir(RECORD_PATH / "dinggong"))
@@ -126,7 +127,7 @@ async def _(event: PokeNotifyEvent):
             await poke_.send(MessageSegment("poke", {"qq": event.user_id}))
         except Exception:
             logger.warning(
-                f"戳一戳发送失败，可能是协议端不支持...",
+                "戳一戳发送失败，可能是协议端不支持...",
                 "戳一戳",
                 session=event.user_id,
                 group_id=event.group_id,
