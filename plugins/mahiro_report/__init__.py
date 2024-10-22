@@ -1,24 +1,22 @@
 import shutil
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
 
 import nonebot
 from nonebot.adapters import Bot
 from nonebot.permission import SUPERUSER
 from nonebot.plugin import PluginMetadata
-from playwright.async_api import TimeoutError
-from nonebot_plugin_session import EventSession
-from nonebot_plugin_apscheduler import scheduler
 from nonebot_plugin_alconna import Alconna, Arparma, on_alconna
-
-from zhenxun.services.log import logger
-from zhenxun.utils.message import MessageUtils
-from zhenxun.utils.common_utils import CommonUtils
-from zhenxun.utils.platform import broadcast_group
-from zhenxun.services.plugin_init import PluginInit
+from nonebot_plugin_apscheduler import scheduler
+from nonebot_plugin_session import EventSession
+from playwright.async_api import TimeoutError
 from zhenxun.configs.path_config import TEMPLATE_PATH
-from zhenxun.configs.utils import Task, PluginExtraData, RegisterConfig
-from zhenxun.configs.config import Config  # 引入 Config 用于获取 ALAPI_TOKEN
+from zhenxun.configs.utils import PluginExtraData, RegisterConfig, Task
+from zhenxun.services.log import logger
+from zhenxun.services.plugin_init import PluginInit
+from zhenxun.utils.common_utils import CommonUtils
+from zhenxun.utils.message import MessageUtils
+from zhenxun.utils.platform import broadcast_group
 
 from .config import REPORT_PATH
 from .data_source import Report
@@ -32,7 +30,7 @@ __plugin_meta__ = PluginMetadata(
     """.strip(),
     extra=PluginExtraData(
         author="HibiKier",
-        version="0.1-606459a",
+        version="0.2",
         superuser_help="""重置真寻日报""",
         tasks=[Task(module="mahiro_report", name="真寻日报")],
         configs=[  # 添加配置项提示用户如何获取和填写ALAPI_TOKEN
@@ -42,7 +40,7 @@ __plugin_meta__ = PluginMetadata(
                 value=None,
                 help="在https://admin.alapi.cn/user/login登录后获取token",
             )
-        ]
+        ],
     ).dict(),
 )
 
