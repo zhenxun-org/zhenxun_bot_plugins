@@ -10,7 +10,7 @@ from ._model import WordBank
 from ._rule import check
 
 __plugin_meta__ = PluginMetadata(
-    name="词库问答回复操作",
+    name="词条检测",
     description="",
     usage="""""",
     extra=PluginExtraData(
