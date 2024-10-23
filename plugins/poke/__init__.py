@@ -2,11 +2,11 @@ import os
 import random
 
 from nonebot import on_notice
-from nonebot.rule import to_me
 from nonebot.adapters.onebot.v11 import PokeNotifyEvent
 from nonebot.adapters.onebot.v11.message import MessageSegment
 from nonebot.plugin import PluginMetadata
-from zhenxun.configs.config import Config, BotConfig
+from nonebot.rule import to_me
+from zhenxun.configs.config import BotConfig, Config
 from zhenxun.configs.path_config import IMAGE_PATH, RECORD_PATH
 from zhenxun.configs.utils import PluginExtraData
 from zhenxun.models.ban_console import BanConsole
@@ -16,7 +16,6 @@ from zhenxun.utils.enum import PluginType
 from zhenxun.utils.message import MessageUtils
 from zhenxun.utils.rules import notice_rule
 from zhenxun.utils.utils import CountLimiter
-
 
 __plugin_meta__ = PluginMetadata(
     name="戳一戳",
@@ -42,7 +41,7 @@ REPLY_MESSAGE = [
     "你戳你🐎呢？！",
     "那...那里...那里不能戳...绝对...",
     "(。´・ω・)ん?",
-    "有事恁叫{BotConfig.self_nickname}，别天天一个劲戳戳戳！",
+    f"有事恁叫{BotConfig.self_nickname}，别天天一个劲戳戳戳！",
     "欸很烦欸！你戳🔨呢",
     "?",
     "再戳一下试试？",
