@@ -306,7 +306,6 @@ async def _get_up_status(id_: int) -> list:
         return []
     else:
         video_info = video_info["data"]
-    latest_video_created = 0
     video = None
     dividing_line = "\n-------------\n"
     if _user.uname != uname:
@@ -318,9 +317,10 @@ async def _get_up_status(id_: int) -> list:
         )
     except ResponseCodeError as msg:
         logger.warning(f"Id：{id_} 获取信息失败...{msg}")
+    latest_video_created = ""
     if video_info["list"].get("vlist"):
         video = video_info["list"]["vlist"][0]
-        latest_video_created = video["created"]
+        latest_video_created = video.get("created", "")
     msg_list = []
     if dynamic_img and _user.dynamic_upload_time < dynamic_upload_time:
         await BilibiliSub.sub_handle(id_, dynamic_upload_time=dynamic_upload_time)
