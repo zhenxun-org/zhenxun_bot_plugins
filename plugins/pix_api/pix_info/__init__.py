@@ -13,6 +13,7 @@ from nonebot_plugin_alconna import (
 
 from zhenxun.services.log import logger
 from zhenxun.utils.enum import PluginType
+from zhenxun.utils.depends import CheckConfig
 from zhenxun.utils.message import MessageUtils
 from zhenxun.configs.utils import PluginExtraData
 
@@ -39,7 +40,7 @@ __plugin_meta__ = PluginMetadata(
     ).dict(),
 )
 
-_gallery_matcher = on_alconna(
+_matcher = on_alconna(
     Alconna(
         "pix图库",
         Args["tags?", MultiVar(str)],
@@ -49,7 +50,7 @@ _gallery_matcher = on_alconna(
 )
 
 
-@_gallery_matcher.handle()
+@_matcher.handle(parameterless=[CheckConfig("pix", "pix_api")])
 async def _(
     session: Uninfo,
     arparma: Arparma,

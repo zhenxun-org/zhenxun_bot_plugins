@@ -21,7 +21,10 @@ class InfoManage:
         api = base_config.get("pix_api") + "/pix/pix_gallery_count"
         json_data = {"tags": tags}
         logger.debug(f"尝试调用pix api: {api}, 参数: {json_data}")
-        res = await AsyncHttpx.post(api, json=json_data)
+        headers = None
+        if token := base_config.get("token"):
+            headers = {"Authorization": token}
+        res = await AsyncHttpx.post(api, json=json_data, headers=headers)
         res.raise_for_status()
         data = ImageCount(**res.json()["data"])
         tip = ",".join(tags) if tags else ""

@@ -3,6 +3,7 @@ from nonebot.plugin import PluginMetadata
 from nonebot_plugin_alconna import Args, Alconna, Arparma, on_alconna
 
 from zhenxun.services.log import logger
+from zhenxun.utils.depends import CheckConfig
 from zhenxun.utils.message import MessageUtils
 from zhenxun.configs.utils import PluginExtraData
 
@@ -44,7 +45,7 @@ _add_matcher = on_alconna(
 )
 
 
-@_add_matcher.handle()
+@_add_matcher.handle(parameterless=[CheckConfig("pix", "pix_api")])
 async def _(
     session: Uninfo,
     arparma: Arparma,

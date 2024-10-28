@@ -33,7 +33,10 @@ class PixManage:
         api = base_config.get("pix_api") + "/pix/get_pix"
         json_data = {"tags": tags, "num": num, "r18": is_r18, "ai": ai, "size": size}
         logger.debug(f"尝试调用pix api: {api}, 参数: {json_data}")
-        res = await AsyncHttpx.post(api, json=json_data)
+        headers = None
+        if token := base_config.get("token"):
+            headers = {"Authorization": token}
+        res = await AsyncHttpx.post(api, json=json_data, headers=headers)
         res.raise_for_status()
         res_data = res.json()
         res_data["data"] = [PixModel(**item) for item in res_data["data"]]

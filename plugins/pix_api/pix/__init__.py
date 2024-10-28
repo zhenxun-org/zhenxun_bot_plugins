@@ -4,7 +4,6 @@ from nonebot_plugin_uninfo import Uninfo
 from nonebot.plugin import PluginMetadata
 from nonebot_plugin_alconna import (
     Args,
-    Match,
     Query,
     Option,
     Alconna,
@@ -16,6 +15,7 @@ from nonebot_plugin_alconna import (
 
 from zhenxun.services.log import logger
 from zhenxun.configs.config import BotConfig
+from zhenxun.utils.depends import CheckConfig
 from zhenxun.utils.message import MessageUtils
 from zhenxun.configs.utils import BaseBlock, RegisterConfig, PluginExtraData
 
@@ -41,22 +41,6 @@ __plugin_meta__ = PluginMetadata(
             pix -s ?*[tags]: 通过tag获取色图，不含tag时随机
         """,
         limits=[BaseBlock(result="您有PIX图片正在处理，请稍等...")],
-        configs=[
-            RegisterConfig(
-                key="MAX_ONCE_NUM2FORWARD",
-                value=None,
-                help="单次发送的图片数量达到指定值时转发为合并消息",
-                default_value=None,
-                type=int,
-            ),
-            RegisterConfig(
-                key="ALLOW_GROUP_R18",
-                value=False,
-                help="允许非超级用户使用-r参数",
-                default_value=False,
-                type=bool,
-            ),
-        ],
     ).dict(),
 )
 
@@ -74,7 +58,7 @@ _matcher = on_alconna(
 )
 
 
-@_matcher.handle()
+@_matcher.handle(parameterless=[CheckConfig("pix", "pix_api")])
 async def _(
     bot: Bot,
     session: Uninfo,

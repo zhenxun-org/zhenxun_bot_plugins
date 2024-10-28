@@ -20,6 +20,9 @@ class KeywordManage:
         api = base_config.get("pix_api") + "/pix/pix_add"
         json_data = {"content": content, "add_type": kw_type}
         logger.debug(f"尝试调用pix api: {api}, 参数: {json_data}")
-        res = await AsyncHttpx.post(api, json=json_data)
+        headers = None
+        if token := base_config.get("token"):
+            headers = {"Authorization": token}
+        res = await AsyncHttpx.post(api, json=json_data, headers=headers)
         res.raise_for_status()
         return PixResult(**res.json()).info
