@@ -5,8 +5,8 @@ from zhenxun.services.log import logger
 from zhenxun.utils.http_utils import AsyncHttpx
 from zhenxun.configs.path_config import TEMP_PATH
 
-from .._config import base_config
-from .config import PixModel, PixResult
+from .config import PixModel
+from .._config import PixResult, base_config
 
 headers = {
     "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.6;"
@@ -19,7 +19,7 @@ class PixManage:
     @classmethod
     async def get_pix(
         cls, tags: tuple[str, ...], num: int, is_r18: bool, ai: bool | None
-    ) -> PixResult:
+    ) -> PixResult[list[PixModel]]:
         """获取图片
 
         参数:
@@ -35,7 +35,9 @@ class PixManage:
         logger.debug(f"尝试调用pix api: {api}, 参数: {json_data}")
         res = await AsyncHttpx.post(api, json=json_data)
         res.raise_for_status()
-        return PixResult(**res.json())
+        res_data = res.json()
+        res_data["data"] = [PixModel(**item) for item in res_data["data"]]
+        return PixResult[list[PixModel]](**res_data)
 
     @classmethod
     async def get_image(cls, pix: PixModel) -> Path | None:

@@ -13,11 +13,3 @@ class PixModel(BaseModel):
     nsfw_tag: int
     is_ai: bool
     url: str
-
-
-class PixResult(BaseModel):
-    suc: bool
-    code: int
-    info: str
-    warning: str | None
-    data: list[PixModel]

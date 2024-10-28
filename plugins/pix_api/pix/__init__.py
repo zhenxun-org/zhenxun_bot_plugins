@@ -35,11 +35,11 @@ __plugin_meta__ = PluginMetadata(
     extra=PluginExtraData(
         author="HibiKier",
         version="0.1",
+        menu_type="PIX图库",
         superuser_help="""
         指令：
             pix -s ?*[tags]: 通过tag获取色图，不含tag时随机
         """,
-        menu_type="来点好康的",
         limits=[BaseBlock(result="您有PIX图片正在处理，请稍等...")],
         configs=[
             RegisterConfig(
@@ -63,11 +63,12 @@ __plugin_meta__ = PluginMetadata(
 _matcher = on_alconna(
     Alconna(
         "pix",
-        Args["tags?", MultiVar(str)] / "\n",
+        Args["tags?", MultiVar(str)],
         Option("-n|--num", Args["num", int]),
         Option("-r|--r18", action=store_true, help_text="是否是r18"),
         Option("-noai", action=store_true, help_text="是否是过滤ai"),
     ),
+    aliases={"PIX"},
     priority=5,
     block=True,
 )
@@ -86,6 +87,7 @@ async def _(
     if (
         not allow_group_r18
         and session.group
+        and r18.result
         and session.user.id not in bot.config.superusers
     ):
         await MessageUtils.build_message("给我滚出克私聊啊变态！").finish()
