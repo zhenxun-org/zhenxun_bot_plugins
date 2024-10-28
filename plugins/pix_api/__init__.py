@@ -85,7 +85,7 @@ async def _(
     if (
         not allow_group_r18
         and session.group
-        and r18
+        and r18.result
         and session.user.id not in bot.config.superusers
     ):
         await MessageUtils.build_message("给我滚出克私聊啊变态！").finish()
