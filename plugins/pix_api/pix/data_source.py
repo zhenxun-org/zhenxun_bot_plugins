@@ -2,6 +2,7 @@ import random
 from pathlib import Path
 
 from zhenxun.services.log import logger
+from zhenxun.configs.config import Config
 from zhenxun.utils.http_utils import AsyncHttpx
 from zhenxun.configs.path_config import TEMP_PATH
 
@@ -52,12 +53,18 @@ class PixManage:
         返回:
             Path | None: 图片路径
         """
+        url = pix.url
+        if nginx_url := Config.get_config("pixiv", "PIXIV_NGINX_URL"):
+            if pix.is_multiple:
+                url = f"https://{nginx_url}/{pix.pid}-{int(pix.img_p) + 1}.png"
+            else:
+                url = f"https://{nginx_url}/{pix.pid}.png"
         timeout = base_config.get("timeout")
         file = TEMP_PATH / f"pix_{pix.pid}_{random.randint(1, 1000)}.png"
         return (
             file
             if await AsyncHttpx.download_file(
-                pix.url, file, headers=headers, timeout=timeout
+                url, file, headers=headers, timeout=timeout
             )
             else None
         )
@@ -83,4 +90,4 @@ class PixManage:
             message_list.append(image)
             return message_list
         else:
-            return ["获取图片失败"]
+            return ["获取图片失败..."]

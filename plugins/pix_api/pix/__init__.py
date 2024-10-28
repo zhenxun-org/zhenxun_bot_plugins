@@ -17,7 +17,7 @@ from zhenxun.services.log import logger
 from zhenxun.configs.config import BotConfig
 from zhenxun.utils.depends import CheckConfig
 from zhenxun.utils.message import MessageUtils
-from zhenxun.configs.utils import BaseBlock, RegisterConfig, PluginExtraData
+from zhenxun.configs.utils import BaseBlock, PluginExtraData
 
 from .data_source import PixManage, base_config
 
@@ -65,19 +65,19 @@ async def _(
     arparma: Arparma,
     tags: Query[tuple[str, ...]] = Query("tags", ()),
     num: Query[int] = Query("num", 1),
-    r18: Query[bool] = Query("r18", False),
 ):
     allow_group_r18 = base_config.get("ALLOW_GROUP_R18")
+    is_r18 = arparma.find("r18")
     if (
         not allow_group_r18
         and session.group
-        and r18.result
+        and is_r18
         and session.user.id not in bot.config.superusers
     ):
         await MessageUtils.build_message("给我滚出克私聊啊变态！").finish()
     is_ai = arparma.find("noai") or None
     try:
-        result = await PixManage.get_pix(tags.result, num.result, r18.result, is_ai)
+        result = await PixManage.get_pix(tags.result, num.result, is_r18, is_ai)
         if not result.suc:
             await MessageUtils.build_message(result.info).send()
     except HTTPStatusError as e:
