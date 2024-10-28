@@ -62,7 +62,7 @@ __plugin_meta__ = PluginMetadata(
 _matcher = on_alconna(
     Alconna(
         "pix",
-        Args["tags?", MultiVar(str)] / "\n",
+        Args["tags?", MultiVar(str)],
         Option("-n|--num", Args["num", int]),
         Option("-r|--r18", action=store_true, help_text="是否是r18"),
         Option("-noai", action=store_true, help_text="是否是过滤ai"),
