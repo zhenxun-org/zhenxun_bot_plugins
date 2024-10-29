@@ -408,5 +408,15 @@
         "version": "0.2",
         "plugin_type": "NORMAL",
         "is_dir": true
+    },
+    "PIX-API": {
+        "module": "pix_api",
+        "module_path": "plugins.pix_api",
+        "description": "这里是PIX图库！",
+        "usage": "pix ?*[tags] ?[-n 1]: 通过 tag 获取相似图片，不含tag时随机抽取",
+        "author": "HibiKier",
+        "version": "0.1",
+        "plugin_type": "NORMAL",
+        "is_dir": true
     }
 }
