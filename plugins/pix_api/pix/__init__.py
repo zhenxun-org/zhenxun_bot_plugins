@@ -1,3 +1,4 @@
+import asyncio
 from nonebot.adapters import Bot
 from httpx import HTTPStatusError
 from nonebot_plugin_uninfo import Uninfo
@@ -88,20 +89,18 @@ async def _(
         await MessageUtils.build_message("pix图库API出错啦！").finish()
     if not result.data:
         await MessageUtils.build_message("没有找到相关tag/pix/uid的图片...").finish()
+    task_list = [asyncio.create_task(PixManage.get_pix_result(r)) for r in result.data]
+    result_list = await asyncio.gather(*task_list)
     max_once_num2forward = base_config.get("MAX_ONCE_NUM2FORWARD")
     if (
         max_once_num2forward
         and max_once_num2forward <= len(result.data)
         and session.group
     ):
-        message_list = []
-        for r in result.data:
-            message_list.append(await PixManage.get_pix_result(r))
         await MessageUtils.alc_forward_msg(
-            message_list, session.user.id, BotConfig.self_nickname
+            result_list, session.user.id, BotConfig.self_nickname
         ).send()
     else:
-        for r in result.data:
-            message = await PixManage.get_pix_result(r)
-            await MessageUtils.build_message(message).send()
+        for r in result_list:
+            await MessageUtils.build_message(r).send()
     logger.info(f"pix tags: {tags.result}", arparma.header_result, session=session)
