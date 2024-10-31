@@ -55,10 +55,11 @@ class PixManage:
         """
         url = pix.url
         if is_original and (nginx_url := Config.get_config("pixiv", "PIXIV_NGINX_URL")):
+            image_type = url.split(".")[-1]
             if pix.is_multiple:
-                url = f"https://{nginx_url}/{pix.pid}-{int(pix.img_p) + 1}.png"
+                url = f"https://{nginx_url}/{pix.pid}-{int(pix.img_p) + 1}.{image_type}"
             else:
-                url = f"https://{nginx_url}/{pix.pid}.png"
+                url = f"https://{nginx_url}/{pix.pid}.{image_type}"
         elif small_url := Config.get_config("pixiv", "PIXIV_SMALL_NGINX_URL"):
             if "img-master" in url:
                 url = "img-master" + url.split("img-master")[-1]
