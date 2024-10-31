@@ -20,7 +20,7 @@ class PixManage:
             _id = pix.uid
             kw_type = "UID"
         else:
-            _id = pix.pid
+            _id = f"{pix.pid}-{pix.img_p}"
             kw_type = "PID"
         api = base_config.get("pix_api") + "/pix/set_pix"
         json_data = {"id": _id, "type": kw_type, "is_block": True}
@@ -44,7 +44,7 @@ class PixManage:
             str: 返回信息
         """
         api = base_config.get("pix_api") + "/pix/set_pix"
-        json_data = {"id": pix.pid, "type": "PID", "nsfw_tag": nsfw}
+        json_data = {"id": f"{pix.pid}-{pix.img_p}", "type": "PID", "nsfw_tag": nsfw}
         logger.debug(f"尝试调用pix api: {api}, 参数: {json_data}")
         headers = None
         if token := base_config.get("token"):

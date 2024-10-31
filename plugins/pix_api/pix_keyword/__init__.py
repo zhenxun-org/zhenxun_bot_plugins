@@ -15,14 +15,12 @@ __plugin_meta__ = PluginMetadata(
     description="PIX关键词/UID/PID添加管理",
     usage="""
     指令：
-        pix添加 ['u', 'p', 'k'] [content]
+        pix添加 ['u', 'p'] [content]
             u: uid
             p: pid
-            k: 关键词
         示例:
             pix添加 u 123456789
             pix添加 p 123456789
-            pix添加 k 真寻
     """.strip(),
     extra=PluginExtraData(
         author="HibiKier",
@@ -38,7 +36,7 @@ __plugin_meta__ = PluginMetadata(
 _add_matcher = on_alconna(
     Alconna(
         "pix添加",
-        Args["add_type", ["u", "p", "k"]]["content", str],
+        Args["add_type", ["u", "p"]]["content", str],
     ),
     priority=5,
     block=True,

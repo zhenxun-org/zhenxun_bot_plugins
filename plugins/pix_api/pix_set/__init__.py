@@ -1,12 +1,14 @@
+from nonebot.adapters import Bot, Event
 from nonebot.rule import Rule
 from httpx import HTTPStatusError
 from nonebot_plugin_uninfo import Uninfo
+from nonebot_plugin_alconna.uniseg.tools import reply_fetch
 from nonebot.plugin import PluginMetadata
+from nonebot_plugin_apscheduler import scheduler
 from nonebot_plugin_alconna import (
     Args,
     Reply,
     Option,
-    UniMsg,
     Alconna,
     Arparma,
     on_alconna,
@@ -53,8 +55,10 @@ def reply_check() -> Rule:
         Rule: Rule
     """
 
-    async def _rule(message: UniMsg):
-        return bool(message and isinstance(message[0], Reply))
+    async def _rule(bot: Bot, event: Event):
+        if event.get_type() == "message":
+            return bool(await reply_fetch(event, bot))
+        return False
 
     return Rule(_rule)
 
@@ -87,23 +91,25 @@ _nsfw_matcher = on_alconna(
 
 
 @_info_matcher.handle()
-async def _(message: UniMsg):
-    reply: Reply = message.pop(0)
-    if pix_model := InfoManage.get(str(reply.id)):
+async def _(bot: Bot, event: Event):
+    reply: Reply | None = await reply_fetch(event, bot)
+    if reply and (pix_model := InfoManage.get(str(reply.id))):
         result = f"""title: {pix_model.title}
 author: {pix_model.author}
-pid: {pix_model.pid}
+pid: {pix_model.pid}-{pix_model.img_p}
 uid: {pix_model.uid}
 nsfw: {pix_model.nsfw_tag}
 tags: {pix_model.tags}""".strip()
         await MessageUtils.build_message(result).finish(reply_to=True)
-    await MessageUtils.build_message("没有找到该图片相关信息...").finish(reply_to=True)
+    await MessageUtils.build_message("没有找到该图片相关信息或数据已过期...").finish(
+        reply_to=True
+    )
 
 
 @_block_matcher.handle()
-async def _(message: UniMsg, arparma: Arparma, session: Uninfo):
-    reply: Reply = message.pop(0)
-    if pix_model := InfoManage.get(str(reply.id)):
+async def _(bot: Bot, event: Event, arparma: Arparma, session: Uninfo):
+    reply: Reply | None = await reply_fetch(event, bot)
+    if reply and (pix_model := InfoManage.get(str(reply.id))):
         try:
             result = await PixManage.block_pix(pix_model, arparma.find("u"))
         except HTTPStatusError as e:
@@ -114,13 +120,15 @@ async def _(message: UniMsg, arparma: Arparma, session: Uninfo):
                 f"pix图库API出错啦！ code: {e.response.status_code}"
             ).finish()
         await MessageUtils.build_message(result).finish(reply_to=True)
-    await MessageUtils.build_message("没有找到该图片相关信息...").finish(reply_to=True)
+    await MessageUtils.build_message("没有找到该图片相关信息或数据已过期...").finish(
+        reply_to=True
+    )
 
 
 @_nsfw_matcher.handle()
-async def _(message: UniMsg, arparma: Arparma, n: int, session: Uninfo):
-    reply: Reply = message.pop(0)
-    if pix_model := InfoManage.get(str(reply.id)):
+async def _(bot: Bot, event: Event, arparma: Arparma, n: int, session: Uninfo):
+    reply: Reply | None = await reply_fetch(event, bot)
+    if reply and (pix_model := InfoManage.get(str(reply.id))):
         if n not in [0, 1, 2]:
             await MessageUtils.build_message(
                 "nsfw参数错误，必须在 [0, 1, 2] 之间..."
@@ -135,4 +143,15 @@ async def _(message: UniMsg, arparma: Arparma, n: int, session: Uninfo):
                 f"pix图库API出错啦！ code: {e.response.status_code}"
             ).finish()
         await MessageUtils.build_message(result).finish(reply_to=True)
-    await MessageUtils.build_message("没有找到该图片相关信息...").finish(reply_to=True)
+    await MessageUtils.build_message("没有找到该图片相关信息或数据已过期...").finish(
+        reply_to=True
+    )
+
+
+@scheduler.scheduled_job(
+    "interval",
+    minutes=5,
+)
+async def _():
+    InfoManage.remove()
+    logger.debug("自动移除过期图片数据...")
