@@ -27,6 +27,12 @@ __plugin_meta__ = PluginMetadata(
             ),
             RegisterConfig(
                 module="pixiv",
+                key="PIXIV_SMALL_NGINX_URL",
+                value="i.suimoe.com",
+                help="PIXPixiv反向代理，缩略图",
+            ),
+            RegisterConfig(
+                module="pixiv",
                 key="PIXIV_NGINX_URL",
                 value="pixiv.re",
                 help="PIXPixiv反向代理",

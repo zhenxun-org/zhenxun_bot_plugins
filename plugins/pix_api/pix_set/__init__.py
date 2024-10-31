@@ -27,7 +27,8 @@ __plugin_meta__ = PluginMetadata(
     description="这里是PIX图库！",
     usage="""
     指令：
-        引用消息 /info
+        引用消息 /original  : 获取原图
+        引用消息 /info     : 查看图片信息
         引用消息 /block    : block该pid
         引用消息 /block -u : block该uid下的所有图片
         引用消息 / nsfw n : 设置nsfw等级 n = [0, 1, 2] 其中
