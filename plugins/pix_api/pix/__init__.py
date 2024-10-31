@@ -1,16 +1,20 @@
 import asyncio
+
+from nonebot.rule import Rule
 from nonebot.adapters import Bot
 from httpx import HTTPStatusError
 from nonebot_plugin_uninfo import Uninfo
 from nonebot.plugin import PluginMetadata
+from nonebot_plugin_alconna.uniseg import Receipt
 from nonebot_plugin_alconna import (
     Args,
     Query,
+    Reply,
     Option,
+    UniMsg,
     Alconna,
     Arparma,
     MultiVar,
-    UniMessage,
     on_alconna,
     store_true,
 )
@@ -21,6 +25,7 @@ from zhenxun.utils.depends import CheckConfig
 from zhenxun.utils.message import MessageUtils
 from zhenxun.configs.utils import BaseBlock, PluginExtraData
 
+from .._config import InfoManage
 from .data_source import PixManage, base_config
 
 __plugin_meta__ = PluginMetadata(
@@ -60,6 +65,20 @@ _matcher = on_alconna(
 )
 
 
+def reply_check() -> Rule:
+    """
+    检查是否存在回复消息
+
+    返回:
+        Rule: Rule
+    """
+
+    async def _rule(message: UniMsg):
+        return bool(message and isinstance(message[0], Reply))
+
+    return Rule(_rule)
+
+
 @_matcher.handle(parameterless=[CheckConfig("pix", "pix_api")])
 async def _(
     bot: Bot,
@@ -86,7 +105,9 @@ async def _(
             await MessageUtils.build_message(result.info).send()
     except HTTPStatusError as e:
         logger.debug("pix图库API出错...", arparma.header_result, session=session, e=e)
-        await MessageUtils.build_message("pix图库API出错啦！").finish()
+        await MessageUtils.build_message(
+            f"pix图库API出错啦！code: {e.response.status_code}"
+        ).finish()
     if not result.data:
         await MessageUtils.build_message("没有找到相关tag/pix/uid的图片...").finish()
     task_list = [asyncio.create_task(PixManage.get_pix_result(r)) for r in result.data]
@@ -98,9 +119,11 @@ async def _(
         and session.group
     ):
         await MessageUtils.alc_forward_msg(
-            result_list, session.user.id, BotConfig.self_nickname
+            [r[0] for r in result_list], session.user.id, BotConfig.self_nickname
         ).send()
     else:
-        for r in result_list:
-            await MessageUtils.build_message(r).send()
+        for r, pix in result_list:
+            receipt: Receipt = await MessageUtils.build_message(r).send()
+            msg_id = receipt.msg_ids[0]["message_id"]
+            InfoManage.add(str(msg_id), pix)
     logger.info(f"pix tags: {tags.result}", arparma.header_result, session=session)

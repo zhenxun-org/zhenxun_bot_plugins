@@ -60,8 +60,6 @@ def add_count(user: OpenCasesUser, skin: BuffSkin, case_price: float):
             user.knife_st_count += 1
         else:
             user.knife_count += 1
-    user.today_open_total += 1
-    user.total_count += 1
     user.make_money += skin.sell_min_price
     user.spend_money += int(17 + case_price)
 
@@ -127,7 +125,11 @@ class OpenCaseManager:
 
     @classmethod
     async def get_user_data(cls, uname: str, user_id: str, group_id: str) -> BuildImage:
-        user, _ = await OpenCasesUser.get_or_create(user_id=user_id, group_id=group_id)
+        user, _ = await OpenCasesUser.get_or_create(
+            user_id=user_id,
+            group_id=group_id,
+            defaults={"open_cases_time_last": datetime.now()},
+        )
         data_list = [
             ["开箱总数", user.total_count],
             ["今日开箱", user.today_open_total],
@@ -170,10 +172,8 @@ class OpenCaseManager:
             case_name = random.choice(CaseManager.CURRENT_CASES)  # type: ignore
         if case_name and case_name not in CaseManager.CURRENT_CASES:
             return (
-                MessageUtils.build_message(
-                    "武器箱未收录, 当前可用武器箱:\n"
-                    + ", ".join(CaseManager.CURRENT_CASES)  # type: ignore
-                ),
+                "武器箱未收录, 当前可用武器箱:\n"
+                + ", ".join(CaseManager.CURRENT_CASES),  # type: ignore
                 "",
                 0,
             )
@@ -333,11 +333,6 @@ class OpenCaseManager:
         )
         if not isinstance(user, OpenCasesUser):
             return user
-        if user.today_open_total + num > max_count:
-            return MessageUtils.build_message(
-                "当前剩余开箱次数不足，"
-                f"当前剩余开箱次数: {max_count - user.today_open_total}"
-            )
         logger.debug(f"尝试开启武器箱: {case_name}", "开箱", session=session)
         return await cls.__start_open_one(case_name, user, num, max_count, session)
 

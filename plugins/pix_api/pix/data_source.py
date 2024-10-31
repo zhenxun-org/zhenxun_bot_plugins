@@ -6,8 +6,7 @@ from zhenxun.configs.config import Config
 from zhenxun.utils.http_utils import AsyncHttpx
 from zhenxun.configs.path_config import TEMP_PATH
 
-from .config import PixModel
-from .._config import PixResult, base_config
+from .._config import PixModel, PixResult, base_config
 
 headers = {
     "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.6;"
@@ -70,7 +69,7 @@ class PixManage:
         )
 
     @classmethod
-    async def get_pix_result(cls, pix: PixModel) -> list:
+    async def get_pix_result(cls, pix: PixModel) -> tuple[list, PixModel]:
         """构建返回消息
 
         参数:
@@ -79,15 +78,62 @@ class PixManage:
         返回:
             list: 返回消息
         """
-        if image := await cls.get_image(pix):
-            message_list = []
-            if base_config.get("SHOW_INFO"):
-                message_list.append(
-                    f"title: {pix.title}\n"
-                    f"author: {pix.author}\n"
-                    f"PID: {pix.pid}\nUID: {pix.uid}\n",
-                )
-            message_list.append(image)
-            return message_list
+        if not (image := await cls.get_image(pix)):
+            return [f"获取图片 pid: {pix.pid} 失败..."], pix
+        message_list = []
+        if base_config.get("SHOW_INFO"):
+            message_list.append(
+                f"title: {pix.title}\n"
+                f"author: {pix.author}\n"
+                f"pid: {pix.pid}\nuid: {pix.uid}\n",
+            )
+        message_list.append(image)
+        return message_list, pix
+
+    @classmethod
+    async def block_pix(cls, pix: PixModel, is_uid: bool) -> str:
+        """block pix
+
+        参数:
+            pix: pixModel
+            is_uid: 是否为uid
+
+        返回:
+            str: 返回信息
+        """
+        if is_uid:
+            _id = pix.uid
+            kw_type = "UID"
         else:
-            return ["获取图片失败..."]
+            _id = pix.pid
+            kw_type = "PID"
+        api = base_config.get("pix_api") + "/pix/set_pix"
+        json_data = {"id": _id, "type": kw_type, "is_block": True}
+        logger.debug(f"尝试调用pix api: {api}, 参数: {json_data}")
+        headers = None
+        if token := base_config.get("token"):
+            headers = {"Authorization": token}
+        res = await AsyncHttpx.post(api, json=json_data, headers=headers)
+        res.raise_for_status()
+        return PixResult(**res.json()).info
+
+    @classmethod
+    async def set_nsfw(cls, pix: PixModel, nsfw: int) -> str:
+        """set_nsfw
+
+        参数:
+            pix: pixModel
+            nsfw: nsfw
+
+        返回:
+            str: 返回信息
+        """
+        api = base_config.get("pix_api") + "/pix/set_pix"
+        json_data = {"id": pix.pid, "type": "PID", "nsfw_tag": nsfw}
+        logger.debug(f"尝试调用pix api: {api}, 参数: {json_data}")
+        headers = None
+        if token := base_config.get("token"):
+            headers = {"Authorization": token}
+        res = await AsyncHttpx.post(api, json=json_data, headers=headers)
+        res.raise_for_status()
+        return PixResult(**res.json()).info
