@@ -1,11 +1,12 @@
 import asyncio
-from pathlib import Path
 import random
+from pathlib import Path
 
+from zhenxun.configs.config import Config
 from zhenxun.configs.path_config import TEMP_PATH
 from zhenxun.services.log import logger
 from zhenxun.utils.http_utils import AsyncHttpx
-from zhenxun.configs.config import Config
+
 from .._config import PixModel, PixResult, base_config
 
 headers = {
@@ -38,7 +39,7 @@ class StarManage:
             headers = {"Authorization": token}
         res = await AsyncHttpx.post(api, json=json_data, headers=headers)
         res.raise_for_status()
-        return PixResult(**res.json()).info
+        return f"⭐{PixResult(**res.json()).info}"
 
     @classmethod
     async def my_star(cls, user_id: str) -> str:
@@ -130,4 +131,5 @@ class StarManage:
             )
         except Exception as e:
             logger.error("pix下载图片失败", e=e)
+        return None
         return None
