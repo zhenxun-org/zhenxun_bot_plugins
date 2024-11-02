@@ -1,4 +1,3 @@
-from nonebot.permission import SUPERUSER
 from nonebot_plugin_uninfo import Uninfo
 from nonebot.plugin import PluginMetadata
 from nonebot_plugin_alconna import (
@@ -12,7 +11,6 @@ from nonebot_plugin_alconna import (
 )
 
 from zhenxun.services.log import logger
-from zhenxun.utils.enum import PluginType
 from zhenxun.utils.depends import CheckConfig
 from zhenxun.utils.message import MessageUtils
 from zhenxun.configs.utils import PluginExtraData
