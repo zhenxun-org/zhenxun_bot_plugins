@@ -124,7 +124,7 @@ async def _(bot: Bot, event: Event, arparma: Arparma, n: int, session: Uninfo):
 
 @scheduler.scheduled_job(
     "interval",
-    hours=3,
+    minutes=30,
 )
 async def _():
     InfoManage.remove()
