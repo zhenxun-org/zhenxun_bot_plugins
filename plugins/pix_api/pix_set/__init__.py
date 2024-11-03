@@ -1,23 +1,22 @@
-from nonebot.adapters import Bot, Event
-from nonebot.rule import Rule
 from httpx import HTTPStatusError
-from nonebot_plugin_uninfo import Uninfo
-from nonebot_plugin_alconna.uniseg.tools import reply_fetch
+from nonebot.adapters import Bot, Event
 from nonebot.plugin import PluginMetadata
-from nonebot_plugin_apscheduler import scheduler
+from nonebot.rule import Rule
 from nonebot_plugin_alconna import (
-    Args,
-    Reply,
-    Option,
     Alconna,
+    Args,
     Arparma,
+    Option,
+    Reply,
     on_alconna,
     store_true,
 )
-
+from nonebot_plugin_alconna.uniseg.tools import reply_fetch
+from nonebot_plugin_apscheduler import scheduler
+from nonebot_plugin_uninfo import Uninfo
+from zhenxun.configs.utils import PluginExtraData
 from zhenxun.services.log import logger
 from zhenxun.utils.message import MessageUtils
-from zhenxun.configs.utils import PluginExtraData
 
 from .._config import InfoManage
 from .data_source import PixManage
@@ -125,7 +124,7 @@ async def _(bot: Bot, event: Event, arparma: Arparma, n: int, session: Uninfo):
 
 @scheduler.scheduled_job(
     "interval",
-    minutes=5,
+    hours=3,
 )
 async def _():
     InfoManage.remove()
