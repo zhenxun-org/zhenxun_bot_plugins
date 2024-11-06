@@ -11,7 +11,7 @@
 >
 > <div align="center"><b>小真寻也很可爱呀，也会很喜欢你！</b></div>
 >
-> <div align="center"><img width="230" height="240" src="https://github.com/zhenxun-org/zhenxun_bot_plugins/blob/main/docs_image/tt3.png"/><img width="230" height="240" src="https://github.com/zhenxun-org/zhenxun_bot_plugins/blob/main/docs_image/tt1.png"/><img width="230" height="240" src="https://github.com/zhenxun-org/zhenxun_bot_plugins/blob/main/docs_image/tt2.png"/></div>
+> <div align="center"><img width="240" height="240" src="https://github.com/zhenxun-org/zhenxun_bot_plugins/blob/main/docs_image/tt3.png"/><img width="240" height="240" src="https://github.com/zhenxun-org/zhenxun_bot_plugins/blob/main/docs_image/tt1.png"/><img width="240" height="240" src="https://github.com/zhenxun-org/zhenxun_bot_plugins/blob/main/docs_image/tt2.png"/></div>
 
 ### 插件索引
 
