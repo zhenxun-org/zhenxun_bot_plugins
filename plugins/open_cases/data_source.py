@@ -60,6 +60,8 @@ def add_count(user: OpenCasesUser, skin: BuffSkin, case_price: float):
             user.knife_st_count += 1
         else:
             user.knife_count += 1
+    user.today_open_total += 1
+    user.total_count += 1
     user.make_money += skin.sell_min_price
     user.spend_money += int(17 + case_price)
 
