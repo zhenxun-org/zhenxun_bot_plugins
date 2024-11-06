@@ -16,7 +16,7 @@
 ### 插件索引
 
 | 插件名称 | 简介 |
-| :---: | :---: |
+| :---: | :---|
 |[AI](https://github.com/zhenxun-org/zhenxun_bot_plugins/tree/main/plugins/ai) | 青云客AI，还有重复说相同的话检测，与小真寻普普通通的对话吧 |
 |[B站订阅](https://github.com/zhenxun-org/zhenxun_bot_plugins/tree/main/plugins/bilibili_sub)|非常便利的B站订阅通知，包括直播间，个人用户动态，番剧动态等|
 |[敏感词警察](https://github.com/zhenxun-org/zhenxun_bot_plugins/tree/main/plugins/black_word)|对小真寻进行辱骂会遭到严厉的惩罚，惩罚等级随次数而增加|
