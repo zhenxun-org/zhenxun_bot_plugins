@@ -1,29 +1,30 @@
 import asyncio
-from datetime import datetime
 import random
 import re
 import time
+from datetime import datetime
 
+from httpx import Response
+from retrying import retry
 from zhenxun.configs.config import Config
-from .exception import NotLoginRequired, CallApiError
-from .models.buff_skin_log import BuffSkinLog
 from zhenxun.services.log import logger
 from zhenxun.utils.http_utils import AsyncHttpx
 from zhenxun.utils.utils import cn2py
+
 from .config import (
-    CASE2ID,
-    UpdateType,
-    KNIFE2ID,
-    BUFF_URL,
-    NAME2COLOR,
-    BuffResponse,
-    BuffItem,
-    BUFF_SELL_URL,
     BASE_PATH,
+    BUFF_SELL_URL,
+    BUFF_URL,
+    CASE2ID,
+    KNIFE2ID,
+    NAME2COLOR,
+    BuffItem,
+    BuffResponse,
+    UpdateType,
 )
+from .exception import CallApiError, NotLoginRequired
 from .models.buff_skin import BuffSkin
-from retrying import retry
-from httpx import Response
+from .models.buff_skin_log import BuffSkinLog
 
 base_config = Config.get("open_cases")
 
@@ -431,4 +432,5 @@ class BuffUpdateManager:
             raise NotLoginRequired()
         if response_data["code"] != "OK":
             raise CallApiError(f"访问发生异常: {response_data['code']} ...")
+        return BuffResponse(**response_data["data"])
         return BuffResponse(**response_data["data"])

@@ -278,6 +278,7 @@ class OpenCaseManager:
         """
         skin_list = await random_skin(case_name, num)
         if not skin_list:
+            logger.info(f"{case_name} 未抽取到任何皮肤...", "开箱")
             return MessageUtils.build_message("未抽取到任何皮肤...")
         case_price = 10
         log_list = []
