@@ -18,9 +18,9 @@
 | 插件名称 | 简介 |
 | :---: | :---|
 |[AI](https://github.com/zhenxun-org/zhenxun_bot_plugins/tree/main/plugins/ai) | 青云客AI，还有重复说相同的话检测，与小真寻普普通通的对话吧 |
-|[B站订阅](https://github.com/zhenxun-org/zhenxun_bot_plugins/tree/main/plugins/bilibili_sub)|非常便利的B站订阅通知，包括直播间，个人用户动态，番剧动态等|
+|[B站订阅](https://github.com/zhenxun-org/zhenxun_bot_plugins/tree/main/plugins/bilibili_sub)|非常便利的B站订阅通知，包括直播间，个人用户动态，番剧更新等|
 |[敏感词警察](https://github.com/zhenxun-org/zhenxun_bot_plugins/tree/main/plugins/black_word)|对小真寻进行辱骂会遭到严厉的惩罚，惩罚等级随次数而增加|
-|[磁力搜索](https://github.com/zhenxun-org/zhenxun_bot_plugins/tree/main/plugins/bt)|对小真寻进行辱骂会遭到严厉的惩罚，惩罚等级随次数而增加|
+|[磁力搜索](https://github.com/zhenxun-org/zhenxun_bot_plugins/tree/main/plugins/bt)|懂的都懂|
 |[联系管理员](https://github.com/zhenxun-org/zhenxun_bot_plugins/tree/main/plugins/dialogue)|跨越空间与时间跟超级用户对话|
 |[钉宫语录](https://github.com/zhenxun-org/zhenxun_bot_plugins/tree/main/plugins/dinggong)|被钉宫辱骂吧笨蛋|
 |[游戏抽卡](https://github.com/zhenxun-org/zhenxun_bot_plugins/tree/main/plugins/draw_card)|模拟赛马娘，原神，明日方舟，坎公骑冠剑，公主连结(国/台)，碧蓝航线，FGO，阴阳师，碧蓝档案进行抽卡，且通过爬虫实现自动更新|
@@ -36,7 +36,7 @@
 |[PIX-API](https://github.com/zhenxun-org/zhenxun_bot_plugins/tree/main/plugins/pix_api)|PIX的api版本，共享图库，看看你的xp|
 |[PIX图库](https://github.com/zhenxun-org/zhenxun_bot_plugins/tree/main/plugins/pix_gallery)|PIX的本地版本，收集你和群友的xp|
 |[P站排行](https://github.com/zhenxun-org/zhenxun_bot_plugins/tree/main/plugins/pixiv_rank_search)|基于hibiapi的pixiv各种排行|
-|[BUFF皮肤查询](https://github.com/zhenxun-org/zhenxun_bot_plugins/tree/main/plugins/search_buff_skin_price)|CSGO当前皮肤数据查询|
+|[BUFF皮肤查询](https://github.com/zhenxun-org/zhenxun_bot_plugins/tree/main/plugins/search_buff_skin_price)|CSGO当前皮肤数据buff查询|
 |[识图](https://github.com/zhenxun-org/zhenxun_bot_plugins/tree/main/plugins/search_image)|简单的saucenao识图|
 |[涩图](https://github.com/zhenxun-org/zhenxun_bot_plugins/tree/main/plugins/send_setu_)|没什么好说的，必备插件lolicon.api涩图|
 |[翻译](https://github.com/zhenxun-org/zhenxun_bot_plugins/tree/main/plugins/translate)|出国旅游好助手|
