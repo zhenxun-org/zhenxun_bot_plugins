@@ -7,7 +7,7 @@ from .._config import PixResult, base_config
 
 class KeywordManage:
     @classmethod
-    async def add_content(cls, content: str, kw_type: KwType) -> str:
+    async def add_content(cls, content: tuple[str, ...], kw_type: KwType) -> str:
         """添加pix
 
         参数:
@@ -18,7 +18,7 @@ class KeywordManage:
             str: 返回信息
         """
         api = base_config.get("pix_api") + "/pix/pix_add"
-        json_data = {"content": content, "add_type": kw_type}
+        json_data = {"content": list(set(content)), "add_type": kw_type}
         logger.debug(f"尝试调用pix api: {api}, 参数: {json_data}")
         headers = None
         if token := base_config.get("token"):

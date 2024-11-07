@@ -93,7 +93,8 @@ class PixManage:
             message_list.append(
                 f"title: {pix.title}\n"
                 f"author: {pix.author}\n"
-                f"pid: {pix.pid}\nuid: {pix.uid}\n",
+                f"pid: {pix.pid}\n"
+                f"uid: {pix.uid}\n",
             )
         message_list.append(image)
         return message_list, pix
