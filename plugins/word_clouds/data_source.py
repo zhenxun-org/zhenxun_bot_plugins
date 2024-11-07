@@ -22,7 +22,7 @@ from zhenxun.utils.http_utils import AsyncHttpx
 def _pre_precess(msg: list[str], config) -> str:
     """对消息进行预处理"""
     # 过滤掉命令
-    command_start = tuple([i for i in config.command_start if i])
+    command_start = tuple(i for i in config.command_start if i)
     result = " ".join([m for m in msg if not m.startswith(command_start)])
 
     # 去除网址
@@ -54,17 +54,17 @@ async def draw_word_cloud(messages, config):
         try:
             await AsyncHttpx.download_file(url, zx_logo_path)
         except Exception as e:
-            logger.error(f"词云图片资源下载发生错误 {type(e)}：{e}")
+            logger.error("词云图片资源下载发生错误", e=e)
             return False
     if not wordcloud_ttf.exists():
         ttf_url = "https://ghproxy.com/https://raw.githubusercontent.com/HibiKier/zhenxun_bot/main/resources/font/STKAITI.TTF"
         try:
             await AsyncHttpx.download_file(ttf_url, wordcloud_ttf)
         except Exception as e:
-            logger.error(f"词云字体资源下载发生错误 {type(e)}：{e}")
+            logger.error("词云字体资源下载发生错误", e=e)
             return False
 
-    topK = min(int(len(messages)), 100000)
+    topK = min(len(messages), 100000)
     read_name = jieba.analyse.extract_tags(
         await _pre_precess(messages, config), topK=topK, withWeight=True, allowPOS=()
     )
@@ -81,7 +81,7 @@ async def draw_word_cloud(messages, config):
         def random_pic(base_path: str) -> str:
             path_dir = os.listdir(base_path)
             path = random.sample(path_dir, 1)[0]
-            return str(base_path) + "/" + str(path)
+            return f"{base_path}/{path!s}"
 
         mask = np.array(IMG.open(random_pic(wordcloud_dir)))  # type: ignore
         wc = WordCloud(
@@ -115,8 +115,4 @@ async def get_list_msg(user_id, group_id, days):
     messages_list = await ChatHistory().get_message(
         uid=user_id, gid=group_id, type_="group", days=days
     )
-    if messages_list:
-        messages = [i.text for i in messages_list]
-        return messages
-    else:
-        return False
+    return [i.plain_text for i in messages_list] if messages_list else False
