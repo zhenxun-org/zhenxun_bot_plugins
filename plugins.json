@@ -315,7 +315,7 @@
         "description": "通过 pid 搜索图片",
         "usage": "usage：\n        通过 pid 搜索图片\n        指令：\n            p搜 [pid]",
         "author": "HibiKier",
-        "version": "0.1",
+        "version": "0.2",
         "plugin_type": "NORMAL",
         "is_dir": false
     },
