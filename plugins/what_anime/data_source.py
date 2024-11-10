@@ -1,6 +1,6 @@
+from nonebot_plugin_alconna import Image
 from zhenxun.services.log import logger
 from zhenxun.utils.http_utils import AsyncHttpx
-from nonebot_plugin_alconna import Image
 
 
 async def get_anime(anime: str) -> str | list:
@@ -17,7 +17,7 @@ async def get_anime(anime: str) -> str | list:
             [
                 f"名称: {anime['filename'].rsplit('.')[0]}\n"
                 f"集数: {anime['episode']}\n"
-                f"相似度: {anime['similarity']:.2f}%\n"
+                f"相似度: {float(anime['similarity']*100):.2f}%\n"
                 f"图片:",
                 Image(url=anime["image"]),
                 "----------\n",
