@@ -189,7 +189,7 @@ class OpenCaseManager:
         if num > max_count:
             return (
                 MessageUtils.build_message(
-                    f"开箱次数不足哦，剩余开箱次数: {user.today_open_total >= max_count}"
+                    f"开箱次数不足哦，剩余开箱次数: {max_count - user.today_open_total}"
                 ),
                 "",
                 0,
