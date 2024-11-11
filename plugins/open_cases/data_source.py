@@ -155,7 +155,7 @@ class OpenCaseManager:
 
     @classmethod
     async def __open_check(
-        cls, case_name: str | None, user_id: str, group_id: str, platform: str
+        cls, case_name: str | None, user_id: str, group_id: str, platform: str, num: int
     ) -> tuple[OpenCasesUser | UniMessage, str, int]:
         """开箱前检查
 
@@ -164,6 +164,7 @@ class OpenCaseManager:
             user_id: 用户给id
             group_id: 群组id
             platform: 平台
+            num: 开箱次数
 
         返回:
             tuple[OpenCasesUser | UniMessage, str, int]: 开箱用户或返回消息和箱子名称和最大开箱数
@@ -185,6 +186,14 @@ class OpenCaseManager:
             defaults={"open_cases_time_last": datetime.now()},
         )
         max_count = await cls.get_user_max_count(user_id, platform)
+        if num > max_count:
+            return (
+                MessageUtils.build_message(
+                    f"开箱次数不足哦，剩余开箱次数: {user.today_open_total >= max_count}"
+                ),
+                "",
+                0,
+            )
         # 一天次数上限
         if user.today_open_total >= max_count:
             return (
@@ -278,7 +287,6 @@ class OpenCaseManager:
         """
         skin_list = await random_skin(case_name, num)
         if not skin_list:
-            logger.info(f"{case_name} 未抽取到任何皮肤...", "开箱")
             return MessageUtils.build_message("未抽取到任何皮肤...")
         case_price = 10
         log_list = []
@@ -332,7 +340,7 @@ class OpenCaseManager:
         session: EventSession,
     ) -> UniMessage:
         user, case_name, max_count = await cls.__open_check(
-            case_name, user_id, group_id, session.platform
+            case_name, user_id, group_id, session.platform, num
         )
         if not isinstance(user, OpenCasesUser):
             return user
