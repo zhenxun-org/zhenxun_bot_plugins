@@ -37,12 +37,36 @@ __plugin_meta__ = PluginMetadata(
         pix ?*[tags] ?[-n 1]: 通过 tag 获取相似图片，不含tag时随机抽取,
                 -n表示数量, -r表示查看r18, -noai表示过滤ai
 
-        示例：pix 萝莉 白丝
-        示例：pix 萝莉 白丝 -n 10  （10为数量）
+            示例：pix 萝莉 白丝
+            示例：pix 萝莉 白丝 -n 10  （10为数量）
         
+        pix图库 ?[tags](使用空格分隔)
         
-        引用消息 /original  : 获取原图
+        引用消息 /star     : 收藏图片
+        引用消息 /unatar   : 取消收藏图片
+        引用消息 /original : 获取原图
         引用消息 /info     : 查看图片信息
+        引用消息 /block    : block该pid
+        引用消息 /block -u : block该uid下的所有图片
+        引用消息 / nsfw n : 设置nsfw等级 n = [0, 1, 2] 其中
+            0: 普通
+            1: 色图
+            2: R18
+        
+        pix添加 ['u', 'p'] [*content]: 可同时添加多个pid和uid
+            u: uid
+            p: pid
+            示例:
+                pix添加 u 123456789
+                pix添加 p 123456789
+                pix添加 u 123456789 12312332
+                
+        pix收藏           : 查看个人收藏
+        pix排行 ?[10] -r: 查看收藏排行, 默认获取前10，包含-r时会获取包括r18在内的排行
+        
+        pixtag ?[10] : 查看排名前10的tag，最大不能超过30
+            示例:
+                pixtag 20
     """.strip(),
     extra=PluginExtraData(
         author="HibiKier",
