@@ -1,10 +1,10 @@
 import random
 from pathlib import Path
 
-from zhenxun.services.log import logger
 from zhenxun.configs.config import Config
-from zhenxun.utils.http_utils import AsyncHttpx
 from zhenxun.configs.path_config import TEMP_PATH
+from zhenxun.services.log import logger
+from zhenxun.utils.http_utils import AsyncHttpx
 
 from .._config import PixModel, PixResult, base_config
 
@@ -54,7 +54,8 @@ class PixManage:
             Path | None: 图片路径
         """
         url = pix.url
-        if is_original and (nginx_url := Config.get_config("pixiv", "PIXIV_NGINX_URL")):
+        nginx_url = Config.get_config("pixiv", "PIXIV_NGINX_URL")
+        if "limit_sanity_level" in url or (is_original and nginx_url):
             image_type = url.split(".")[-1]
             if pix.is_multiple:
                 url = f"https://{nginx_url}/{pix.pid}-{int(pix.img_p) + 1}.{image_type}"
