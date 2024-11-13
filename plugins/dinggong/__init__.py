@@ -11,6 +11,7 @@ from zhenxun.configs.utils import PluginCdBlock, PluginExtraData
 from zhenxun.services.log import logger
 from zhenxun.services.plugin_init import PluginInit
 from zhenxun.utils.message import MessageUtils
+import ujson as json
 
 __plugin_meta__ = PluginMetadata(
     name="钉宫骂我",
@@ -38,17 +39,26 @@ _matcher.shortcut(
 
 RESOURCE_PATH = RECORD_PATH / "dinggong"
 
+text_data = {}
+
 
 @_matcher.handle()
 async def _(session: EventSession, arparma: Arparma):
+    global text_data
     if not RESOURCE_PATH.exists():
         await MessageUtils.build_message("钉宫语音文件夹不存在...").finish()
     files = os.listdir(RESOURCE_PATH)
     if not files:
         await MessageUtils.build_message("钉宫语音文件夹为空...").finish()
+    if not text_data:
+        text_file = RESOURCE_PATH / "data.json"
+        text_data = json.load(text_file.open("r", encoding="utf-8"))
     voice = random.choice(files)
+    index = voice.split(".")[0]
+    text = text_data.get(index, "")
     await UniMessage([Voice(path=RESOURCE_PATH / voice)]).send()
-    await MessageUtils.build_message(voice.split("_")[1]).send()
+    if text:
+        await MessageUtils.build_message(text).send()
     logger.info(f"发送钉宫骂人: {voice}", arparma.header_result, session=session)
 
 
