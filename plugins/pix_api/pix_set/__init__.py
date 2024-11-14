@@ -7,6 +7,7 @@ from nonebot.plugin import PluginMetadata
 from nonebot_plugin_apscheduler import scheduler
 from nonebot_plugin_alconna import (
     Args,
+    Query,
     Reply,
     Option,
     Alconna,
@@ -27,7 +28,8 @@ __plugin_meta__ = PluginMetadata(
     description="这里是PIX图库！",
     usage="""
     指令：
-        引用消息 /block    : block该pid
+        引用消息 /block ?[level] ?[--all]   : block该pid
+            默认level为2，可选[1, 2], 1程度较轻，含有all时block该pid下所有图片
         引用消息 /block -u : block该uid下的所有图片
         引用消息 / nsfw n : 设置nsfw等级 n = [0, 1, 2] 其中
             0: 普通
@@ -38,10 +40,6 @@ __plugin_meta__ = PluginMetadata(
         author="HibiKier",
         version="0.1",
         menu_type="PIX图库",
-        superuser_help="""
-        指令：
-            pix -s ?*[tags]: 通过tag获取色图，不含tag时随机
-        """,
     ).dict(),
 )
 
@@ -64,7 +62,11 @@ def reply_check() -> Rule:
 
 _block_matcher = on_alconna(
     Alconna(
-        ["/"], "block", Option("-u|--uid", action=store_true, help_text="是否是uid")
+        ["/"],
+        "block",
+        Args["level?", [1, 2]],
+        Option("-u|--uid", action=store_true, help_text="是否是uid"),
+        Option("--all", action=store_true, help_text="全部"),
     ),
     priority=5,
     block=True,
@@ -82,11 +84,19 @@ _nsfw_matcher = on_alconna(
 
 
 @_block_matcher.handle()
-async def _(bot: Bot, event: Event, arparma: Arparma, session: Uninfo):
+async def _(
+    bot: Bot,
+    event: Event,
+    arparma: Arparma,
+    session: Uninfo,
+    level: Query[int] = Query("level", 2),
+):
     reply: Reply | None = await reply_fetch(event, bot)
     if reply and (pix_model := InfoManage.get(str(reply.id))):
         try:
-            result = await PixManage.block_pix(pix_model, arparma.find("uid"))
+            result = await PixManage.block_pix(
+                pix_model, level.result, arparma.find("uid"), arparma.find("all")
+            )
         except HTTPStatusError as e:
             logger.error(
                 "pix图库API出错...", arparma.header_result, session=session, e=e
