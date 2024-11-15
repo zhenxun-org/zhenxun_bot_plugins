@@ -73,7 +73,8 @@ class AnimeManage:
             item.box = [int(i) for i in item.box]
             chars = item.char[:5] if len(item.char) > 5 else item.char
             chars_list = [
-                f"角色名称: {char.name}\n出处: {char.cartoonname}\n相似度: {char.acc}\n"
+                f"角色名称: {char.name}\n出处: {char.cartoonname}\n相似度: {char.acc}"
+                "\n---------------------\n"
                 for char in chars
             ]
             message_list.append(chars_list)
