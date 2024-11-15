@@ -56,6 +56,8 @@
 |[古诗](https://github.com/zhenxun-org/zhenxun_bot_plugins/tree/main/plugins/poetry)|为什么突然文艺起来了啊喂！平白无故念首诗|
 |[二次元语录](https://github.com/zhenxun-org/zhenxun_bot_plugins/tree/main/plugins/quotations)|二次元给你力量|
 |[roll](https://github.com/zhenxun-org/zhenxun_bot_plugins/tree/main/plugins/roll)|犹豫不决吗？那就让我帮你决定吧|
+|[点歌](https://github.com/zhenxun-org/zhenxun_bot_plugins/tree/main/plugins/music)|简易版网易云点歌|
+|[角色识别](https://github.com/zhenxun-org/zhenxun_bot_plugins/tree/main/plugins/what_role)|动漫以及gal游戏的角色识别|
 
 
 

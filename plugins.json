@@ -428,5 +428,15 @@
         "version": "0.1",
         "plugin_type": "NORMAL",
         "is_dir": true
+    },
+    "角色识别": {
+        "module": "what_role",
+        "module_path": "plugins.what_role",
+        "description": "动漫以及gal游戏的角色识别",
+        "usage": "角色识别 ?[-t [1, 2, 3, 4, 5](识别类型，默认1)] [图片]",
+        "author": "HibiKier",
+        "version": "0.1",
+        "plugin_type": "NORMAL",
+        "is_dir": true
     }
 }
