@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>Test</title>
+    <link rel="stylesheet" href="main.css">
+</head>
+
+<body>
+    <div class="wrapper">
+        <div class="main">
+            <div class="top-border">
+                <div class="zx-img">
+                    <img src="./res/image/1.no-bg.png" alt="ZhenXun" class="zx-img">
+                </div>
+                <div class="top-title">
+                    <p class="zx-title">真寻日报</p>
+                    <p class="zx-tip">MAHIRO NEWS</p>
+                </div>
+                <div class="top-date">
+                    <p class="top-date-week">{{data.week}}</p>
+                    <p class="top-date-date">{{data.date}}</p>
+                    <p class="top-date-cn">{{data.zh_date}}</p>
+                </div>
+            </div>
+            <div class="one-border">
+                <div class="moyu-border">
+                    <div class="moyu-title"><img src="./res/icon/fish.png" class="title-img">摸鱼日历</div>
+                    {% for fes in data.data_festival %}
+                    <p class="moyu-inner">距离<span class="moyu-day-name">{{fes[1]}}</span>还剩<span
+                            class="moyu-day">{{fes[0]}}</span>天
+                    </p>
+                    {% endfor %}
+                </div>
+                <div class="bili-border">
+                    <div class="moyu-title" style="left: 128px;"><img src="./res/icon/bilibili.png"
+                            class="title-img">B站热点</div>
+                    {% for s in data.data_bili %}
+                    <p class="bili-text"><span class="hot-text">热</span>{{s}}</p>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="two-border">
+                <div class="moyu-title" style="left: -3px;"><img src="./res/icon/bgm.png" class="title-img">今日新番</div>
+                {% for s in data.data_anime %}
+                <div class="anime-border">
+                    <img src="{{s[1]}}" class="anime-img">
+                    <p class="anime-text">{{s[0]}}</p>
+                </div>
+                {% endfor %}
+            </div>
+            <div class="three-border">
+                <div class="moyu-title" style="left: -3px;"><img src="./res/icon/60.png" class="title-img">60S读世界</div>
+                <ul style="line-height: 30px; line-height: 25px;">
+                    {% for s in data.data_six %}
+                    <li class="normal-text">{{s}}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            <div class="four-border">
+                <div class="moyu-title" style="left: -3px;"><img src="./res/icon/it.png" class="title-img">IT资讯</div>
+                <ul style="line-height: 30px; line-height: 25px;">
+                    {% for s in data.data_it %}
+                    <li class="normal-text">{{s}}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            <div class="five-border">
+                <div class="moyu-title" style="left: -3px;"><img src="./res/icon/hitokoto.png" class="title-img">今日一言
+                </div>
+                <p style="margin-top: 5px;margin-bottom: 5px;">“{{data.data_hitokoto}}”</p>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

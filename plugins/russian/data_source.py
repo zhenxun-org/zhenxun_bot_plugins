@@ -23,7 +23,6 @@ base_config = Config.get("russian")
 
 
 class Russian(BaseModel):
-
     at_user: str | None
     """指定决斗对象"""
     player1: tuple[str, str]
@@ -47,7 +46,6 @@ class Russian(BaseModel):
 
 
 class RussianManage:
-
     def __init__(self) -> None:
         self._data: dict[str, Russian] = {}
 
@@ -102,7 +100,7 @@ class RussianManage:
             platform: 平台
         """
         self.__remove_job(group_id)
-        if is_add:
+        if is_add and not PlatformUtils.is_qbot(bot):
             date = datetime.now() + timedelta(seconds=31)
             scheduler.add_job(
                 self.__auto_end_game,
@@ -364,7 +362,7 @@ class RussianManage:
                     )
                 return MessageUtils.build_message("决斗还未开始,，无法结算哦...")
             if user_id and user_id not in [russian.player1[0], russian.player2[0]]:
-                return MessageUtils.build_message(f"吃瓜群众不要捣乱！黄牌警告！")
+                return MessageUtils.build_message("吃瓜群众不要捣乱！黄牌警告！")
             if not self.__check_is_timeout(group_id):
                 return MessageUtils.build_message(
                     f"{russian.player1[1]} 和 {russian.player2[1]} 比赛并未超时，请继续比赛..."

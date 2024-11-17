@@ -55,6 +55,6 @@ async def _(
         logger.info(
             f"识番 {image.url} 未找到...", arparma.header_result, session=session
         )
-        await MessageUtils.build_message(f"没有寻找到该番剧，果咩..").send(
+        await MessageUtils.build_message("没有寻找到该番剧，果咩..").send(
             reply_to=True
         )

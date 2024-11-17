@@ -2,8 +2,36 @@ from zhenxun.configs.path_config import IMAGE_PATH
 from zhenxun.services.log import logger
 from zhenxun.utils.http_utils import AsyncHttpx
 from zhenxun.utils.image_utils import BuildImage
+from zhenxun.configs.config import Config
 
 URL = "https://weibo.com/ajax/side/hotSearch"
+
+
+def get_cookie(url: str) -> list[dict] | str:
+    """获取cookie
+
+    参数:
+        url: 链接
+
+    返回:
+        list[dict] | str: cookie数据
+    """
+    cookie = Config.get_config("wbtop", "cookie")
+    if not cookie:
+        return "当前微博cookie为空..."
+
+    cookies_list = cookie.split("; ")
+    cookies = []
+
+    for cookie in cookies_list:
+        name_value = cookie.split("=")
+        cookie_dict = {
+            "name": name_value[0],
+            "value": name_value[1],
+            "url": url,
+        }
+        cookies.append(cookie_dict)
+    return cookies
 
 
 async def get_data() -> list | str:

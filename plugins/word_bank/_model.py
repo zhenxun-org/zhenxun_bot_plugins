@@ -17,6 +17,7 @@ from zhenxun.configs.path_config import DATA_PATH
 from zhenxun.utils.image_utils import get_img_hash
 
 from ._config import WordType, ScopeType, int2type
+from .exception import ImageDownloadError
 
 path = DATA_PATH / "word_bank"
 
@@ -122,11 +123,14 @@ class WordBank(Model):
             _uuid = uuid.uuid1()
             _file = path / "problem" / f"{group_id}" / f"{user_id}_{_uuid}.jpg"
             _file.parent.mkdir(exist_ok=True, parents=True)
-            await AsyncHttpx.download_file(problem, _file)
+            if not await AsyncHttpx.download_file(problem, _file):
+                raise ImageDownloadError()
             problem = get_img_hash(_file)
             image_path = f"problem/{group_id}/{user_id}_{_uuid}.jpg"
         new_answer, placeholder_list = await cls._answer2format(
-            answer, user_id, group_id
+            answer,  # type: ignore
+            user_id,
+            group_id,
         )
         if not await cls.exists(
             user_id, group_id, problem, new_answer, word_scope, word_type
@@ -190,7 +194,8 @@ class WordBank(Model):
                     / f"{user_id}_{placeholder}.jpg"
                 )
                 _file.parent.mkdir(exist_ok=True, parents=True)
-                await AsyncHttpx.download_file(seg.url, _file)
+                if not await AsyncHttpx.download_file(seg.url, _file):
+                    raise ImageDownloadError()
                 placeholder_list.append(
                     f"answer/{group_id or user_id}/{user_id}_{placeholder}.jpg"
                 )
@@ -224,7 +229,7 @@ class WordBank(Model):
             answer = str(query.answer)  # type: ignore
         if query and query.placeholder:
             type_list = re.findall(r"\[(.*?):placeholder_.*?]", answer)
-            answer_split = re.split(r"\[.*:placeholder_.*?]", answer)
+            answer_split = re.split(r"\[.*?:placeholder_.*?]", answer)
             placeholder_split = query.placeholder.split(",")
             result_list = []
             for index, ans in enumerate(answer_split):

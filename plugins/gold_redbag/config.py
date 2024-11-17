@@ -1,15 +1,12 @@
 import random
 import time
 from io import BytesIO
-from typing import Dict
 
 from pydantic import BaseModel
-
 from zhenxun.models.group_member_info import GroupInfoUser
 from zhenxun.models.user_console import UserConsole
 from zhenxun.utils.image_utils import BuildImage
 from zhenxun.utils.platform import PlatformUtils
-from zhenxun.utils.utils import get_user_avatar
 
 from .model import RedbagUser
 
@@ -18,8 +15,7 @@ FESTIVE_KEY = "FESTIVE"
 
 
 class FestiveRedBagManage:
-
-    _data: Dict[str, list[str]] = {}
+    _data: dict[str, list[str]] = {}  # noqa: RUF012
 
     @classmethod
     def add(cls, uuid: str):
@@ -37,9 +33,7 @@ class FestiveRedBagManage:
 
     @classmethod
     def check(cls, uuid: str, uid: str):
-        if uuid in cls._data:
-            return uid not in cls._data[uuid]
-        return False
+        return uid not in cls._data[uuid] if uuid in cls._data else False
 
 
 class RedBag(BaseModel):
@@ -67,7 +61,7 @@ class RedBag(BaseModel):
     """指定人id"""
     start_time: float
     """红包发起时间"""
-    open_user: Dict[str, int] = {}
+    open_user: dict[str, int] = {}
     """开启用户"""
     red_bag_list: list[int]
     """红包金额列表"""
@@ -89,7 +83,7 @@ class RedBag(BaseModel):
             sort_data = sorted(
                 self.open_user.items(), key=lambda item: item[1], reverse=True
             )
-            num = num if num < len(self.open_user) else len(self.open_user)
+            num = min(num, len(self.open_user))
             user_id_list = [sort_data[i][0] for i in range(num)]
             group_user_list = await GroupInfoUser.filter(
                 group_id=self.group_id, user_id__in=user_id_list
@@ -116,7 +110,7 @@ class RedBag(BaseModel):
                 ]
                 await user_background.text((225, 15), name[0] if name else "")
                 amount_image = await BuildImage.build_text_image(
-                    f"{amount} 元", size=30, font_color="#cdac72"
+                    f"{amount} 金币", size=30, font_color="#cdac72"
                 )
                 await user_background.paste(
                     amount_image, (user_background.width - amount_image.width - 20, 50)
@@ -155,17 +149,14 @@ class GroupRedBag:
 
     def __init__(self, group_id: str):
         self.group_id = group_id
-        self._data: Dict[str, RedBag] = {}
+        self._data: dict[str, RedBag] = {}
         """红包列表"""
 
     def remove_festive_red_bag(self):
         """删除节日红包"""
-        _key = None
-        for k, red_bag in self._data.items():
-            if red_bag.is_festival:
-                _key = k
-                break
-        if _key:
+        if _key := next(
+            (k for k, red_bag in self._data.items() if red_bag.is_festival), None
+        ):
             del self._data[_key]
 
     def get_festive_red_bag(self) -> RedBag | None:
@@ -174,10 +165,10 @@ class GroupRedBag:
         返回:
             RedBag | None: 节日红包
         """
-        for _, red_bag in self._data.items():
-            if red_bag.is_festival:
-                return red_bag
-        return None
+        return next(
+            (red_bag for _, red_bag in self._data.items() if red_bag.is_festival),
+            None,
+        )
 
     def get_user_red_bag(self, user_id: str) -> RedBag | None:
         """获取用户塞红包数据
@@ -188,7 +179,7 @@ class GroupRedBag:
         返回:
             RedBag | None: RedBag
         """
-        return self._data.get(str(user_id))
+        return self._data.get(user_id)
 
     def check_open(self, user_id: str) -> bool:
         """检查是否有可开启的红包
@@ -199,15 +190,13 @@ class GroupRedBag:
         返回:
             bool: 是否有可开启的红包
         """
-        user_id = str(user_id)
-        for _, red_bag in self._data.items():
-            if red_bag.assigner:
-                if red_bag.assigner == user_id:
-                    return True
-            else:
-                if user_id not in red_bag.open_user:
-                    return True
-        return False
+        return any(
+            red_bag.assigner
+            and red_bag.assigner == user_id
+            or not red_bag.assigner
+            and user_id not in red_bag.open_user
+            for _, red_bag in self._data.items()
+        )
 
     def check_timeout(self, user_id: str) -> int:
         """判断用户红包是否过期
@@ -227,7 +216,7 @@ class GroupRedBag:
 
     async def open(
         self, user_id: str, platform: str | None = None
-    ) -> tuple[Dict[str, tuple[int, RedBag]], list[RedBag]]:
+    ) -> tuple[dict[str, tuple[int, RedBag]], list[RedBag]]:
         """开启红包
 
         参数:

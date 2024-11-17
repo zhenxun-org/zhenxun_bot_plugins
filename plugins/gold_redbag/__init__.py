@@ -1,3 +1,4 @@
+import contextlib
 import time
 import uuid
 from datetime import datetime, timedelta
@@ -8,9 +9,20 @@ from nonebot.exception import ActionFailed
 from nonebot.permission import SUPERUSER
 from nonebot.plugin import PluginMetadata
 from nonebot.rule import to_me
-from nonebot_plugin_alconna import Alconna, Args, Arparma, At, Match, Option, on_alconna
+from nonebot_plugin_alconna import (
+    Alconna,
+    AlconnaQuery,
+    Args,
+    Arparma,
+    At,
+    Match,
+    Option,
+    Query,
+    on_alconna,
+)
 from nonebot_plugin_apscheduler import scheduler
 from nonebot_plugin_session import EventSession
+from nonebot_plugin_uninfo import Uninfo
 
 from zhenxun.configs.config import BotConfig
 from zhenxun.configs.utils import PluginCdBlock, PluginExtraData, RegisterConfig
@@ -78,17 +90,6 @@ __plugin_meta__ = PluginMetadata(
 )
 
 
-# def rule(session: EventSession) -> bool:
-#     if gid := session.id3 or session.id2:
-#         if group_red_bag := RedBagManager.get_group_data(gid):
-#             return group_red_bag.check_open(gid)
-#     return False
-
-
-# async def rule_group(session: EventSession):
-#     return rule(session) and ensure_group(session)
-
-
 _red_bag_matcher = on_alconna(
     Alconna("塞红包", Args["amount", int]["num", int, 5]["user?", At]),
     aliases={"金币红包"},
@@ -124,92 +125,93 @@ _festive_matcher = on_alconna(
 
 @_red_bag_matcher.handle()
 async def _(
-    session: EventSession,
+    session: Uninfo,
     arparma: Arparma,
     amount: int,
-    num: int,
     user: Match[At],
+    num: Query[int] = AlconnaQuery("num", 5),
     default_interval: int = GetConfig(config="DEFAULT_INTERVAL"),
     user_name: str = UserName(),
 ):
-    at_user = None
-    if user.available:
-        at_user = user.result.target
-    # group_id = session.id3 or session.id2
-    group_id = session.id2
+    at_user = user.result.target if user.available else None
+    group_id = session.group.id if session.group else None
     """以频道id为键"""
-    user_id = session.id1
-    if not user_id:
-        await MessageUtils.build_message("用户id为空").finish()
     if not group_id:
         await MessageUtils.build_message("群组id为空").finish()
     group_red_bag = RedBagManager.get_group_data(group_id)
     # 剩余过期时间
-    time_remaining = group_red_bag.check_timeout(user_id)
+    time_remaining = group_red_bag.check_timeout(session.user.id)
     if time_remaining != -1:
         # 判断用户红包是否存在且是否过时覆盖
-        if user_red_bag := group_red_bag.get_user_red_bag(user_id):
+        if user_red_bag := group_red_bag.get_user_red_bag(session.user.id):
             now = time.time()
             if now < user_red_bag.start_time + default_interval:
                 await MessageUtils.build_message(
-                    f"你的红包还没消化完捏...还剩下 {user_red_bag.num - len(user_red_bag.open_user)} 个! 请等待红包领取完毕..."
-                    f"(或等待{time_remaining}秒红包cd)"
+                    "你的红包还没消化完捏..."
+                    f"还剩下 {user_red_bag.num - len(user_red_bag.open_user)} 个! "
+                    f"请等待红包领取完毕...(或等待{time_remaining}秒红包cd)"
                 ).finish()
-    result = await RedBagManager.check_gold(user_id, amount, session.platform)
+    platform = PlatformUtils.get_platform(session)
+    result = await RedBagManager.check_gold(
+        session.user.id, num.result, amount, platform
+    )
     if result:
         await MessageUtils.build_message(result).finish(at_sender=True)
     await group_red_bag.add_red_bag(
         f"{user_name}的红包",
-        int(amount),
-        1 if at_user else num,
+        amount,
+        1 if at_user else num.result,
         user_name,
-        user_id,
+        session.user.id,
         assigner=at_user,
-        platform=session.platform,
+        platform=platform,
     )
-    image = await RedBagManager.random_red_bag_background(
-        user_id, platform=session.platform
-    )
-    message_list: list = [f"{user_name}发起了金币红包\n金额: {amount}\n数量: {num}\n"]
+    image = await RedBagManager.random_red_bag_background(session)
+    message_list: list = [
+        f"{user_name}发起了金币红包\n金额: {amount}\n数量: {num.result}\n"
+    ]
     if at_user:
         message_list.append("指定人: ")
-        message_list.append(At(flag="user", target=at_user))
-        message_list.append("\n")
+        message_list.extend((At(flag="user", target=at_user), "\n"))
     message_list.append(image)
     await MessageUtils.build_message(message_list).send()
-
     logger.info(
-        f"塞入 {num} 个红包，共 {amount} 金币", arparma.header_result, session=session
+        f"塞入 {num.result} 个红包，共 {amount} 金币",
+        arparma.header_result,
+        session=session,
     )
 
 
 @_open_matcher.handle()
 async def _(
-    session: EventSession,
+    session: Uninfo,
     rank_num: int = GetConfig(config="RANK_NUM"),
 ):
     # group_id = session.id3 or session.id2
-    group_id = session.id2
+    group_id = session.group.id if session.group else None
     """以频道id为键"""
-    user_id = session.id1
-    if not user_id:
-        await MessageUtils.build_message("用户id为空").finish()
     if not group_id:
         await MessageUtils.build_message("群组id为空").finish()
+    platform = PlatformUtils.get_platform(session)
     if group_red_bag := RedBagManager.get_group_data(group_id):
-        open_data, settlement_list = await group_red_bag.open(user_id, session.platform)
+        open_data, settlement_list = await group_red_bag.open(session.user.id, platform)
         # send_msg = Text("没有红包给你开！")
         send_msg = []
         for _, item in open_data.items():
             amount, red_bag = item
             result_image = await RedBagManager.build_open_result_image(
-                red_bag, user_id, amount, session.platform
+                red_bag, session, amount
             )
-            send_msg.append(f"开启了 {red_bag.promoter} 的红包, 获取 {amount} 个金币\n")
-            send_msg.append(result_image)
-            send_msg.append("\n")
+            send_msg.extend(
+                (
+                    f"开启了 {red_bag.promoter} 的红包, 获取 {amount} 个金币\n",
+                    result_image,
+                    "\n",
+                )
+            )
             logger.info(
-                f"抢到了 {red_bag.promoter}({red_bag.promoter_id}) 的红包，获取了{amount}个金币",
+                f"抢到了 {red_bag.promoter}({red_bag.promoter_id})"
+                f" 的红包，获取了{amount}个金币",
                 "开红包",
                 session=session,
             )
@@ -221,9 +223,7 @@ async def _(
         await send_msg.send(reply_to=True)
         if settlement_list:
             for red_bag in settlement_list:
-                result_image = await red_bag.build_amount_rank(
-                    rank_num, session.platform
-                )
+                result_image = await red_bag.build_amount_rank(rank_num, platform)
                 await MessageUtils.build_message(
                     [f"{red_bag.name}已结算\n", result_image]
                 ).send()
@@ -246,8 +246,9 @@ async def _(
             now = time.time()
             if now - user_red_bag.start_time < default_interval:
                 await MessageUtils.build_message(
-                    f"你的红包还没有过时, 在 {int(default_interval - now + user_red_bag.start_time)} "
-                    f"秒后可以退回..."
+                    "你的红包还没有过时, "
+                    f"在 {int(default_interval - now + user_red_bag.start_time)} "
+                    "秒后可以退回..."
                 ).finish(reply_to=True)
             user_red_bag = group_red_bag.get_user_red_bag(user_id)
             if user_red_bag and (
@@ -269,24 +270,23 @@ async def _(
 @_festive_matcher.handle()
 async def _(
     bot: Bot,
-    session: EventSession,
+    session: Uninfo,
     amount: int,
     num: int,
     text: Match[str],
     groups: Match[str],
 ):
-    greetings = "恭喜发财 大吉大利"
-    if text.available:
-        greetings = text.result
+    greetings = text.result if text.available else "恭喜发财 大吉大利"
     gl = []
     if groups.available:
         gl = groups.result.strip().split()
     else:
-        g_l, platform = await PlatformUtils.get_group_list(bot)
+        g_l, _ = await PlatformUtils.get_group_list(bot)
         gl = [g.channel_id or g.group_id for g in g_l]
     _uuid = str(uuid.uuid1())
     FestiveRedBagManage.add(_uuid)
     _suc_cnt = 0
+    platform = PlatformUtils.get_platform(session)
     for g in gl:
         if target := PlatformUtils.get_target(bot, group_id=g):
             group_red_bag = RedBagManager.get_group_data(g)
@@ -295,24 +295,18 @@ async def _(
                 if festive_red_bag.uuid:
                     FestiveRedBagManage.remove(festive_red_bag.uuid)
                 rank_image = await festive_red_bag.build_amount_rank(10, platform)
-                try:
+                with contextlib.suppress(ActionFailed):
                     await MessageUtils.build_message(
                         [
                             f"{BotConfig.self_nickname}的节日红包过时了，一共开启了 "
                             f"{len(festive_red_bag.open_user)}"
-                            f" 个红包，共 {sum(festive_red_bag.open_user.values())} 金币\n",
+                            f"个红包，共{sum(festive_red_bag.open_user.values())}金币\n",
                             rank_image,
                         ]
                     ).send(target=target, bot=bot)
-                except ActionFailed:
-                    pass
-            try:
+            with contextlib.suppress(JobLookupError):
                 scheduler.remove_job(f"{FESTIVE_KEY}_{g}")
-                await RedBagManager.end_red_bag(
-                    g, is_festive=True, platform=session.platform
-                )
-            except JobLookupError:
-                pass
+                await RedBagManager.end_red_bag(g, is_festive=True, platform=platform)
             await group_red_bag.add_red_bag(
                 f"{BotConfig.self_nickname}的红包",
                 amount,
@@ -320,7 +314,7 @@ async def _(
                 BotConfig.self_nickname,
                 FESTIVE_KEY,
                 _uuid,
-                platform=session.platform,
+                platform=platform,
             )
             scheduler.add_job(
                 RedBagManager._auto_end_festive_red_bag,
@@ -331,18 +325,19 @@ async def _(
             )
             try:
                 image_result = await RedBagManager.random_red_bag_background(
-                    bot.self_id, greetings, session.platform
+                    session, greetings, True
                 )
                 await MessageUtils.build_message(
                     [
-                        f"{BotConfig.self_nickname}发起了节日金币红包\n金额: {amount}\n数量: {num}\n",
+                        f"{BotConfig.self_nickname}发起了节日金币红包\n"
+                        f"金额: {amount}\n数量: {num}\n",
                         image_result,
                     ]
                 ).send(target=target, bot=bot)
                 _suc_cnt += 1
                 logger.debug("节日红包图片信息发送成功...", "节日红包", group_id=g)
             except ActionFailed:
-                logger.warning(f"节日红包图片信息发送失败...", "节日红包", group_id=g)
+                logger.warning("节日红包图片信息发送失败...", "节日红包", group_id=g)
     if gl:
         await MessageUtils.build_message(
             f"节日红包发送成功，累计成功发送 {_suc_cnt} 个群组!"

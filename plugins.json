@@ -1,11 +1,11 @@
 {
     "鸡汤": {
         "module": "jitang",
-        "module_path": "plugins.alapi.jitang",
+        "module_path": "plugins.jitang",
         "description": "喏，亲手为你煮的鸡汤",
         "usage": "不喝点什么感觉有点不舒服\n    指令：\n        鸡汤",
         "author": "HibiKier",
-        "version": "0.1-89d294e",
+        "version": "0.1-36e70ae",
         "plugin_type": "NORMAL",
         "is_dir": false
     },
@@ -21,11 +21,11 @@
     },
     "网易云热评": {
         "module": "comments_163",
-        "module_path": "plugins.alapi.comments_163",
+        "module_path": "plugins.comments_163",
         "description": "生了个人，我很抱歉",
         "usage": "到点了，还是防不了下塔\n    指令：\n        网易云热评/到点了/12点了",
         "author": "HibiKier",
-        "version": "0.1-89d294e",
+        "version": "0.1-36e70ae",
         "plugin_type": "NORMAL",
         "is_dir": false
     },
@@ -83,9 +83,9 @@
         "module": "mute",
         "module_path": "plugins.mute",
         "description": "刷屏禁言相关操作",
-        "usage": "刷屏禁言相关操作，需要 {NICKNAME} 有群管理员权限\n    指令：\n        设置刷屏: 查看当前设置\n        -c [count]: 检测最大次数\n        -t [time]: 规定时间内\n        -d [duration]: 禁言时长\n        示例:\n            设置刷屏 -c 10: 设置最大次数为10\n            设置刷屏 -t 100 -d 20: 设置规定时间和禁言时长\n            设置刷屏 -d 10: 设置禁言时长为10\n        * 即 X 秒内发送同样消息 N 次，禁言 M 分钟 *",
+        "usage": "刷屏禁言相关操作，需要 {NICKNAME} 有群管理员权限\n    指令：\n        刷屏设置: 查看当前设置\n        -c [count]: 检测最大次数\n        -t [time]: 规定时间内\n        -d [duration]: 禁言时长\n        示例:\n            刷屏设置 -c 10: 设置最大次数为10\n            刷屏设置 -t 100 -d 20: 设置规定时间和禁言时长\n            刷屏设置 -d 10: 设置禁言时长为10\n        * 即 X 秒内发送同样消息 N 次，禁言 M 分钟 *",
         "author": "HibiKier",
-        "version": "0.1-89d294e",
+        "version": "0.1-473ecd8",
         "plugin_type": "ADMIN",
         "is_dir": true
     },
@@ -135,7 +135,7 @@
         "description": "csgo模拟开箱[戒赌]",
         "usage": "指令：\n        开箱 ?[武器箱]\n        [1-30]连开箱 ?[武器箱]\n        我的开箱\n        我的金色\n        群开箱统计\n        查看武器箱?[武器箱]\n        * 不包含[武器箱]时随机开箱 *\n        示例: 查看武器箱\n        示例: 查看武器箱英勇",
         "author": "HibiKier",
-        "version": "0.1-89d294e",
+        "version": "0.1-eb2b7db",
         "plugin_type": "NORMAL",
         "is_dir": true
     },
@@ -155,13 +155,13 @@
         "description": "上传/删除/移动到指定图片与发送图片",
         "usage": "多指令",
         "author": "HibiKier",
-        "version": "0.2-89d294e",
+        "version": "0.2-eb2b7db",
         "plugin_type": "ADMIN",
         "is_dir": true
     },
     "b封面": {
         "module": "cover",
-        "module_path": "plugins.alapi.cover",
+        "module_path": "plugins.cover",
         "description": "快捷的b站视频封面获取方式",
         "usage": "b封面 [链接/av/bv/cv/直播id]\n    示例:b封面 av86863038",
         "author": "HibiKier",
@@ -205,7 +205,7 @@
         "description": "自定义词条内容随机回复",
         "usage": "usage：\n        对指定问题的随机回答，对相同问题可以设置多个不同回答\n        删除词条后每个词条的id可能会变化，请查看后再删除\n        更推荐使用id方式删除\n        问题回答支持的类型：at, image\n        查看词条命令：群聊时为 群词条+全局词条，私聊时为 私聊词条+全局词条\n        添加词条正则：添加词条(模糊|正则|图片)?问\\s*?(\\S*\\s?\\S*)\\s*?答\\s?(\\S*)\n        正则问可以通过$1类推()捕获的组\n        指令：\n            添加词条 ?[模糊|正则|图片]问...答...：添加问答词条，可重复添加相同问题的不同回答\n                示例:\n                    添加词条问你好答你也好\n                    添加图片词条问答看看涩图\n            删除词条 ?[问题] ?[序号] ?[回答序号]：删除指定词条指定或全部回答\n                示例:\n                    删除词条 谁是萝莉           : 删除文字是 谁是萝莉 的词条\n                    删除词条 --id 2            : 删除序号为2的词条\n                    删除词条 谁是萝莉 --aid 2   : 删除 谁是萝莉 词条的第2个回答\n                    删除词条 --id 2 --aid 2    : 删除序号为2词条的第2个回答\n            修改词条 [替换文字] ?[旧词条文字] ?[序号]：修改词条问题\n                示例:\n                    修改词条 谁是萝莉 谁是萝莉啊？ : 将词条 谁是萝莉 修改为 谁是萝莉啊？\n                    修改词条 谁是萝莉 --id 2     : 将序号为2的词条修改为 谁是萝莉\n            查看词条 ?[问题] ?[序号]：查看全部词条或对应词条回答\n                示例:\n                    查看词条:\n                        (在群组中使用时): 查看当前群组词条和全局词条\n                        (在私聊中使用时): 查看当前私聊词条和全局词条\n                    查看词条 谁是萝莉   : 查看词条 谁是萝莉 的全部回答\n                    查看词条 --id 2    : 查看词条序号为2的全部回答\n                    查看词条 谁是萝莉 --all: 查看全局词条 谁是萝莉 的全部回答\n                    查看词条 --id 2 --all: 查看全局词条序号为2的全部回答",
         "author": "HibiKier & yajiwa",
-        "version": "0.4-89d294e",
+        "version": "0.5-36e70ae",
         "plugin_type": "NORMAL",
         "is_dir": true
     },
@@ -221,7 +221,7 @@
     },
     "钉宫骂我": {
         "module": "dinggong",
-        "module_path": "plugins.send_voice.dinggong",
+        "module_path": "plugins.dinggong",
         "description": "请狠狠的骂我一次！",
         "usage": "多骂我一点，球球了\n    指令：\n        骂老子",
         "author": "HibiKier",
@@ -261,7 +261,7 @@
     },
     "古诗": {
         "module": "poetry",
-        "module_path": "plugins.alapi.poetry",
+        "module_path": "plugins.poetry",
         "description": "为什么突然文艺起来了！",
         "usage": "平白无故念首诗\n    示例：念诗/来首诗/念首诗",
         "author": "HibiKier",
@@ -315,7 +315,7 @@
         "description": "通过 pid 搜索图片",
         "usage": "usage：\n        通过 pid 搜索图片\n        指令：\n            p搜 [pid]",
         "author": "HibiKier",
-        "version": "0.1-89d294e",
+        "version": "0.2",
         "plugin_type": "NORMAL",
         "is_dir": false
     },
@@ -375,7 +375,7 @@
         "description": "戳一戳发送语音美图萝莉图不美哉？",
         "usage": "戳一戳随机掉落语音或美图萝莉图",
         "author": "HibiKier",
-        "version": "0.1-89d294e",
+        "version": "0.1-5fbfdd5",
         "plugin_type": "DEPENDANT",
         "is_dir": true
     },
@@ -385,7 +385,57 @@
         "description": "非常便利的B站订阅通知",
         "usage": "B站直播，番剧，UP动态开播等提醒",
         "author": "HibiKier",
-        "version": "0.3-89d294e",
+        "version": "0.4",
+        "plugin_type": "NORMAL",
+        "is_dir": true
+    },
+    "爬爬爬": {
+        "module": "pa",
+        "module_path": "plugins.pa",
+        "description": "爬爬爬表情包",
+        "usage": "爬爬爬爬爬",
+        "author": "HibiKier",
+        "version": "0.1",
+        "plugin_type": "NORMAL",
+        "is_dir": true
+    },
+    "真寻日报": {
+        "module": "mahiro_report",
+        "module_path": "plugins.mahiro_report",
+        "description": "嗨嗨，这里是小记者真寻哦",
+        "usage": "真寻日报",
+        "author": "HibiKier",
+        "version": "0.2",
+        "plugin_type": "NORMAL",
+        "is_dir": true
+    },
+    "PIX-API": {
+        "module": "pix_api",
+        "module_path": "plugins.pix_api",
+        "description": "这里是PIX图库！",
+        "usage": "pix ?*[tags] ?[-n 1]: 通过 tag 获取相似图片，不含tag时随机抽取",
+        "author": "HibiKier",
+        "version": "0.2",
+        "plugin_type": "NORMAL",
+        "is_dir": true
+    },
+    "点歌": {
+        "module": "music",
+        "module_path": "plugins.music",
+        "description": "简易网易云点歌",
+        "usage": "点歌 [歌名]",
+        "author": "HibiKier",
+        "version": "0.1",
+        "plugin_type": "NORMAL",
+        "is_dir": true
+    },
+    "角色识别": {
+        "module": "what_role",
+        "module_path": "plugins.what_role",
+        "description": "动漫以及gal游戏的角色识别",
+        "usage": "角色识别 ?[-t [1, 2, 3, 4, 5](识别类型，默认1)] [图片]",
+        "author": "HibiKier",
+        "version": "0.1",
         "plugin_type": "NORMAL",
         "is_dir": true
     }

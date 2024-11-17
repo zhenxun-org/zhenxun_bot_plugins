@@ -1,24 +1,25 @@
 from asyncio.exceptions import TimeoutError
 
 from httpx import NetworkError
-from nonebot.adapters import Bot
+from zhenxun.configs.config import BotConfig
 from nonebot.plugin import PluginMetadata
-from nonebot.rule import to_me
 from nonebot_plugin_alconna import (
     Alconna,
     Args,
     Arparma,
     Match,
     Option,
+    Query,
     on_alconna,
     store_true,
 )
-from nonebot_plugin_session import EventSession
+from nonebot_plugin_uninfo import Uninfo
 
 from zhenxun.configs.config import Config
 from zhenxun.configs.utils import BaseBlock, PluginExtraData, RegisterConfig
 from zhenxun.services.log import logger
 from zhenxun.utils.message import MessageUtils
+from zhenxun.utils.platform import PlatformUtils
 from zhenxun.utils.utils import is_valid_date
 
 from .data_source import download_pixiv_imgs, get_pixiv_urls, search_pixiv_urls
@@ -97,7 +98,7 @@ __plugin_meta__ = PluginMetadata(
             RegisterConfig(
                 module="pixiv",
                 key="PIXIV_NGINX_URL",
-                value="i.pixiv.re",
+                value="pixiv.re",
                 help="Pixiv反向代理",
             ),
         ],
@@ -118,37 +119,31 @@ rank_dict = {
 }
 
 _rank_matcher = on_alconna(
-    Alconna("p站排行", Args["rank_type", int, 1]["num", int, 10]["datetime?", str]),
+    Alconna("p站排行", Args["rank_type?", int]["num?", int]["datetime?", str]),
     aliases={"p站排行榜"},
     priority=5,
     block=True,
-    rule=to_me(),
 )
 
 _keyword_matcher = on_alconna(
     Alconna(
         "搜图",
-        Args["keyword", str]["num", int, 10]["page", int, 1],
+        Args["keyword", str]["num?", int, 10]["page?", int, 1],
         Option("-r", action=store_true, help_text="是否屏蔽r18"),
     ),
     priority=5,
     block=True,
-    rule=to_me(),
 )
 
 
 @_rank_matcher.handle()
 async def _(
-    bot: Bot,
-    session: EventSession,
+    session: Uninfo,
     arparma: Arparma,
-    rank_type: int,
-    num: int,
     datetime: Match[str],
+    rank_type: Query[int] = Query("rank_type", 1),
+    num: Query[int] = Query("rank_type", 10),
 ):
-    gid = session.id3 or session.id2
-    if not session.id1:
-        await MessageUtils.build_message("用户id为空...").finish()
     code = 0
     info_list = []
     _datetime = None
@@ -158,68 +153,88 @@ async def _(
             await MessageUtils.build_message("日期不合法，示例: 2018-4-25").finish(
                 reply_to=True
             )
-    if rank_type in [6, 7, 8, 9]:
-        if gid:
-            await MessageUtils.build_message("羞羞脸！私聊里自己看！").finish(
-                at_sender=True
-            )
+    if session.group and rank_type.result in [6, 7, 8, 9]:
+        await MessageUtils.build_message("羞羞脸！私聊里自己看！").finish(
+            at_sender=True
+        )
     info_list, code = await get_pixiv_urls(
-        rank_dict[str(rank_type)], num, date=_datetime
+        rank_dict[str(rank_type.result)], num.result, date=_datetime
     )
-    if code != 200 and info_list:
-        if isinstance(info_list[0], str):
-            await MessageUtils.build_message(info_list[0]).finish()
+    if code != 200 and info_list and isinstance(info_list[0], str):
+        await MessageUtils.build_message(info_list[0]).finish()
     if not info_list:
         await MessageUtils.build_message("没有找到啊，等等再试试吧~V").send(
             at_sender=True
         )
+    await MessageUtils.build_message("正在搜集图片，请稍后哦...").send()
+    message_list = []
     for title, author, urls in info_list:
         try:
-            images = await download_pixiv_imgs(urls, session.id1)  # type: ignore
-            await MessageUtils.build_message(
-                [f"title: {title}\nauthor: {author}\n"] + images  # type: ignore
-            ).send()
+            images = await download_pixiv_imgs(urls, session.user.id)  # type: ignore
+            message_list.append(
+                [f"title: {title}\nauthor: {author}\n", *images]  # type: ignore
+            )
 
         except (NetworkError, TimeoutError):
-            await MessageUtils.build_message("这张图网络直接炸掉了！").send()
+            message_list.append("这张图网络直接炸掉了！")
+    platform = PlatformUtils.get_platform(session)
+    if session.group and platform == "qq":
+        await MessageUtils.alc_forward_msg(
+            message_list, session.self_id, BotConfig.self_nickname
+        ).send()
+    else:
+        for msg in message_list:
+            await MessageUtils.build_message(msg).send()
     logger.info(
-        f" 查看了P站排行榜 rank_type{rank_type}", arparma.header_result, session=session
+        f" 查看了P站排行榜 rank_type:{rank_type.result}",
+        arparma.header_result,
+        session=session,
     )
 
 
 @_keyword_matcher.handle()
 async def _(
-    bot: Bot, session: EventSession, arparma: Arparma, keyword: str, num: int, page: int
+    session: Uninfo,
+    arparma: Arparma,
+    keyword: str,
+    num: Query[int] = Query("num", 10),
+    page: Query[int] = Query("page", 1),
 ):
-    gid = session.id3 or session.id2
-    if not session.id1:
-        await MessageUtils.build_message("用户id为空...").finish()
-    if gid:
-        if arparma.find("r") and not Config.get_config(
-            "pixiv_rank_search", "ALLOW_GROUP_R18"
-        ):
-            await MessageUtils.build_message("(脸红#) 你不会害羞的 八嘎！").finish(
-                at_sender=True
-            )
+    if (
+        session.group
+        and arparma.find("r")
+        and not Config.get_config("pixiv_rank_search", "ALLOW_GROUP_R18")
+    ):
+        await MessageUtils.build_message("(脸红#) 你不会害羞的 八嘎！").finish(
+            at_sender=True
+        )
     r18 = 0 if arparma.find("r") else 1
     info_list = None
     keyword = keyword.replace("#", " ")
-    info_list, code = await search_pixiv_urls(keyword, num, page, r18)
+    info_list, code = await search_pixiv_urls(keyword, num.result, page.result, r18)
     if code != 200 and isinstance(info_list[0], str):
         await MessageUtils.build_message(info_list[0]).finish()
     if not info_list:
         await MessageUtils.build_message("没有找到啊，等等再试试吧~V").finish(
             at_sender=True
         )
+    await MessageUtils.build_message("正在搜集图片，请稍后哦...").send()
+    message_list = []
     for title, author, urls in info_list:
         try:
-            images = await download_pixiv_imgs(urls, session.id1)  # type: ignore
-            await MessageUtils.build_message(
-                [f"title: {title}\nauthor: {author}\n"] + images  # type: ignore
-            ).send()
+            images = await download_pixiv_imgs(urls, session.user.id)  # type: ignore
+            message_list.append([f"title: {title}\nauthor: {author}\n", *images])
 
         except (NetworkError, TimeoutError):
-            await MessageUtils.build_message("这张图网络直接炸掉了！").send()
+            message_list.append(["这张图网络直接炸掉了！"])
+    platform = PlatformUtils.get_platform(session)
+    if session.group and platform == "qq":
+        await MessageUtils.alc_forward_msg(
+            message_list, session.self_id, BotConfig.self_nickname
+        ).send()
+    else:
+        for msg in message_list:
+            await MessageUtils.build_message(msg).send()
     logger.info(
         f" 查看了搜索 {keyword} R18：{r18}", arparma.header_result, session=session
     )

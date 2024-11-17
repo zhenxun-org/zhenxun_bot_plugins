@@ -2,16 +2,15 @@ from nonebot import on_message
 from nonebot.plugin import PluginMetadata
 from nonebot.typing import T_State
 from nonebot_plugin_session import EventSession
-
 from zhenxun.configs.utils import PluginExtraData
-from zhenxun.services import logger
+from zhenxun.services.log import logger
 from zhenxun.utils.enum import PluginType
 
 from ._model import WordBank
 from ._rule import check
 
 __plugin_meta__ = PluginMetadata(
-    name="词库问答回复操作",
+    name="词条检测",
     description="",
     usage="""""",
     extra=PluginExtraData(
