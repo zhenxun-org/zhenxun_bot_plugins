@@ -1,21 +1,24 @@
 import random
+import contextlib
 from pathlib import Path
 
 import ujson as json
 from nonebot.adapters import Bot
+from nonebot_plugin_uninfo import Uninfo
 from nonebot.adapters.onebot.v11 import ActionFailed
-from nonebot_plugin_session import EventSession
 
+from zhenxun.utils.utils import cn2py
+from zhenxun.services.log import logger
 from zhenxun.configs.config import Config
+from zhenxun.utils.http_utils import AsyncHttpx
+from zhenxun.utils.platform import PlatformUtils
 from zhenxun.configs.path_config import DATA_PATH
 from zhenxun.models.ban_console import BanConsole
 from zhenxun.models.group_member_info import GroupInfoUser
-from zhenxun.services.log import logger
-from zhenxun.utils.http_utils import AsyncHttpx
-from zhenxun.utils.platform import PlatformUtils
-from zhenxun.utils.utils import cn2py
 
 from .model import BlackWord
+
+base_config = Config.get("black_word")
 
 
 class BlackWordManager:
@@ -56,7 +59,7 @@ class BlackWordManager:
         word_file.parent.mkdir(parents=True, exist_ok=True)
         if word_file.exists():
             # 清空默认配置
-            with open(word_file, "r", encoding="utf8") as f:
+            with open(word_file, encoding="utf8") as f:
                 self._word_list = json.load(f)
         else:
             with open(word_file, "w", encoding="utf8") as f:
@@ -68,7 +71,7 @@ class BlackWordManager:
                 )
         if py_file.exists():
             # 清空默认配置
-            with open(py_file, "r", encoding="utf8") as f:
+            with open(py_file, encoding="utf8") as f:
                 self._py_list = json.load(f)
         else:
             with open(py_file, "w", encoding="utf8") as f:
@@ -79,9 +82,7 @@ class BlackWordManager:
                     indent=4,
                 )
 
-    async def check(
-        self, bot: Bot, session: EventSession, message: str
-    ) -> str | bool | None:
+    async def check(self, bot: Bot, session: Uninfo, message: str) -> str | bool | None:
         """检查是否包含黑名单词汇
 
         参数:
@@ -89,30 +90,28 @@ class BlackWordManager:
             session: EventSession
             message: 消息
         """
+        group_id = session.group.id if session.group else None
         logger.debug(
             f"检查文本是否含有黑名单词汇: {message}", "敏感词检测", session=session
         )
-        if session.id1:
-            if data := self._check(message):
-                if data[0]:
-                    await _add_user_black_word(
-                        bot,
-                        session.id1,
-                        session.id2 or session.id3,
-                        data[0],
-                        message,
-                        int(data[1]),
-                    )
-                    return True
-            if Config.get_config(
-                "black_word", "ALAPI_CHECK_FLAG"
-            ) and not await check_text(message):
-                await send_msg(
+        if data := self._check(message):
+            if data[0]:
+                await _add_user_black_word(
                     bot,
-                    "",
-                    None,
-                    f"用户 {session.id1} 群组 {session.id3 or session.id2} ALAPI 疑似检测：{message}",
+                    session.user.id,
+                    group_id,
+                    data[0],
+                    message,
+                    int(data[1]),
                 )
+                return True
+        if base_config.get("ALAPI_CHECK_FLAG") and not await check_text(message):
+            await send_msg(
+                bot,
+                "",
+                None,
+                f"用户 {session.user.id} 群组 {group_id} ALAPI 疑似检测：{message}",
+            )
         return False
 
     def _check(self, message: str) -> tuple[str | None, int]:
@@ -156,16 +155,13 @@ async def _add_user_black_word(
         message: 原始文本
         punish_level: 惩罚等级
     """
-    cycle_days = Config.get_config("black_word", "CYCLE_DAYS") or 7
-    user_count = await BlackWord.get_user_count(user_id, cycle_days, punish_level)
+    # cycle_days = Config.get_config("black_word", "CYCLE_DAYS") or 7
+    # user_count = await BlackWord.get_user_count(user_id, cycle_days, punish_level)
     add_punish_level_to_count = Config.get_config(
         "black_word", "ADD_PUNISH_LEVEL_TO_COUNT"
     )
     # 周期内超过次数直接提升惩罚
-    if (
-        Config.get_config("black_word", "AUTO_ADD_PUNISH_LEVEL")
-        and add_punish_level_to_count
-    ):
+    if base_config.get("AUTO_ADD_PUNISH_LEVEL") and add_punish_level_to_count:
         punish_level -= 1
     await BlackWord.create(
         user_id=user_id,
@@ -176,10 +172,13 @@ async def _add_user_black_word(
         platform=PlatformUtils.get_platform(bot),
     )
     logger.info(
-        f"已将 USER {user_id} GROUP {group_id} 添加至黑名单词汇记录 Black_word：{black_word} Plant_text：{message}"
+        f"添加至黑名单词汇记录 Black_word：{black_word} Plant_text：{message}",
+        "敏感词警察",
+        session=user_id,
+        group_id=group_id,
     )
     # 自动惩罚
-    if Config.get_config("black_word", "AUTO_PUNISH") and punish_level != -1:
+    if base_config.get("AUTO_PUNISH") and punish_level != -1:
         await _punish_handle(bot, user_id, group_id, punish_level, black_word)
 
 
@@ -201,7 +200,7 @@ async def _punish_handle(
     """
     logger.info(f"BlackWord USER {user_id} 触发 {punish_level} 级惩罚...")
     # 周期天数
-    cycle_days = Config.get_config("black_word", "CYCLE_DAYS") or 7
+    cycle_days = base_config.get("CYCLE_DAYS") or 7
     # 用户周期内触发punish_level级惩罚的次数
     user_count = await BlackWord.get_user_count(user_id, cycle_days, punish_level)
     # 获取最近一次的惩罚等级，将在此基础上增加
@@ -209,7 +208,7 @@ async def _punish_handle(
         await BlackWord.get_user_punish_level(user_id, cycle_days) or punish_level
     )
     # 容忍次数：List[int]
-    tolerate_count = Config.get_config("black_word", "TOLERATE_COUNT")
+    tolerate_count = base_config.get("TOLERATE_COUNT")
     if not tolerate_count or len(tolerate_count) < 5:
         tolerate_count = [5, 2, 2, 2, 2]
     if punish_level == 1 and user_count > tolerate_count[punish_level - 1]:
@@ -235,7 +234,7 @@ async def _punish_handle(
             user_id, f"口头警告：{warning_result}", black_word
         )
     else:
-        await BlackWord.set_user_punish(user_id, f"提示！", black_word)
+        await BlackWord.set_user_punish(user_id, "提示！", black_word)
         await send_msg(
             bot,
             user_id,
@@ -263,18 +262,18 @@ async def _get_punish(
     # 忽略的群聊
     # _ignore_group = Config.get_config("black_word", "IGNORE_GROUP")
     # 处罚 id 4 ban 时间：int，List[int]
-    ban_3_duration = Config.get_config("black_word", "BAN_3_DURATION") or 7
+    ban_3_duration = base_config.get("BAN_3_DURATION") or 7
     # 处罚 id 4 ban 时间：int，List[int]
-    ban_4_duration = Config.get_config("black_word", "BAN_4_DURATION") or 360
+    ban_4_duration = base_config.get("BAN_4_DURATION") or 360
     # 口头警告内容
-    warning_result = Config.get_config("black_word", "WARNING_RESULT")
+    warning_result = base_config.get("WARNING_RESULT")
     if user := await GroupInfoUser.get_or_none(user_id=user_id, group_id=group_id):
         uname = user.user_name
     else:
         uname = user_id
     # 永久ban
     if id_ == 1:
-        if str(user_id) not in bot.config.superusers:
+        if user_id not in bot.config.superusers:
             await BanConsole.ban(user_id, group_id, 10, -1, None)
             await send_msg(
                 bot,
@@ -283,10 +282,9 @@ async def _get_punish(
                 f"BlackWordChecker 永久ban USER {uname}({user_id})",
             )
             logger.info(f"BlackWord 永久封禁 USER {user_id}...")
-    # 删除好友（有的话
     elif id_ == 2:
-        if str(user_id) not in bot.config.superusers:
-            try:
+        if user_id not in bot.config.superusers:
+            with contextlib.suppress(ActionFailed):
                 await bot.delete_friend(user_id=user_id)
                 await send_msg(
                     bot,
@@ -295,9 +293,6 @@ async def _get_punish(
                     f"BlackWordChecker 删除好友 USER {uname}({user_id})",
                 )
                 logger.info(f"BlackWord 删除好友 {user_id}...")
-            except ActionFailed:
-                pass
-    # 封禁用户指定时间，默认7天
     elif id_ == 3:
         if isinstance(ban_3_duration, list):
             ban_3_duration = random.randint(ban_3_duration[0], ban_3_duration[1])
@@ -306,11 +301,11 @@ async def _get_punish(
             bot,
             user_id,
             group_id,
-            f"BlackWordChecker 对用户 USER {uname}({user_id}) 进行封禁 {ban_3_duration} 天处罚。",
+            f"BlackWordChecker 对用户 USER {uname}({user_id})"
+            f" 进行封禁 {ban_3_duration} 天处罚。",
         )
         logger.info(f"BlackWord 封禁 USER {uname}({user_id}) {ban_3_duration} 天...")
         return ban_3_duration
-    # 封禁用户指定时间，默认360分钟
     elif id_ == 4:
         if isinstance(ban_4_duration, list):
             ban_4_duration = random.randint(ban_4_duration[0], ban_4_duration[1])
@@ -319,11 +314,11 @@ async def _get_punish(
             bot,
             user_id,
             group_id,
-            f"BlackWordChecker 对用户 USER {uname}({user_id}) 进行封禁 {ban_4_duration} 分钟处罚。",
+            f"BlackWordChecker 对用户 USER {uname}({user_id}) "
+            f"进行封禁 {ban_4_duration} 分钟处罚。",
         )
         logger.info(f"BlackWord 封禁 USER {uname}({user_id}) {ban_4_duration} 分钟...")
         return ban_4_duration
-    # 口头警告
     elif id_ == 5:
         await PlatformUtils.send_message(bot, user_id, group_id, warning_result)
         logger.info(f"BlackWord 口头警告 USER {user_id}")
@@ -364,7 +359,7 @@ async def check_text(text: str) -> bool:
         if data["code"] == 200:
             return data["data"]["conclusion_type"] == 2
     except Exception as e:
-        logger.error(f"检测违规文本错误...", e=e)
+        logger.error("检测违规文本错误...", e=e)
     return True
 
 

@@ -1,5 +1,4 @@
 from datetime import datetime, timedelta
-from email.policy import default
 
 import pytz
 from tortoise import fields
@@ -8,7 +7,6 @@ from zhenxun.services.db_context import Model
 
 
 class BlackWord(Model):
-
     id = fields.IntField(pk=True, generated=True, auto_increment=True)
     """自增id"""
     user_id = fields.CharField(255)
@@ -28,7 +26,7 @@ class BlackWord(Model):
     platform = fields.CharField(255, null=True)
     """平台"""
 
-    class Meta:
+    class Meta:  # type: ignore
         table = "black_word"
         table_description = "惩罚机制数据表"
 
@@ -38,18 +36,18 @@ class BlackWord(Model):
         user_id: str,
         punish: str,
         black_word: str | None = None,
-        id_: int | None = None,
-    ) -> bool:
+        idx: int | None = None,
+    ) -> bool:  # sourcery skip: remove-redundant-if
         """设置处罚
 
         参数:
             user_id: 用户id
             punish: 处罚
             black_word: 黑名单词汇
-            id_: 记录下标
+            idx: 记录下标
         """
         user = None
-        if (not black_word and id_ is None) or not punish:
+        if (not black_word and idx is None) or not punish:
             return False
         if black_word:
             user = (
@@ -57,11 +55,11 @@ class BlackWord(Model):
                 .order_by("id")
                 .first()
             )
-        elif id_ is not None:
+        elif idx is not None:
             user_list = await cls.filter(user_id=user_id).order_by("id").all()
-            if len(user_list) == 0 or (id_ < 0 or id_ > len(user_list)):
+            if len(user_list) == 0 or (idx < 0 or idx > len(user_list)):
                 return False
-            user = user_list[id_]
+            user = user_list[idx]
         if not user:
             return False
         user.punish = f"{user.punish}{punish} "
@@ -147,7 +145,8 @@ class BlackWord(Model):
     @classmethod
     async def _run_script(cls):
         return [
-            "ALTER TABLE black_word RENAME COLUMN user_qq TO user_id;",  # 将user_qq改为user_id
+            "ALTER TABLE black_word RENAME COLUMN user_qq TO user_id;",
+            # 将user_qq改为user_id
             "ALTER TABLE black_word ALTER COLUMN user_id TYPE character varying(255);",
             "ALTER TABLE black_word ALTER COLUMN group_id TYPE character varying(255);",
             "ALTER TABLE black_word ADD COLUMN platform character varying(255);",
