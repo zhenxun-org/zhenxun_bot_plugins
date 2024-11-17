@@ -19,7 +19,7 @@ __plugin_meta__ = PluginMetadata(
     """.strip(),
     extra=PluginExtraData(
         author="AkashiCoin",
-        version="0.1",
+        version="0.1-89d294e",
     ).dict(),
 )
 

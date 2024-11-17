@@ -45,7 +45,7 @@ __plugin_meta__ = PluginMetadata(
     """.strip(),
     extra=PluginExtraData(
         author="yajiwa",
-        version="0.1",
+        version="0.1-89d294e",
         plugin_type=PluginType.NORMAL,
         configs=[
             RegisterConfig(

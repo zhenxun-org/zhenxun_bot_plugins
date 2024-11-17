@@ -39,7 +39,7 @@ __plugin_meta__ = PluginMetadata(
     """.strip(),
     extra=PluginExtraData(
         author="HibiKier",
-        version="0.1",
+        version="0.1-89d294e",
         superuser_help="""
         节日红包 [金额] [红包数] ?[指定主题文字] ? -g [群id] [群id] ...
 
