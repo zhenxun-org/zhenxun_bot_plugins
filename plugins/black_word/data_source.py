@@ -7,7 +7,7 @@ from zhenxun.models.group_member_info import GroupInfoUser
 from zhenxun.utils.image_utils import BuildImage, ImageTemplate
 
 from .model import BlackWord
-from .utils import Config, _get_punish
+from .utils import _get_punish
 
 
 async def show_black_text_image(
@@ -42,7 +42,7 @@ async def show_black_text_image(
         "记录日期",
     ]
     column_list = []
-    uid_list = [u for u in data_list]
+    uid_list = list(data_list)
     uid2name = {
         u.user_id: u.user_name for u in await FriendUser.filter(user_id__in=uid_list)
     }
@@ -54,7 +54,7 @@ async def show_black_text_image(
             ):
                 uname = u.user_name
         if len(data.plant_text) > 30:
-            data.plant_text = data.plant_text[:30] + "..."
+            data.plant_text = f"{data.plant_text[:30]}..."
         column_list.append(
             [
                 i,
@@ -69,21 +69,20 @@ async def show_black_text_image(
                 data.create_time,
             ]
         )
-    A = await ImageTemplate.table_page(
+    return await ImageTemplate.table_page(
         "记录名单", "一个都不放过!", column_name, column_list
     )
-    return A
 
 
 async def set_user_punish(
-    bot: Bot, user_id: str, group_id: str | None, id_: int, punish_level: int
+    bot: Bot, user_id: str, group_id: str | None, idx: int, punish_level: int
 ) -> str:
     """设置惩罚
 
     参数:
         user_id: 用户id
         group_id: 群组id或频道id
-        id_: 记录下标
+        idx: 记录下标
         punish_level: 惩罚等级
 
     返回:
@@ -97,7 +96,7 @@ async def set_user_punish(
         4: f"ban {result} 分钟",
         5: "口头警告",
     }
-    if await BlackWord.set_user_punish(user_id, punish[punish_level], id_=id_):
+    if await BlackWord.set_user_punish(user_id, punish[punish_level], idx=idx):
         return f"已对 USER {user_id} 进行 {punish[punish_level]} 处罚。"
     else:
         return "操作失败，可能未找到用户，id或敏感词"

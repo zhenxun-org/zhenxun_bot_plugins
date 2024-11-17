@@ -1,18 +1,17 @@
 from datetime import datetime
-from typing import List
 
 from nonebot.adapters import Bot
 from nonebot.permission import SUPERUSER
 from nonebot.plugin import PluginMetadata
-from nonebot_plugin_alconna import Alconna, Args, Arparma, Match, Option, on_alconna
 from nonebot_plugin_session import EventSession
+from nonebot_plugin_alconna import Args, Match, Option, Alconna, Arparma, on_alconna
 
-from zhenxun.configs.config import BotConfig
-from zhenxun.configs.utils import PluginExtraData, RegisterConfig
 from zhenxun.services.log import logger
 from zhenxun.utils.enum import PluginType
-from zhenxun.utils.image_utils import BuildImage
+from zhenxun.configs.config import BotConfig
 from zhenxun.utils.message import MessageUtils
+from zhenxun.utils.image_utils import BuildImage
+from zhenxun.configs.utils import RegisterConfig, PluginExtraData
 
 from .data_source import set_user_punish, show_black_text_image
 
@@ -54,7 +53,7 @@ __plugin_meta__ = PluginMetadata(
                 value=[5, 1, 1, 1, 1],
                 help="各个级别惩罚的容忍次数, 依次为: 1, 2, 3, 4, 5",
                 default_value=[5, 1, 1, 1, 1],
-                type=List[int],
+                type=list[int],
             ),
             RegisterConfig(
                 key="AUTO_PUNISH",
@@ -66,14 +65,16 @@ __plugin_meta__ = PluginMetadata(
             RegisterConfig(
                 key="BAN_4_DURATION",
                 value=360,
-                help="Ban时长（分钟），四级惩罚，可以为指定数字或指定列表区间(随机)，例如 [30, 360]",
+                help="Ban时长（分钟），四级惩罚，可以为指定数字或指定列表区间(随机)，"
+                "例如 [30, 360]",
                 default_value=360,
                 type=int,
             ),
             RegisterConfig(
                 key="BAN_3_DURATION",
                 value=7,
-                help="Ban时长（天），三级惩罚，可以为指定数字或指定列表区间(随机)，例如 [7, 30]",
+                help="Ban时长（天），三级惩罚，可以为指定数字或指定列表区间(随机)，"
+                "例如 [7, 30]",
                 default_value=7,
                 type=int,
             ),
@@ -146,19 +147,11 @@ _show_punish_matcher = on_alconna(
 async def _(
     bot: Bot, uid: Match[str], gid: Match[str], date: Match[str], date_type: Match[str]
 ):
-    user_id = None
-    group_id = None
     date_ = None
-    date_str = None
-    date_type_ = "="
-    if uid.available:
-        user_id = uid.result
-    if gid.available:
-        group_id = gid.result
-    if date.available:
-        date_str = date.result
-    if date_type.available:
-        date_type_ = date_type.result
+    user_id = uid.result if uid.available else None
+    group_id = gid.result if gid.available else None
+    date_str = date.result if date.available else None
+    date_type_ = date_type.result if date_type.available else "="
     if date_str:
         try:
             date_ = datetime.strptime(date_str, "%Y-%m-%d")
@@ -199,14 +192,14 @@ async def _():
         该功能为测试阶段，如果你有被误封情况，请联系管理员，会从数据库中提取出你的数据进行审核后判断
 
         目前该功能暂不完善，部分情况会由管理员鉴定，请注意对真寻的发言
-    
+
     关于敏感词：
-        
+
         记住不要骂{BotConfig.self_nickname}就对了！
     """.strip()
     max_width = 0
     for m in text.split("\n"):
-        max_width = len(m) * 20 if len(m) * 20 > max_width else max_width
+        max_width = max(len(m) * 20, max_width)
     max_height = len(text.split("\n")) * 24
     A = BuildImage(
         max_width, max_height, font="CJGaoDeGuo.otf", font_size=24, color="#E3DBD1"
