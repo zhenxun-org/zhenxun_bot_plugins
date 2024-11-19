@@ -106,7 +106,7 @@ async def _(
         await MessageUtils.build_message(str(result_list)).finish()
     if PlatformUtils.get_platform(session) == "qq":
         await MessageUtils.alc_forward_msg(
-            [[file], result_list], session.self_id, BotConfig.self_nickname
+            [[file], *result_list], session.self_id, BotConfig.self_nickname
         ).send()
     else:
         await MessageUtils.build_message(file).send()
