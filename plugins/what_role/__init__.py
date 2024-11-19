@@ -1,25 +1,26 @@
 from nonebot.adapters import Bot, Event
-from nonebot.typing import T_State
-from nonebot_plugin_uninfo import Uninfo
 from nonebot.plugin import PluginMetadata
-from nonebot_plugin_alconna.uniseg.tools import image_fetch
-from nonebot_plugin_alconna.builtins.extensions.reply import ReplyMergeExtension
+from nonebot.typing import T_State
 from nonebot_plugin_alconna import (
+    Alconna,
     Args,
+    Arparma,
+    At,
     Image,
     Match,
-    Query,
     Option,
-    Alconna,
-    Arparma,
+    Query,
     on_alconna,
 )
-
-from zhenxun.services.log import logger
+from nonebot_plugin_alconna.builtins.extensions.reply import ReplyMergeExtension
+from nonebot_plugin_alconna.uniseg.tools import image_fetch
+from nonebot_plugin_uninfo import Uninfo
 from zhenxun.configs.config import BotConfig
+from zhenxun.configs.utils import PluginExtraData
+from zhenxun.services.log import logger
+from zhenxun.utils.http_utils import AsyncHttpx
 from zhenxun.utils.message import MessageUtils
 from zhenxun.utils.platform import PlatformUtils
-from zhenxun.configs.utils import PluginExtraData
 
 from .data_source import AnimeManage
 
@@ -39,10 +40,13 @@ __plugin_meta__ = PluginMetadata(
         示例:
             角色识别 [图片]
             角色识别 -t 1 [图片]
+            角色识别 @user
+            [引用消息] 角色识别
+            [引用消息] 角色识别 -t 2
 
     """.strip(),
     extra=PluginExtraData(
-        author="HibiKier", version="0.1", menu_type="一些工具"
+        author="HibiKier", version="0.2", menu_type="一些工具"
     ).dict(),
 )
 
@@ -50,7 +54,7 @@ __plugin_meta__ = PluginMetadata(
 _matcher = on_alconna(
     Alconna(
         "角色识别",
-        Args["image?", Image],
+        Args["data?", Image | At],
         Option("-t|--type", Args["search_type", int], help_text="识别类型"),
     ),
     block=True,
@@ -61,31 +65,35 @@ _matcher = on_alconna(
 
 @_matcher.handle()
 async def _(
-    event: Event,
-    bot: Bot,
-    image: Match[Image],
+    data: Match[Image | At],
     search_type: Query[int] = Query("search_type", 1),
 ):
-    # if reply := await reply_fetch(event, bot):
-    #     reply.
-    if image.available:
-        _matcher.set_path_arg("image", image.result)
+    if data.available:
+        _matcher.set_path_arg("data", data.result)
     if search_type.result not in [1, 2, 3, 4, 5]:
         await MessageUtils.build_message("识别类型错误，请输入1-5...").finish()
     _matcher.set_path_arg("search_type", search_type.result)
 
 
-@_matcher.got_path("image", prompt="图来！")
+@_matcher.got_path("data", prompt="图来！")
 async def _(
     bot: Bot,
     event: Event,
     state: T_State,
     session: Uninfo,
     arparma: Arparma,
-    image: Image,
+    data: Image | At,
     search_type: int,
 ):
-    image_data = await image_fetch(event, bot, state, image)
+    image_data = None
+    if isinstance(data, At):
+        if session.user.avatar:
+            platform = PlatformUtils.get_platform(session)
+            image_data = await PlatformUtils.get_user_avatar(
+                data.target, platform, session.self_id
+            )
+    else:
+        image_data = await image_fetch(event, bot, state, data)
     if not image_data:
         await MessageUtils.build_message("图片获取失败...").finish()
     await MessageUtils.build_message("开始识别了哦，请稍等...").send()

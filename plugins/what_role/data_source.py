@@ -2,10 +2,9 @@ import random
 from pathlib import Path
 
 from strenum import StrEnum
-
+from zhenxun.configs.path_config import TEMP_PATH
 from zhenxun.utils._build_image import BuildImage
 from zhenxun.utils.http_utils import AsyncHttpx
-from zhenxun.configs.path_config import TEMP_PATH
 
 from .config import Response
 
