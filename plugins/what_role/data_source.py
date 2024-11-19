@@ -3,6 +3,7 @@ from pathlib import Path
 
 from strenum import StrEnum
 
+from zhenxun.utils._build_image import BuildImage
 from zhenxun.utils.http_utils import AsyncHttpx
 from zhenxun.configs.path_config import TEMP_PATH
 
@@ -50,12 +51,11 @@ class AnimeManage:
 
     @classmethod
     async def search(
-        cls, img_url: str, search_type: int
+        cls, image_data: bytes, search_type: int
     ) -> tuple[str | list[str], Path | None]:
-        file = await cls.download_image(img_url)
-        if not file:
-            return "下载图片失败...", None
-        # img = BuildImage.open(file)
+        rand = random.randint(1, 100000)
+        file = TEMP_PATH / f"what_anime_{rand}_test.png"
+        await BuildImage.open(image_data).save(file)
         json_data = {
             "model": cls.int2type(search_type),
             "ai_detect": 1,
@@ -79,9 +79,3 @@ class AnimeManage:
             ]
             message_list.append(chars_list)
         return message_list, file
-
-    @classmethod
-    async def download_image(cls, img_url: str) -> Path | None:
-        rand = random.randint(1, 100000)
-        file = TEMP_PATH / f"what_anime_{rand}_test.png"
-        return file if await AsyncHttpx.download_file(img_url, file) else None
