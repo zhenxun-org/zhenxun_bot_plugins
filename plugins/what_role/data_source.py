@@ -2,9 +2,11 @@ import random
 from pathlib import Path
 
 from strenum import StrEnum
-from zhenxun.configs.path_config import TEMP_PATH
+
+from zhenxun.services.log import logger
 from zhenxun.utils._build_image import BuildImage
 from zhenxun.utils.http_utils import AsyncHttpx
+from zhenxun.configs.path_config import TEMP_PATH
 
 from .config import Response
 
@@ -62,9 +64,12 @@ class AnimeManage:
         }
         file_data = {"image": file.open("rb")}
         response = await AsyncHttpx.post(cls.url, params=json_data, files=file_data)
-        data = Response(**response.json())
-        if er := code2error.get(data.new_code or data.code):
+        json_data = response.json()
+        logger.debug(f"角色识别获取数据: {json_data}", "角色识别")
+        code = json_data.get("new_code") or json_data.get("code")
+        if er := code2error.get(code):
             return er, file
+        data = Response(**json_data)
         if not data.data:
             return "未找到角色信息...", file
         message_list = []
