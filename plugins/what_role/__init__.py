@@ -1,26 +1,26 @@
 from nonebot.adapters import Bot, Event
-from nonebot.typing import T_State
-from nonebot_plugin_uninfo import Uninfo
 from nonebot.plugin import PluginMetadata
-from nonebot_plugin_alconna.uniseg.tools import image_fetch
-from nonebot_plugin_alconna.builtins.extensions.reply import ReplyMergeExtension
+from nonebot.typing import T_State
 from nonebot_plugin_alconna import (
+    Alconna,
     Args,
+    Arparma,
     At,
     Image,
     Match,
-    Query,
     Option,
-    Alconna,
-    Arparma,
+    Query,
     on_alconna,
 )
-
-from zhenxun.services.log import logger
+from nonebot_plugin_alconna.builtins.extensions.reply import ReplyMergeExtension
+from nonebot_plugin_alconna.uniseg.tools import image_fetch
+from nonebot_plugin_uninfo import Uninfo
 from zhenxun.configs.config import BotConfig
+from zhenxun.configs.utils import PluginExtraData
+from zhenxun.services.log import logger
+from zhenxun.utils._build_image import BuildImage
 from zhenxun.utils.message import MessageUtils
 from zhenxun.utils.platform import PlatformUtils
-from zhenxun.configs.utils import PluginExtraData
 
 from .data_source import AnimeManage
 
@@ -46,7 +46,7 @@ __plugin_meta__ = PluginMetadata(
 
     """.strip(),
     extra=PluginExtraData(
-        author="HibiKier", version="0.1", menu_type="一些工具"
+        author="HibiKier", version="0.2", menu_type="一些工具"
     ).dict(),
 )
 
@@ -98,12 +98,13 @@ async def _(
         await MessageUtils.build_message("图片获取失败...").finish()
     await MessageUtils.build_message("开始识别了哦，请稍等...").send()
     try:
-        result_list, file = await AnimeManage.search(image_data, search_type)
+        result_list, image, file = await AnimeManage.search(image_data, search_type)
     except Exception as e:
         logger.error("角色识别错误", arparma.header_result, session=session, e=e)
         await MessageUtils.build_message("识别失败，请稍后再试...").finish()
     if not file or isinstance(result_list, str):
         await MessageUtils.build_message(str(result_list)).finish()
+    await MessageUtils.build_message(image).send()
     if PlatformUtils.get_platform(session) == "qq":
         await MessageUtils.alc_forward_msg(
             [[file], *result_list], session.self_id, BotConfig.self_nickname
