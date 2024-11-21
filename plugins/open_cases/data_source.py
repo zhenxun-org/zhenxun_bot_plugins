@@ -186,7 +186,7 @@ class OpenCaseManager:
             defaults={"open_cases_time_last": datetime.now()},
         )
         max_count = await cls.get_user_max_count(user_id, platform)
-        if num > max_count:
+        if user.today_open_total + num > max_count:
             return (
                 MessageUtils.build_message(
                     f"开箱次数不足哦，剩余开箱次数: {max_count - user.today_open_total}"
