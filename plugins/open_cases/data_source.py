@@ -315,6 +315,7 @@ class OpenCaseManager:
                 "开箱",
                 session=session,
             )
+        user.open_cases_time_last = datetime.now()
         await user.save()
         mark_image = await cls.__to_image(img_w, img_h, img_list)
         over_count = max_count - user.today_open_total
