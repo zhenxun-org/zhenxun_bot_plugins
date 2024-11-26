@@ -1,30 +1,29 @@
 import asyncio
 
-from nonebot.rule import Rule
-from nonebot_plugin_alconna.uniseg.tools import reply_fetch
-from nonebot.adapters import Bot, Event
 from httpx import HTTPStatusError
-from nonebot_plugin_uninfo import Uninfo
+from nonebot.adapters import Bot, Event
 from nonebot.plugin import PluginMetadata
-from nonebot_plugin_alconna.uniseg import Receipt
+from nonebot.rule import Rule
 from nonebot_plugin_alconna import (
-    Args,
-    Query,
-    Reply,
-    Option,
-    UniMsg,
     Alconna,
+    Args,
     Arparma,
     MultiVar,
+    Option,
+    Query,
+    Reply,
+    UniMsg,
     on_alconna,
     store_true,
 )
-
-from zhenxun.services.log import logger
+from nonebot_plugin_alconna.uniseg import Receipt
+from nonebot_plugin_alconna.uniseg.tools import reply_fetch
+from nonebot_plugin_uninfo import Uninfo
 from zhenxun.configs.config import BotConfig
+from zhenxun.configs.utils import BaseBlock, PluginExtraData
+from zhenxun.services.log import logger
 from zhenxun.utils.depends import CheckConfig
 from zhenxun.utils.message import MessageUtils
-from zhenxun.configs.utils import BaseBlock, PluginExtraData
 
 from .._config import InfoManage
 from .data_source import PixManage, base_config
@@ -168,7 +167,7 @@ async def _(
         and session.group
     ):
         await MessageUtils.alc_forward_msg(
-            [r[0] for r in result_list], session.user.id, BotConfig.self_nickname
+            [r[0] for r in result_list], bot.self_id, BotConfig.self_nickname
         ).send()
     else:
         for r, pix in result_list:
