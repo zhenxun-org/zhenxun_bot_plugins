@@ -1,22 +1,22 @@
-import re
-import uuid
-import random
-from typing import Any
 from datetime import datetime
+import random
+import re
+from typing import Any
 from typing_extensions import Self
+import uuid
 
-from tortoise.expressions import Q
+from nonebot_plugin_alconna import At, AtAll, Image, Text, UniMessage
 from tortoise import Tortoise, fields
-from nonebot_plugin_alconna import UniMessage, At, Text, Image, AtAll
+from tortoise.expressions import Q
 
 from zhenxun.configs.config import BotConfig
-from zhenxun.services.db_context import Model
-from zhenxun.utils.message import MessageUtils
-from zhenxun.utils.http_utils import AsyncHttpx
 from zhenxun.configs.path_config import DATA_PATH
+from zhenxun.services.db_context import Model
+from zhenxun.utils.http_utils import AsyncHttpx
 from zhenxun.utils.image_utils import get_img_hash
+from zhenxun.utils.message import MessageUtils
 
-from ._config import WordType, ScopeType, int2type
+from ._config import ScopeType, WordType, int2type
 from .exception import ImageDownloadError
 
 path = DATA_PATH / "word_bank"

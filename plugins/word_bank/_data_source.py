@@ -1,3 +1,6 @@
+from collections import OrderedDict
+from pathlib import Path
+
 from nonebot_plugin_alconna import At, Image, UniMessage, UniMsg
 from nonebot_plugin_alconna import At as alcAt
 from nonebot_plugin_alconna import Image as alcImage
@@ -164,9 +167,15 @@ class WordBankManage:
         if word_scope == ScopeType.GLOBAL:
             group_id = None
         if index is not None:
-            problem, code = await cls.__get_problem_str(index, group_id, word_scope)
+            result_problem, code = await cls.__get_problem_str(
+                index, group_id, word_scope
+            )
             if code != 200:
                 return problem, ""
+            if isinstance(result_problem, Path):
+                problem = result_problem
+            else:
+                problem = result_problem
         if handle_type == "delete":
             if index:
                 problem, _problem_list = await WordBank.get_problem_all_answer(
@@ -194,7 +203,7 @@ class WordBankManage:
         idx: int,
         group_id: str | None = None,
         word_scope: ScopeType = ScopeType.GROUP,
-    ) -> tuple[str, int]:
+    ) -> tuple[str | Path, int]:
         """通过id获取问题字符串
 
         参数:
@@ -203,14 +212,21 @@ class WordBankManage:
             word_scope: 获取类型
         """
         if word_scope in [ScopeType.GLOBAL, ScopeType.PRIVATE]:
-            all_problem = await WordBank.get_problem_by_scope(word_scope)
+            all_problem = (
+                await WordBank.filter(word_scope=word_scope.value)
+                .order_by("create_time")
+                .all()
+            )
         elif group_id:
-            all_problem = await WordBank.get_group_all_problem(group_id)
+            all_problem = (
+                await WordBank.filter(group_id=group_id).order_by("create_time").all()
+            )
         else:
-            raise Exception("词条类型与群组id不能为空")
+            raise Exception("词条类型与群组id不能为空...")
+        filter_list = list(OrderedDict.fromkeys([wb.problem for wb in all_problem]))
         if idx < 0 or idx >= len(all_problem):
             return "问题下标id必须在范围内", 999
-        return all_problem[idx][0], 200
+        return filter_list[idx], 200
 
     @classmethod
     async def show_word(
