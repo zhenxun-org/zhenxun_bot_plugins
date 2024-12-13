@@ -2,9 +2,9 @@ import time
 
 from pydantic import BaseModel
 from strenum import StrEnum
-
-from zhenxun.builtin_plugins.pix_gallery.models.pix_gallery import PixGallery
 from zhenxun.configs.config import Config
+
+from .models.pix_gallery import PixGallery
 
 base_config = Config.get("pix")
 
