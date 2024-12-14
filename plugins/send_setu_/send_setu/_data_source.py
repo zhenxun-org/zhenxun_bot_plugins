@@ -1,3 +1,4 @@
+import contextlib
 import os
 import random
 from pathlib import Path
@@ -8,8 +9,8 @@ from nonebot_plugin_alconna import UniMessage
 from zhenxun.configs.config import BotConfig, Config
 from zhenxun.configs.path_config import IMAGE_PATH, TEMP_PATH
 from zhenxun.services.log import logger
+from zhenxun.utils._build_image import BuildImage
 from zhenxun.utils.http_utils import AsyncHttpx
-from zhenxun.utils.image_utils import compressed_image
 from zhenxun.utils.message import MessageUtils
 from zhenxun.utils.utils import change_img_md5, change_pixiv_image_links
 
@@ -25,7 +26,6 @@ base_config = Config.get("send_setu")
 
 
 class SetuManage:
-
     URL = "https://api.lolicon.app/setu/v2"
     save_data = []
 
@@ -73,10 +73,7 @@ class SetuManage:
             setu_list = random.sample(data_list, num)
             for setu in setu_list:
                 base_path = None
-                if setu.is_r18:
-                    base_path = IMAGE_PATH / "_r18"
-                else:
-                    base_path = IMAGE_PATH / "_setu"
+                base_path = IMAGE_PATH / "_r18" if setu.is_r18 else IMAGE_PATH / "_setu"
                 file_path = base_path / f"{setu.local_id}.jpg"
                 if not file_path.exists():
                     return f"本地色图Id: {setu.local_id} 不存在..."
@@ -90,8 +87,8 @@ class SetuManage:
         if isinstance(data_list, str):
             """搜索失败, 从本地数据库中搜索"""
             data_list = await cls.get_setu_list(tags=tags, num=num, is_r18=is_r18)
-            if isinstance(data_list, str):
-                return data_list
+        if isinstance(data_list, str):
+            return data_list
         if not data_list:
             return "没找到符合条件的色图..."
         cls.save_data = data_list
@@ -164,9 +161,7 @@ class SetuManage:
             image_list = await Setu.query_image(tags=tags, r18=is_r18, limit=num)  # type: ignore
         else:
             image_list = await Setu.query_image(r18=is_r18, limit=num)  # type: ignore
-        if not image_list:
-            return "没找到符合条件的色图..."
-        return image_list
+        return "没找到符合条件的色图..." if not image_list else image_list
 
     @classmethod
     def get_luo(cls, impression: float) -> UniMessage | None:
@@ -179,7 +174,7 @@ class SetuManage:
             MessageFactory | None: 返回数据
         """
         if initial_setu_probability := base_config.get("INITIAL_SETU_PROBABILITY"):
-            probability = float(impression) + initial_setu_probability * 100
+            probability = impression + initial_setu_probability * 100
             if probability < random.randint(1, 101):
                 return MessageUtils.build_message(
                     [
@@ -203,16 +198,13 @@ class SetuManage:
             str | Path: 图片路径或返回消息
         """
         url = change_pixiv_image_links(setu.img_url)
-        index = setu.local_id if setu.local_id else random.randint(1, 100000)
+        index = setu.local_id or random.randint(1, 100000)
         file_name = f"{index}_temp_setu.jpg"
         base_path = TEMP_PATH
         if setu.local_id:
             """本地图片存在直接返回"""
             file_name = f"{index}.jpg"
-            if setu.is_r18:
-                base_path = IMAGE_PATH / "_r18"
-            else:
-                base_path = IMAGE_PATH / "_setu"
+            base_path = IMAGE_PATH / "_r18" if setu.is_r18 else IMAGE_PATH / "_setu"
             local_file = base_path / file_name
             if local_file.exists():
                 return local_file
@@ -227,21 +219,19 @@ class SetuManage:
                     timeout=base_config.get("TIMEOUT"),
                 ):
                     download_success = True
-                    if setu.local_id is not None:
-                        if (
-                            os.path.getsize(base_path / f"{index}.jpg")
-                            > 1024 * 1024 * 1.5
-                        ):
-                            compressed_image(
-                                base_path / f"{index}.jpg",
-                            )
+                    if setu.local_id is not None and (
+                        os.path.getsize(base_path / f"{index}.jpg") > 1024 * 1024 * 1.5
+                    ):
+                        img = BuildImage.open(base_path / f"{index}.jpg")
+                        await img.resize(0.9)
+                        await img.save(base_path / f"{index}.jpg")
                     change_img_md5(file)
                     logger.info(f"下载 lolicon 图片 {url} 成功， id：{index}")
                     break
             except TimeoutError as e:
-                logger.error(f"下载图片超时", "色图", e=e)
+                logger.error("下载图片超时", "色图", e=e)
             except Exception as e:
-                logger.error(f"下载图片错误", "色图", e=e)
+                logger.error("下载图片错误", "色图", e=e)
         return file if download_success else "图片被小怪兽恰掉啦..!QAQ"
 
     @classmethod
@@ -272,20 +262,17 @@ class SetuManage:
                 )
                 if response.status_code == 200:
                     data = response.json()
-                    if not data["error"]:
-                        data = data["data"]
-                        result_list = cls.__handle_data(data)
-                        num = num if num < len(data) else len(data)
-                        random_list = random.sample(result_list, num)
-                        if not random_list:
-                            return "没找到符合条件的色图..."
-                        return random_list
-                    else:
+                    if data["error"]:
                         return "没找到符合条件的色图..."
+                    data = data["data"]
+                    result_list = cls.__handle_data(data)
+                    num = min(num, len(data))
+                    random_list = random.sample(result_list, num)
+                    return random_list or "没找到符合条件的色图..."
             except TimeoutError as e:
-                logger.error(f"获取图片URL超时", "色图", e=e)
+                logger.error("获取图片URL超时", "色图", e=e)
             except Exception as e:
-                logger.error(f"访问页面错误", "色图", e=e)
+                logger.error("访问页面错误", "色图", e=e)
         return "我网线被人拔了..QAQ"
 
     @classmethod
@@ -305,9 +292,7 @@ class SetuManage:
             title = data[i]["title"]
             author = data[i]["author"]
             pid = data[i]["pid"]
-            tags = []
-            for j in range(len(data[i]["tags"])):
-                tags.append(data[i]["tags"][j])
+            tags = [data[i]["tags"][j] for j in range(len(data[i]["tags"]))]
             # if command != "色图r":
             #     if "R-18" in tags:
             #         tags.remove("R-18")
@@ -340,7 +325,7 @@ class SetuManage:
             _cnt = 0
             _r18_cnt = 0
             for setu in set_list:
-                try:
+                with contextlib.suppress(UniqueViolationError):
                     if not await Setu.exists(pid=setu.pid, img_url=setu.img_url):
                         idx = await Setu.filter(is_r18=setu.is_r18).count()
                         setu.local_id = idx + (_r18_cnt if setu.is_r18 else _cnt)
@@ -350,8 +335,6 @@ class SetuManage:
                         else:
                             _cnt += 1
                         create_list.append(setu)
-                except UniqueViolationError:
-                    pass
             cls.save_data = []
             if create_list:
                 try:
