@@ -3,12 +3,12 @@ from nonebot_plugin_alconna import Alconna, Args, Arparma, Match, on_alconna
 from nonebot_plugin_session import EventSession
 
 from zhenxun.configs.path_config import IMAGE_PATH
-from zhenxun.configs.utils import PluginExtraData, RegisterConfig
+from zhenxun.configs.utils import PluginExtraData
 from zhenxun.services.log import logger
 from zhenxun.utils.http_utils import AsyncPlaywright
 from zhenxun.utils.message import MessageUtils
 
-from .data_source import get_hot_image, get_cookie
+from .data_source import get_hot_image
 
 __plugin_meta__ = PluginMetadata(
     name="微博热搜",
@@ -21,8 +21,7 @@ __plugin_meta__ = PluginMetadata(
     """.strip(),
     extra=PluginExtraData(
         author="HibiKier & yajiwa",
-        version="0.1",
-        configs=[RegisterConfig(key="cookie", value=None, help="微博cookie")],
+        version="0.1-83511b9",
     ).dict(),
 )
 
@@ -39,11 +38,11 @@ async def _(session: EventSession, arparma: Arparma, idx: Match[int]):
         _idx = idx.result
         url = data_list[_idx - 1]["url"]
         file = IMAGE_PATH / "temp" / f"wbtop_{session.id1}.png"
-        cookies = get_cookie(url)
-        if isinstance(cookies, str):
-            await MessageUtils.build_message(cookies).finish(reply_to=True)
         img = await AsyncPlaywright.screenshot(
-            url, file, "#pl_feed_main", wait_time=12, cookies=cookies
+            url,
+            file,
+            "#pl_feed_main",
+            wait_time=12,
         )
         if img:
             await MessageUtils.build_message(file).send()
@@ -54,4 +53,4 @@ async def _(session: EventSession, arparma: Arparma, idx: Match[int]):
             await MessageUtils.build_message("获取图片失败...").send()
     else:
         await MessageUtils.build_message(result).send()
-        logger.info("查询微博热搜", arparma.header_result, session=session)
+        logger.info(f"查询微博热搜", arparma.header_result, session=session)

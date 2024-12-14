@@ -3,13 +3,14 @@ from datetime import datetime, timedelta
 
 import pytz
 from nonebot import get_driver
-from nonebot.adapters.onebot.v11 import Message
+from nonebot.adapters.onebot.v11 import Message, MessageSegment
 from nonebot.adapters.onebot.v11.event import GroupMessageEvent
 from nonebot.matcher import Matcher
-from nonebot.params import Arg, Depends
+from nonebot.params import Arg, Command, CommandArg, Depends
 from nonebot.plugin import PluginMetadata
 from nonebot.typing import T_State
 from nonebot_plugin_alconna import Arparma, Match
+from nonebot_plugin_session import EventSession
 
 from zhenxun.configs.utils import PluginExtraData, RegisterConfig
 from zhenxun.utils.enum import PluginType
@@ -44,7 +45,7 @@ __plugin_meta__ = PluginMetadata(
     """.strip(),
     extra=PluginExtraData(
         author="yajiwa",
-        version="0.1-89d294e",
+        version="0.1-83511b9",
         plugin_type=PluginType.NORMAL,
         configs=[
             RegisterConfig(
@@ -128,9 +129,10 @@ async def handle_first_receive(
         #         reply_to=True
         #     )
         if z_date.available:
-            if match := re.match(r"^(.+?)(?:~(.+))?$", z_date.result):
-                start = match[1]
-                stop = match[2]
+            match = re.match(r"^(.+?)(?:~(.+))?$", z_date.result)
+            if match:
+                start = match.group(1)
+                stop = match.group(2)
                 try:
                     state["start"] = get_datetime_fromisoformat_with_timezone(start)
                     if stop:
@@ -164,7 +166,10 @@ async def handle_message(
     my: bool = Arg(),
 ):
     # 是否只查询自己的记录
-    user_id = int(event.user_id) if my else None
+    if my:
+        user_id = int(event.user_id)
+    else:
+        user_id = None
     # 将时间转换到 东八 时区
     messages = await get_list_msg(
         user_id,
