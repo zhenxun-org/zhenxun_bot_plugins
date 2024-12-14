@@ -20,7 +20,7 @@ __plugin_meta__ = PluginMetadata(
             识番 [图片]
     """.strip(),
     extra=PluginExtraData(
-        author="HibiKier", version="0.1-83511b9", menu_type="一些工具"
+        author="HibiKier", version="0.1-89d294e", menu_type="一些工具"
     ).dict(),
 )
 
@@ -55,6 +55,6 @@ async def _(
         logger.info(
             f"识番 {image.url} 未找到...", arparma.header_result, session=session
         )
-        await MessageUtils.build_message(f"没有寻找到该番剧，果咩..").send(
+        await MessageUtils.build_message("没有寻找到该番剧，果咩..").send(
             reply_to=True
         )

@@ -24,7 +24,7 @@ __plugin_meta__ = PluginMetadata(
     """.strip(),
     extra=PluginExtraData(
         author="HibiKier",
-        version="0.1-83511b9",
+        version="0.1-89d294e",
         menu_type="一些工具",
         configs=[
             RegisterConfig(

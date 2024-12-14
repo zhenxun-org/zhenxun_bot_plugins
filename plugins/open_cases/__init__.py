@@ -1,18 +1,22 @@
 import asyncio
 import random
 from datetime import datetime, timedelta
-from typing import List
 
+import nonebot
 from nonebot.plugin import PluginMetadata
 from nonebot_plugin_alconna import Arparma, Match
 from nonebot_plugin_apscheduler import scheduler
 from nonebot_plugin_session import EventSession
-
 from zhenxun.configs.utils import PluginCdBlock, PluginExtraData, RegisterConfig, Task
 from zhenxun.services.log import logger
+from zhenxun.utils.common_utils import CommonUtils
+from zhenxun.utils.depends import UserName
 from zhenxun.utils.image_utils import text2image
 from zhenxun.utils.message import MessageUtils
+from zhenxun.utils.platform import broadcast_group
 
+from .buff import BuffUpdateManager, CaseManager
+from .build_image import build_case_image, build_skin_trends
 from .command import (
     _group_open_matcher,
     _knifes_matcher,
@@ -22,28 +26,11 @@ from .command import (
     _price_matcher,
     _reload_matcher,
     _show_case_matcher,
-    _update_image_matcher,
     _update_matcher,
 )
-from .open_cases_c import (
-    auto_update,
-    get_my_knifes,
-    group_statistics,
-    open_case,
-    open_multiple_case,
-    total_open_statistics,
-)
-from .utils import (
-    CASE2ID,
-    KNIFE2ID,
-    CaseManager,
-    build_case_image,
-    download_image,
-    get_skin_case,
-    init_skin_trends,
-    reset_count_daily,
-    update_skin_data,
-)
+from .config import CASE2ID, KNIFE2ID
+from .data_source import OpenCaseManager, auto_update, reset_count_daily
+from .exception import NotLoginRequired
 
 __plugin_meta__ = PluginMetadata(
     name="CSGO开箱",
@@ -62,14 +49,14 @@ __plugin_meta__ = PluginMetadata(
     """.strip(),
     extra=PluginExtraData(
         author="HibiKier",
-        version="0.1-83511b9",
+        version="0.1-eb2b7db",
         superuser_help="""
         更新皮肤指令
         重置开箱： 重置今日开箱所有次数
         指令：
             更新武器箱 ?[武器箱/ALL]
             更新皮肤 ?[名称/ALL1]
-            更新皮肤 ?[名称/ALL1] -S: (必定更新罕见皮肤所属箱子)
+            更新皮肤 ?[名称/ALL1]
             更新武器箱图片
         * 不指定武器箱时则全部更新 *
         * 过多的爬取会导致账号API被封 *
@@ -97,7 +84,7 @@ __plugin_meta__ = PluginMetadata(
                 key="DAILY_UPDATE",
                 value=None,
                 help="每日自动更新的武器箱，存在'ALL'时则更新全部武器箱",
-                type=List[str],
+                type=list[str],
             ),
             RegisterConfig(
                 key="DEFAULT_OPEN_CASE_RESET_REMIND",
@@ -106,6 +93,12 @@ __plugin_meta__ = PluginMetadata(
                 help="被动 每日开箱重置提醒 进群默认开关状态",
                 default_value=True,
                 type=bool,
+            ),
+            RegisterConfig(
+                key="BUFF_PROXY",
+                value=None,
+                help="buff请求代理",
+                default_value=None,
             ),
         ],
     ).dict(),
@@ -122,12 +115,10 @@ async def _(
     day: Match[int],
 ):
     name = name.replace("武器箱", "").strip()
-    _day = 7
-    if day.available:
-        _day = day.result
-    if _day > 180:
+    _day = day.result if day.available else 7
+    if _day > 180 or _day <= 0:
         await MessageUtils.build_message("天数必须大于0且小于180").finish()
-    result = await init_skin_trends(name, skin, abrasion, _day)
+    result = await build_skin_trends(name, skin, abrasion, _day)
     if not result:
         await MessageUtils.build_message("未查询到数据...").finish(reply_to=True)
     await MessageUtils.build_message(result).send()
@@ -138,12 +129,6 @@ async def _(
     )
 
 
-@_reload_matcher.handle()
-async def _(session: EventSession, arparma: Arparma):
-    await reset_count_daily()
-    logger.info("重置开箱次数", arparma.header_result, session=session)
-
-
 @_open_matcher.handle()
 async def _(session: EventSession, arparma: Arparma, name: Match[str]):
     gid = session.id3 or session.id2
@@ -151,46 +136,9 @@ async def _(session: EventSession, arparma: Arparma, name: Match[str]):
         await MessageUtils.build_message("用户id为空...").finish()
     if not gid:
         await MessageUtils.build_message("群组id为空...").finish()
-    case_name = None
-    if name.available:
-        case_name = name.result.replace("武器箱", "").strip()
-    result = await open_case(session.id1, gid, case_name, session)
+    case_name = name.result.replace("武器箱", "").strip() if name.available else None
+    result = await OpenCaseManager.open_case(session.id1, gid, case_name, 1, session)
     await result.finish(reply_to=True)
-
-
-@_my_open_matcher.handle()
-async def _(session: EventSession, arparma: Arparma):
-    gid = session.id3 or session.id2
-    if not session.id1:
-        await MessageUtils.build_message("用户id为空...").finish()
-    if not gid:
-        await MessageUtils.build_message("群组id为空...").finish()
-    await MessageUtils.build_message(
-        await total_open_statistics(session.id1, gid),
-    ).send(reply_to=True)
-    logger.info("查询我的开箱", arparma.header_result, session=session)
-
-
-@_group_open_matcher.handle()
-async def _(session: EventSession, arparma: Arparma):
-    gid = session.id3 or session.id2
-    if not gid:
-        await MessageUtils.build_message("群组id为空...").finish()
-    result = await group_statistics(gid)
-    await MessageUtils.build_message(result).send(reply_to=True)
-    logger.info("查询群开箱统计", arparma.header_result, session=session)
-
-
-@_knifes_matcher.handle()
-async def _(session: EventSession, arparma: Arparma):
-    gid = session.id3 or session.id2
-    if not session.id1:
-        await MessageUtils.build_message("用户id为空...").finish()
-    if not gid:
-        await MessageUtils.build_message("群组id为空...").finish()
-    result = await get_my_knifes(session.id1, gid)
-    await result.send(reply_to=True)
-    logger.info("查询我的金色", arparma.header_result, session=session)
 
 
 @_multiple_matcher.handle()
@@ -204,16 +152,73 @@ async def _(session: EventSession, arparma: Arparma, num: int, name: Match[str])
         await MessageUtils.build_message("开箱次数不要超过30啊笨蛋！").finish()
     if num < 0:
         await MessageUtils.build_message("再负开箱就扣你明天开箱数了！").finish()
-    case_name = None
-    if name.available:
-        case_name = name.result.replace("武器箱", "").strip()
-    result = await open_multiple_case(session.id1, gid, case_name, num, session)
+    case_name = name.result.replace("武器箱", "").strip() if name.available else None
+    result = await OpenCaseManager.open_case(session.id1, gid, case_name, num, session)
     await result.send(reply_to=True)
     logger.info(f"{num}连开箱", arparma.header_result, session=session)
 
 
+@_reload_matcher.handle()
+async def _(session: EventSession, arparma: Arparma):
+    try:
+        await reset_count_daily(session.id3 or session.id2)
+        logger.info("重置开箱次数", arparma.header_result, session=session)
+        await MessageUtils.build_message("重置开箱次数成功!").send()
+    except Exception:
+        logger.error("重置开箱发生错误...", arparma.header_result, session=session)
+        await MessageUtils.build_message("重置开箱次数失败...").finish()
+
+
+@_my_open_matcher.handle()
+async def _(session: EventSession, arparma: Arparma, uname: str = UserName()):
+    gid = session.id3 or session.id2
+    user_id = session.id1
+    if not user_id:
+        await MessageUtils.build_message("用户id为空...").finish()
+    if not gid:
+        await MessageUtils.build_message("群组id为空...").finish()
+    await MessageUtils.build_message(
+        await OpenCaseManager.get_user_data(uname, user_id, gid),
+    ).send(reply_to=True)
+    logger.info("查询我的开箱", arparma.header_result, session=session)
+
+
+@_knifes_matcher.handle()
+async def _(session: EventSession, arparma: Arparma):
+    gid = session.id3 or session.id2
+    if not session.id1:
+        await MessageUtils.build_message("用户id为空...").finish()
+    if not gid:
+        await MessageUtils.build_message("群组id为空...").finish()
+    result = await OpenCaseManager.get_my_knifes(session.id1, gid)
+    await result.send(reply_to=True)
+    logger.info("查询我的金色", arparma.header_result, session=session)
+
+
+@_group_open_matcher.handle()
+async def _(session: EventSession, arparma: Arparma):
+    gid = session.id3 or session.id2
+    if not gid:
+        await MessageUtils.build_message("群组id为空...").finish()
+    result = await OpenCaseManager.get_group_data(gid)
+    await MessageUtils.build_message(result).send(reply_to=True)
+    logger.info("查询群开箱统计", arparma.header_result, session=session)
+
+
+@_show_case_matcher.handle()
+async def _(session: EventSession, arparma: Arparma, name: Match[str]):
+    case_name = name.result.strip() if name.available else None
+    result = await build_case_image(case_name)
+    if isinstance(result, str):
+        await MessageUtils.build_message(result).send()
+    else:
+        await MessageUtils.build_message(result).send()
+        logger.info("查看武器箱", arparma.header_result, session=session)
+
+
 @_update_matcher.handle()
 async def _(session: EventSession, arparma: Arparma, name: Match[str]):
+    # sourcery skip: low-code-quality
     case_name = None
     if name.available:
         case_name = name.result.strip()
@@ -242,12 +247,7 @@ async def _(session: EventSession, arparma: Arparma, name: Match[str]):
         await MessageUtils.build_message(f"即将更新所有{type_}, 请稍等").send()
         for i, case_name in enumerate(case_list):
             try:
-                info = await update_skin_data(case_name, arparma.find("s"))
-                if "请先登录" in info:
-                    await MessageUtils.build_message(
-                        f"未登录, 已停止更新, 请配置BUFF token..."
-                    ).send()
-                    return
+                info = await BuffUpdateManager.update_skin(case_name)
                 rand = random.randint(300, 500)
                 result = f"更新全部{type_}完成"
                 if i < len(case_list) - 1:
@@ -256,6 +256,10 @@ async def _(session: EventSession, arparma: Arparma, name: Match[str]):
                 await MessageUtils.build_message(f"{info}, {result}").send()
                 logger.info(f"info, {result}", "更新武器箱", session=session)
                 await asyncio.sleep(rand)
+            except NotLoginRequired:
+                await MessageUtils.build_message(
+                    f"更新{type_}: {case_name} 需要登录, 请先登录"
+                ).finish()
             except Exception as e:
                 logger.error(f"更新{type_}: {case_name}", session=session, e=e)
                 await MessageUtils.build_message(
@@ -268,7 +272,7 @@ async def _(session: EventSession, arparma: Arparma, name: Match[str]):
         ).send()
         try:
             await MessageUtils.build_message(
-                await update_skin_data(case_name, arparma.find("s"))
+                await BuffUpdateManager.update_skin(case_name)
             ).send(at_sender=True)
         except Exception as e:
             logger.error(f"{arparma.header_result}: {case_name}", session=session, e=e)
@@ -277,31 +281,18 @@ async def _(session: EventSession, arparma: Arparma, name: Match[str]):
             ).send()
 
 
-@_show_case_matcher.handle()
-async def _(session: EventSession, arparma: Arparma, name: Match[str]):
-    case_name = None
-    if name.available:
-        case_name = name.result.strip()
-    result = await build_case_image(case_name)
-    if isinstance(result, str):
-        await MessageUtils.build_message(result).send()
-    else:
-        await MessageUtils.build_message(result).send()
-        logger.info("查看武器箱", arparma.header_result, session=session)
+driver = nonebot.get_driver()
 
 
-@_update_image_matcher.handle()
-async def _(session: EventSession, arparma: Arparma, name: Match[str]):
-    case_name = None
-    if name.available:
-        case_name = name.result.strip()
-    await MessageUtils.build_message("开始更新图片...").send(reply_to=True)
-    await download_image(case_name)
-    await MessageUtils.build_message("更新图片完成...").send(at_sender=True)
-    logger.info("更新武器箱图片", arparma.header_result, session=session)
+@driver.on_startup
+async def _():
+    await CaseManager.reload()
 
 
-# 重置开箱
+async def check(bot, group_id: str) -> bool:
+    return not await CommonUtils.task_is_block(bot, "open_case_reset_remind", group_id)
+
+
 @scheduler.scheduled_job(
     "cron",
     hour=0,
@@ -309,6 +300,7 @@ async def _(session: EventSession, arparma: Arparma, name: Match[str]):
 )
 async def _():
     await reset_count_daily()
+    await broadcast_group("每日开箱重置成功!", log_cmd="每日开箱重置", check_func=check)
 
 
 @scheduler.scheduled_job(
@@ -325,5 +317,5 @@ async def _():
         auto_update,
         "date",
         run_date=date.replace(microsecond=0),
-        id=f"auto_update_csgo_cases",
+        id="auto_update_csgo_cases",
     )
