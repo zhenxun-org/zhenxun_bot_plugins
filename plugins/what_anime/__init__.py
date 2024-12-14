@@ -20,7 +20,7 @@ __plugin_meta__ = PluginMetadata(
             识番 [图片]
     """.strip(),
     extra=PluginExtraData(
-        author="HibiKier", version="0.1", menu_type="一些工具"
+        author="HibiKier", version="0.1-83511b9", menu_type="一些工具"
     ).dict(),
 )
 

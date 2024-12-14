@@ -5,7 +5,7 @@
         "description": "喏，亲手为你煮的鸡汤",
         "usage": "不喝点什么感觉有点不舒服\n    指令：\n        鸡汤",
         "author": "HibiKier",
-        "version": "0.1",
+        "version": "0.1-83511b9",
         "plugin_type": "NORMAL",
         "is_dir": false
     },
@@ -15,7 +15,7 @@
         "description": "以图搜图，看破本源",
         "usage": "识别图片 [二次元图片]\n    指令：\n        识图 [图片]",
         "author": "HibiKier",
-        "version": "0.1",
+        "version": "0.1-83511b9",
         "plugin_type": "NORMAL",
         "is_dir": true
     },
@@ -25,7 +25,7 @@
         "description": "生了个人，我很抱歉",
         "usage": "到点了，还是防不了下塔\n    指令：\n        网易云热评/到点了/12点了",
         "author": "HibiKier",
-        "version": "0.1",
+        "version": "0.1-83511b9",
         "plugin_type": "NORMAL",
         "is_dir": false
     },
@@ -35,7 +35,7 @@
         "description": "这里是PIX图库！",
         "usage": "指令：\n        pix ?*[tags]: 通过 tag 获取相似图片，不含tag时随机抽取\n        pid [uid]: 通过uid获取图片\n        pix pid[pid]: 查看图库中指定pid图片\n        示例：pix 萝莉 白丝\n        示例：pix 萝莉 白丝 10  （10为数量）\n        示例：pix #02      （当tag只有1个tag且为数字时，使用#标记，否则将被判定为数量）\n        示例：pix 34582394     （查询指定uid图片）\n        示例：pix pid:12323423     （查询指定pid图片）",
         "author": "HibiKier",
-        "version": "0.1",
+        "version": "0.1-83511b9",
         "plugin_type": "NORMAL",
         "is_dir": true
     },
@@ -55,7 +55,7 @@
         "description": "可以不玩，不能没有，每日白嫖",
         "usage": "epic",
         "author": "AkashiCoin",
-        "version": "0.1",
+        "version": "0.1-83511b9",
         "plugin_type": "NORMAL",
         "is_dir": true
     },
@@ -75,7 +75,7 @@
         "description": "跨越空间与时间跟管理员对话",
         "usage": "滴滴滴- ?[文本] ?[图片]\n        示例：滴滴滴- 我喜欢你",
         "author": "HibiKier",
-        "version": "0.1",
+        "version": "0.1-83511b9",
         "plugin_type": "NORMAL",
         "is_dir": true
     },
@@ -85,7 +85,7 @@
         "description": "刷屏禁言相关操作",
         "usage": "刷屏禁言相关操作，需要 {NICKNAME} 有群管理员权限\n    指令：\n        设置刷屏: 查看当前设置\n        -c [count]: 检测最大次数\n        -t [time]: 规定时间内\n        -d [duration]: 禁言时长\n        示例:\n            设置刷屏 -c 10: 设置最大次数为10\n            设置刷屏 -t 100 -d 20: 设置规定时间和禁言时长\n            设置刷屏 -d 10: 设置禁言时长为10\n        * 即 X 秒内发送同样消息 N 次，禁言 M 分钟 *",
         "author": "HibiKier",
-        "version": "0.1",
+        "version": "0.1-83511b9",
         "plugin_type": "ADMIN",
         "is_dir": true
     },
@@ -95,7 +95,7 @@
         "description": "不要小看涩图啊混蛋！",
         "usage": "搜索 lolicon 图库，每日色图time...\n    多个tag使用#连接\n    指令：\n        色图: 随机色图\n        色图 -r: 随机在线r18涩图\n        色图 -id [id]: 本地指定id色图\n        色图 *[tags]: 在线搜索指定tag色图\n        色图 *[tags] -r: 同上, r18色图\n        [1-9]张涩图: 本地随机色图连发\n        [1-9]张[tags]的涩图: 在线搜索指定tag色图连发\n    示例：色图 萝莉|少女#白丝|黑丝\n    示例：色图 萝莉#猫娘\n    注：\n        tag至多取前20项，| 为或，萝莉|少女=萝莉或者少女",
         "author": "HibiKier",
-        "version": "0.3",
+        "version": "0.3-83511b9",
         "plugin_type": "NORMAL",
         "is_dir": true
     },
@@ -105,7 +105,7 @@
         "description": "群友的本质是什么？是复读机哒！",
         "usage": "usage：\n        重复3次相同的消息时会复读",
         "author": "HibiKier",
-        "version": "0.1",
+        "version": "0.1-83511b9",
         "plugin_type": "DEPENDANT",
         "is_dir": false
     },
@@ -125,7 +125,7 @@
         "description": "P站排行榜直接冲，P站搜图跟着冲",
         "usage": "P站排行：\n        可选参数:\n        类型：\n            1. 日排行\n            2. 周排行\n            3. 月排行\n            4. 原创排行\n            5. 新人排行\n            6. R18日排行\n            7. R18周排行\n            8. R18受男性欢迎排行\n            9. R18重口排行【慎重！】\n        【使用时选择参数序号即可，R18仅可私聊】\n        p站排行 ?[参数] ?[数量] ?[日期]\n        示例：\n            p站排行   [无参数默认为日榜]\n            p站排行 1\n            p站排行 1 5\n            p站排行 1 5 2018-4-25\n        【注意空格！！】【在线搜索会较慢】\n    ---------------------------------\n    P站搜图：\n        搜图 [关键词] ?[数量] ?[页数=1] ?[r18](不屏蔽R-18)\n        示例：\n            搜图 樱岛麻衣\n            搜图 樱岛麻衣 5\n            搜图 樱岛麻衣 5 r18\n            搜图 樱岛麻衣#1000users 5\n        【多个关键词用#分割】\n        【默认为 热度排序】\n        【注意空格！！】【在线搜索会较慢】【数量可能不符？可能该页数量不够，也可能被R-18屏蔽】",
         "author": "HibiKier",
-        "version": "0.1",
+        "version": "0.1-83511b9",
         "plugin_type": "NORMAL",
         "is_dir": true
     },
@@ -135,7 +135,7 @@
         "description": "csgo模拟开箱[戒赌]",
         "usage": "指令：\n        开箱 ?[武器箱]\n        [1-30]连开箱 ?[武器箱]\n        我的开箱\n        我的金色\n        群开箱统计\n        查看武器箱?[武器箱]\n        * 不包含[武器箱]时随机开箱 *\n        示例: 查看武器箱\n        示例: 查看武器箱英勇",
         "author": "HibiKier",
-        "version": "0.1",
+        "version": "0.1-83511b9",
         "plugin_type": "NORMAL",
         "is_dir": true
     },
@@ -155,7 +155,7 @@
         "description": "上传/删除/移动到指定图片与发送图片",
         "usage": "多指令",
         "author": "HibiKier",
-        "version": "0.2",
+        "version": "0.2-83511b9",
         "plugin_type": "ADMIN",
         "is_dir": true
     },
@@ -175,7 +175,7 @@
         "description": "请注意你的发言！",
         "usage": "惩罚机制: 检测内容提示\n    设置惩罚 [uid] [id] [level]: 设置惩罚内容, 此id需要通过`记录名单 -u:uid`来获取\n    记录名单: 查看检测记录名单\n    记录名单:\n        -u [uid] 指定用户记录名单\n        -g [gid] 指定群组记录名单\n        -d [date] 指定日期\n        -dt ['=', '>', '<'] 大于小于等于指定日期\n\n    示例:\n        设置惩罚 123123123 0 1\n        记录名单 -u 123123123\n        记录名单 -g 333333\n        记录名单 -d 2022-11-11\n        记录名单 -d 2022-11-11 -dt >",
         "author": "HibiKier",
-        "version": "0.1",
+        "version": "0.1-83511b9",
         "plugin_type": "SUPERUSER",
         "is_dir": true
     },
@@ -195,7 +195,7 @@
         "description": "以图识番",
         "usage": "usage：\n        api.trace.moe 以图识番\n        指令：\n            识番 [图片]",
         "author": "HibiKier",
-        "version": "0.1",
+        "version": "0.1-83511b9",
         "plugin_type": "NORMAL",
         "is_dir": true
     },
@@ -205,7 +205,7 @@
         "description": "自定义词条内容随机回复",
         "usage": "usage：\n        对指定问题的随机回答，对相同问题可以设置多个不同回答\n        删除词条后每个词条的id可能会变化，请查看后再删除\n        更推荐使用id方式删除\n        问题回答支持的类型：at, image\n        查看词条命令：群聊时为 群词条+全局词条，私聊时为 私聊词条+全局词条\n        添加词条正则：添加词条(模糊|正则|图片)?问\\s*?(\\S*\\s?\\S*)\\s*?答\\s?(\\S*)\n        正则问可以通过$1类推()捕获的组\n        指令：\n            添加词条 ?[模糊|正则|图片]问...答...：添加问答词条，可重复添加相同问题的不同回答\n                示例:\n                    添加词条问你好答你也好\n                    添加图片词条问答看看涩图\n            删除词条 ?[问题] ?[序号] ?[回答序号]：删除指定词条指定或全部回答\n                示例:\n                    删除词条 谁是萝莉           : 删除文字是 谁是萝莉 的词条\n                    删除词条 --id 2            : 删除序号为2的词条\n                    删除词条 谁是萝莉 --aid 2   : 删除 谁是萝莉 词条的第2个回答\n                    删除词条 --id 2 --aid 2    : 删除序号为2词条的第2个回答\n            修改词条 [替换文字] ?[旧词条文字] ?[序号]：修改词条问题\n                示例:\n                    修改词条 谁是萝莉 谁是萝莉啊？ : 将词条 谁是萝莉 修改为 谁是萝莉啊？\n                    修改词条 谁是萝莉 --id 2     : 将序号为2的词条修改为 谁是萝莉\n            查看词条 ?[问题] ?[序号]：查看全部词条或对应词条回答\n                示例:\n                    查看词条:\n                        (在群组中使用时): 查看当前群组词条和全局词条\n                        (在私聊中使用时): 查看当前私聊词条和全局词条\n                    查看词条 谁是萝莉   : 查看词条 谁是萝莉 的全部回答\n                    查看词条 --id 2    : 查看词条序号为2的全部回答\n                    查看词条 谁是萝莉 --all: 查看全局词条 谁是萝莉 的全部回答\n                    查看词条 --id 2 --all: 查看全局词条序号为2的全部回答",
         "author": "HibiKier & yajiwa",
-        "version": "0.4-533b0c4",
+        "version": "0.4-83511b9",
         "plugin_type": "NORMAL",
         "is_dir": true
     },
@@ -215,7 +215,7 @@
         "description": "B站内容解析",
         "usage": "usage：\n        被动监听插件，解析B站视频、直播、专栏，支持小程序卡片及文本链接，5分钟内不解析相同内容",
         "author": "leekooyo",
-        "version": "0.1",
+        "version": "0.1-83511b9",
         "plugin_type": "DEPENDANT",
         "is_dir": true
     },
@@ -275,7 +275,7 @@
         "description": "刚买完瓜，在吃瓜现场",
         "usage": "指令：\n        微博热搜：发送实时热搜\n        微博热搜 [id]：截图该热搜页面\n        示例：微博热搜 5",
         "author": "HibiKier & yajiwa",
-        "version": "0.1",
+        "version": "0.1-83511b9",
         "plugin_type": "NORMAL",
         "is_dir": true
     },
@@ -285,7 +285,7 @@
         "description": "虽然是运气游戏，但这可是战场啊少年",
         "usage": "又到了决斗时刻\n    指令：\n        装弹 [金额] [子弹数] ?[at]: 开启游戏，装填子弹，可选自定义金额，或邀请决斗对象\n        接受对决: 接受当前存在的对决\n        拒绝对决: 拒绝邀请的对决\n        开枪: 开出未知的一枪\n        结算: 强行结束当前比赛 (仅当一方未开枪超过30秒时可使用)\n        我的战绩: 对，你的战绩\n        轮盘胜场排行/轮盘败场排行/轮盘欧洲人排行/轮盘慈善家排行/轮盘最高连胜排行/轮盘最高连败排行: 各种排行榜\n        示例：装弹 100 3 @sdd\n        * 注：同一时间群内只能有一场对决 *",
         "author": "HibiKier",
-        "version": "0.2",
+        "version": "0.2-83511b9",
         "plugin_type": "NORMAL",
         "is_dir": true
     },
@@ -315,7 +315,7 @@
         "description": "通过 pid 搜索图片",
         "usage": "usage：\n        通过 pid 搜索图片\n        指令：\n            p搜 [pid]",
         "author": "HibiKier",
-        "version": "0.1",
+        "version": "0.1-83511b9",
         "plugin_type": "NORMAL",
         "is_dir": false
     },
@@ -355,7 +355,7 @@
         "description": "看看自己说了什么话",
         "usage": "usage：\n        词云\n        指令：\n            今日词云：获取今天的词云\n            昨日词云：获取昨天的词云\n            本周词云：获取本周词云\n            本月词云：获取本月词云\n            年度词云：获取年度词云\n\n            历史词云(支持 ISO8601 格式的日期与时间，如 2022-02-22T22:22:22)\n            获取某日的词云\n            历史词云 2022-01-01\n            获取指定时间段的词云\n            历史词云\n            示例：历史词云 2022-01-01~2022-02-22\n            示例：历史词云 2022-02-22T11:11:11~2022-02-22T22:22:22\n\n            如果想要获取自己的发言，可在命令前添加 我的\n            示例：我的今日词云",
         "author": "yajiwa",
-        "version": "0.1",
+        "version": "0.1-83511b9",
         "plugin_type": "NORMAL",
         "is_dir": true
     },
@@ -365,7 +365,7 @@
         "description": "运气项目又来了",
         "usage": "塞红包 [金币数] ?[红包数=5] ?[at指定人]: 塞入红包\n    开/抢: 打开红包\n    退回红包: 退回未开完的红包，必须在一分钟后使用\n\n    * 不同群组同一个节日红包用户只能开一次\n\n    示例:\n        塞红包 1000\n        塞红包 1000 10",
         "author": "HibiKier",
-        "version": "0.1",
+        "version": "0.1-83511b9",
         "plugin_type": "NORMAL",
         "is_dir": true
     },
@@ -375,7 +375,7 @@
         "description": "戳一戳发送语音美图萝莉图不美哉？",
         "usage": "戳一戳随机掉落语音或美图萝莉图",
         "author": "HibiKier",
-        "version": "0.1-4c17056",
+        "version": "0.1-83511b9",
         "plugin_type": "DEPENDANT",
         "is_dir": true
     },
@@ -385,7 +385,7 @@
         "description": "非常便利的B站订阅通知",
         "usage": "B站直播，番剧，UP动态开播等提醒",
         "author": "HibiKier",
-        "version": "0.3-b101fbc",
+        "version": "0.3-83511b9",
         "plugin_type": "NORMAL",
         "is_dir": true
     }

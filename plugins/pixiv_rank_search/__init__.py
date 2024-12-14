@@ -61,7 +61,7 @@ __plugin_meta__ = PluginMetadata(
     """.strip(),
     extra=PluginExtraData(
         author="HibiKier",
-        version="0.1",
+        version="0.1-83511b9",
         aliases={"P站排行", "搜图"},
         menu_type="来点好康的",
         limits=[BaseBlock(result="P站排行榜或搜图正在搜索，请不要重复触发命令...")],

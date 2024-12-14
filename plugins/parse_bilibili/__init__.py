@@ -27,7 +27,7 @@ __plugin_meta__ = PluginMetadata(
     """.strip(),
     extra=PluginExtraData(
         author="leekooyo",
-        version="0.1",
+        version="0.1-83511b9",
         plugin_type=PluginType.DEPENDANT,
         menu_type="其他",
         configs=[
