@@ -59,7 +59,7 @@ __plugin_meta__ = PluginMetadata(
         """.strip(),
     extra=PluginExtraData(
         author="HibiKier",
-        version="0.3-83511b9",
+        version="0.4",
         superuser_help="""
     登录b站获取cookie防止风控：
             bil_check/检测b站
@@ -347,7 +347,7 @@ async def _():
         if bot:
             sub = await sub_manager.random_sub_data()
             if sub:
-                logger.info(
+                logger.debug(
                     f"Bilibili订阅开始检测：{sub.sub_id}， 类型：{sub.sub_type}"
                 )
                 msg_list = await get_sub_status(sub.sub_id, sub.sub_type)
@@ -386,7 +386,7 @@ async def send_sub_msg(msg_list: list, sub: BilibiliSub, bot: Bot):
                             sub.sub_type == "up"
                             and Config.get_config("bilibili_sub", "UP_MSG_AT_ALL")
                         ):
-                            msg_list.append(UniMessage.at_all())
+                            msg_list.insert(0, UniMessage.at_all() + "\n")
                     if not await GroupConsole.is_block_plugin(group_id, "bilibili_sub"):
                         await PlatformUtils.send_message(
                             bot,

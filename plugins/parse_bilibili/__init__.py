@@ -14,6 +14,7 @@ from zhenxun.utils.http_utils import AsyncHttpx
 from zhenxun.configs.path_config import TEMP_PATH
 from zhenxun.utils.common_utils import CommonUtils
 from zhenxun.configs.utils import Task, RegisterConfig, PluginExtraData
+from nonebot_plugin_uninfo import Uninfo
 
 from .parse_url import parse_bili_url
 from .information_container import InformationContainer
@@ -27,7 +28,7 @@ __plugin_meta__ = PluginMetadata(
     """.strip(),
     extra=PluginExtraData(
         author="leekooyo",
-        version="0.1-83511b9",
+        version="0.1-89d294e",
         plugin_type=PluginType.DEPENDANT,
         menu_type="其他",
         configs=[
@@ -45,10 +46,8 @@ __plugin_meta__ = PluginMetadata(
 )
 
 
-async def _rule(session: EventSession) -> bool:
-    return not await CommonUtils.task_is_block(
-        "bilibili_parse", session.id3 or session.id2
-    )
+async def _rule(session: Uninfo) -> bool:
+    return not await CommonUtils.task_is_block(session, "bilibili_parse")
 
 
 _matcher = on_message(priority=1, block=False, rule=_rule)
@@ -65,8 +64,6 @@ async def _(session: EventSession, message: UniMsg):
     get_url = None
     # 判断文本消息是否包含视频相关内容
     vd_flag = False
-    # 设定时间阈值，阈值之下不会解析重复内容
-    repet_second = 300
     # 尝试解析小程序消息
     data = message[0]
     if isinstance(data, Hyper) and data.raw:
@@ -110,7 +107,6 @@ async def _(session: EventSession, message: UniMsg):
             pattern = r"https://(live|www\.bilibili\.com/read|www\.bilibili\.com/opus|t\.bilibili\.com)/[^?\s]+"
             match = re.search(pattern, msg)
 
-    # 匹配成功，则获取链接
     if match:
         if vd_flag:
             number = match.group(1)
@@ -121,6 +117,8 @@ async def _(session: EventSession, message: UniMsg):
     if get_url:
         # 将链接统一发送给处理函数
         data = await parse_bili_url(get_url, information_container)
+        # 设定时间阈值，阈值之下不会解析重复内容
+        repet_second = 300
         if data.vd_info:
             # 判断一定时间内是否解析重复内容，或者是第一次解析
             if (
