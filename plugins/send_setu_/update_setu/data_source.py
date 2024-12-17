@@ -1,18 +1,18 @@
+from datetime import datetime
 import os
 import shutil
-from datetime import datetime
 
-import nonebot
-import ujson as json
+import aiofiles
 from asyncpg.exceptions import UniqueViolationError
+import nonebot
 from nonebot.drivers import Driver
 from PIL import UnidentifiedImageError
+import ujson as json
 
-from zhenxun.configs.config import Config
 from zhenxun.configs.path_config import IMAGE_PATH, TEMP_PATH, TEXT_PATH
 from zhenxun.services.log import logger
+from zhenxun.utils._build_image import BuildImage
 from zhenxun.utils.http_utils import AsyncHttpx
-from zhenxun.utils.image_utils import compressed_image
 from zhenxun.utils.utils import change_pixiv_image_links
 
 from .._model import Setu
@@ -35,7 +35,7 @@ async def update_old_setu_data():
         fail_count = 0
         for file in [setu_data_file, r18_data_file]:
             if file.exists():
-                data = json.load(open(file, "r", encoding="utf8"))
+                data = json.load(open(file, encoding="utf8"))
                 for x in data:
                     if file == setu_data_file:
                         idx = index
@@ -72,7 +72,8 @@ async def update_old_setu_data():
                     except UniqueViolationError:
                         fail_count += 1
                         logger.info(
-                            f'添加旧色图数据失败，色图重复 PID：{data[x]["pid"]} index：{idx}....'
+                            "添加旧色图数据失败，"
+                            f'色图重复 PID：{data[x]["pid"]} index：{idx}...'
                         )
                 file.unlink()
         setu_url_path = path / "setu_url.json"
@@ -137,10 +138,9 @@ async def update_setu_img(flag: bool = False) -> str | None:
                         )
                         > 1024 * 1024 * 1.5
                     ):
-                        compressed_image(
-                            TEMP_PATH / f"{image.local_id}.jpg",
-                            path / f"{image.local_id}.jpg",
-                        )
+                        img = BuildImage.open(TEMP_PATH / f"{image.local_id}.jpg")
+                        await img.resize(0.9)
+                        await img.save(path / f"{image.local_id}.jpg")
                     else:
                         logger.info(
                             f"不需要压缩，移动图片{TEMP_PATH}/{image.local_id}.jpg "
@@ -160,8 +160,8 @@ async def update_setu_img(flag: bool = False) -> str | None:
             except UnidentifiedImageError:
                 # 图片已删除
                 unlink = False
-                with open(local_image, "r") as f:
-                    if "404 Not Found" in f.read():
+                async with aiofiles.open(local_image) as f:
+                    if "404 Not Found" in await f.read():
                         unlink = True
                 if unlink:
                     local_image.unlink()
@@ -180,8 +180,11 @@ async def update_setu_img(flag: bool = False) -> str | None:
         else:
             logger.info(f"更新色图 {image.local_id}.jpg 已存在")
     if _success or error_info or flag:
-        return (
-            f'{str(datetime.now()).split(".")[0]} 更新 色图 完成，本地存在 {count} 张，实际更新 {_success} 张，以下为更新时未知错误：\n'
-            + "\n".join(error_info),
+        text = (
+            f'{str(datetime.now()).split(".")[0]} 更新 色图 完成，本地存在 {count} 张，'
         )
+        return f"{text}实际更新 {_success} 张，以下为更新时未知错误：\n" + "\n".join(
+            error_info
+        )
+
     return None

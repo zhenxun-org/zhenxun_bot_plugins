@@ -1,5 +1,4 @@
 import random
-from typing import Tuple
 
 from cn2an import cn2an
 from nonebot.adapters import Bot
@@ -56,9 +55,10 @@ __plugin_meta__ = PluginMetadata(
             RegisterConfig(
                 key="WITHDRAW_SETU_MESSAGE",
                 value=(0, 1),
-                help="自动撤回，参1：延迟撤回色图时间(秒)，0 为关闭 | 参2：监控聊天类型，0(私聊) 1(群聊) 2(群聊+私聊)",
+                help="自动撤回，参1：延迟撤回色图时间(秒)，"
+                "0 为关闭 | 参2：监控聊天类型，0(私聊) 1(群聊) 2(群聊+私聊)",
                 default_value=(0, 1),
-                type=Tuple[int, int],
+                type=tuple[int, int],
             ),
             RegisterConfig(
                 key="ONLY_USE_LOCAL_SETU",
@@ -129,11 +129,7 @@ __plugin_meta__ = PluginMetadata(
 
 
 @run_postprocessor
-async def _(
-    matcher: Matcher,
-    exception: Exception | None,
-    session: EventSession,
-):
+async def _(matcher: Matcher):
     if matcher.plugin_name == "send_setu":
         # 添加数据至数据库
         try:
@@ -144,13 +140,14 @@ async def _(
 
 
 def chinese_to_digit(text):
-    return int(cn2an(text, mode='smart'))
+    return int(cn2an(text, mode="smart"))
+
 
 _matcher = on_alconna(
     Alconna(
         "色图",
         Args["tags?", str],
-        Option("-n", Args["num", str, '1'], help_text="数量"),
+        Option("-n", Args["num", str, "1"], help_text="数量"),
         Option("-id", Args["local_id", int], help_text="本地id"),
         Option("-r", action=store_true, help_text="r18"),
     ),
@@ -160,7 +157,7 @@ _matcher = on_alconna(
 )
 
 _matcher.shortcut(
-     r"^(来|发|要|给).*?(?P<num>.*)[份|发|张|个|次|点](?P<tags>.*)[瑟|色|涩]图.*?",
+    r".{0,5}(?P<num>.*)[份|发|张|个|次|点](?P<tags>.*)[瑟|色|涩]图.*?",
     command="色图",
     arguments=["{tags}", "-n", "{num}"],
     prefix=True,
