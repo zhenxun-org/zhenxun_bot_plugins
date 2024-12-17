@@ -19,19 +19,26 @@ from nonebot_plugin_alconna import (
     UniMsg,
 )
 from nonebot_plugin_alconna import Image as alcImage
-from nonebot_plugin_session import EventSession
+from nonebot_plugin_uninfo import Uninfo
 
 from zhenxun.configs.config import Config
 from zhenxun.configs.utils import PluginExtraData
 from zhenxun.services.log import logger
 from zhenxun.utils.enum import PluginType
-from .exception import ImageDownloadError
 from zhenxun.utils.message import MessageUtils
+from zhenxun.utils.platform import PlatformUtils
 
-from ._command import _add_matcher, _del_matcher, _update_matcher
+from ._command import _add_matcher, _del_matcher, _import_matcher, _update_matcher
 from ._config import ScopeType, WordType, scope2int, type2int
-from ._data_source import WordBankManage, get_answer, get_img_and_at_list, get_problem
+from ._data_source import (
+    ImportHelper,
+    WordBankManage,
+    get_answer,
+    get_img_and_at_list,
+    get_problem,
+)
 from ._model import WordBank
+from .exception import ImageDownloadError
 
 base_config = Config.get("word_bank")
 
@@ -90,6 +97,21 @@ __plugin_meta__ = PluginMetadata(
             示例:
                 删除词条 --id 2 --all: 删除全局词条中序号为2的词条
             用法与普通用法相同
+            
+            词条导入指令:
+                词条导入 [文件名称]: 私聊时词条范围为私聊，群组中时词条范围为当前群组
+                全局词条导入 [文件名称]: 导入全局词条
+            
+            词条文件应放入 data 目录下，为json文件
+            json文件格式为:
+                {
+                    "词条测试": ["回答1", "回答2"]
+                }
+            例如: 文件名称为 test.json
+            指令:
+                词条导入 test
+                词条导入 test.json
+            
         """,
         admin_level=base_config.get("WORD_BANK_LEVEL"),
     ).dict(),
@@ -99,14 +121,16 @@ __plugin_meta__ = PluginMetadata(
 @_add_matcher.handle()
 async def _(
     bot: Bot,
-    session: EventSession,
+    session: Uninfo,
     state: T_State,
     message: UniMsg,
     reg_group: tuple[Any, ...] = RegexGroup(),
 ):
     img_list, at_list = get_img_and_at_list(message)
-    user_id = session.id1
-    group_id = session.id3 or session.id2
+    user_id = session.user.id
+    group_id = None
+    if session.group:
+        group_id = session.group.parent.id if session.group.parent else session.group.id
     if not group_id and user_id not in bot.config.superusers:
         await MessageUtils.build_message("权限不足捏...").finish(reply_to=True)
     word_scope, word_type, problem = reg_group
@@ -146,17 +170,16 @@ async def _(
 @_add_matcher.got("problem_image", prompt="请发送该回答设置的问题图片")
 async def _(
     bot: Bot,
-    session: EventSession,
+    session: Uninfo,
     message: UniMsg,
     word_scope: str | None = ArgStr("word_scope"),
     word_type: str | None = ArgStr("word_type"),
     problem: str | None = ArgStr("problem"),
     answer: Any = Arg("answer"),
 ):
-    if not session.id1:
-        await MessageUtils.build_message("用户id不存在...").finish()
-    user_id = session.id1
-    group_id = session.id3 or session.id2
+    group_id = None
+    if session.group:
+        group_id = session.group.parent.id if session.group.parent else session.group.id
     try:
         if word_type == "图片":
             problem = next(m for m in message if isinstance(m, alcImage)).url
@@ -174,7 +197,7 @@ async def _(
         if not problem:
             await MessageUtils.build_message("获取问题失败...").finish(reply_to=True)
         await WordBank.add_problem_answer(
-            user_id,
+            session.user.id,
             (
                 group_id
                 if group_id and (not word_scope or word_scope == "私聊")
@@ -185,8 +208,8 @@ async def _(
             problem,
             answer,
             nickname[0] if nickname else None,
-            session.platform,
-            session.id1,
+            PlatformUtils.get_platform(session),
+            session.user.id,
         )
     except ImageDownloadError:
         logger.error(
@@ -226,7 +249,7 @@ async def _(
 @_del_matcher.handle()
 async def _(
     bot: Bot,
-    session: EventSession,
+    session: Uninfo,
     problem: Match[str],
     index: Match[int],
     answer_id: Match[int],
@@ -237,19 +260,22 @@ async def _(
         await MessageUtils.build_message(
             "此命令之后需要跟随指定词条或id，通过“显示词条“查看"
         ).finish(reply_to=True)
-    word_scope = ScopeType.GROUP if session.id3 or session.id2 else ScopeType.PRIVATE
+    group_id = None
+    if session.group:
+        group_id = session.group.parent.id if session.group.parent else session.group.id
+    word_scope = ScopeType.GROUP if group_id else ScopeType.PRIVATE
     if all.result:
         word_scope = ScopeType.GLOBAL
-    if gid := session.id3 or session.id2:
+    if group_id:
         result, _ = await WordBankManage.delete_word(
             problem.result,
             index.result if index.available else None,
             answer_id.result if answer_id.available else None,
-            gid,
+            group_id,
             word_scope,
         )
     else:
-        if session.id1 not in bot.config.superusers:
+        if session.user.id not in bot.config.superusers:
             await MessageUtils.build_message("权限不足捏...").finish(reply_to=True)
         result, _ = await WordBankManage.delete_word(
             problem.result,
@@ -265,7 +291,7 @@ async def _(
 @_update_matcher.handle()
 async def _(
     bot: Bot,
-    session: EventSession,
+    session: Uninfo,
     replace: str,
     problem: Match[str],
     index: Match[int],
@@ -276,25 +302,28 @@ async def _(
         await MessageUtils.build_message(
             "此命令之后需要跟随指定词条或id，通过“显示词条“查看"
         ).finish(reply_to=True)
-    word_scope = ScopeType.GROUP if session.id3 or session.id2 else ScopeType.PRIVATE
+    group_id = None
+    if session.group:
+        group_id = session.group.parent.id if session.group.parent else session.group.id
+    word_scope = ScopeType.GROUP if group_id else ScopeType.PRIVATE
     if all.result:
         word_scope = ScopeType.GLOBAL
-    if gid := session.id3 or session.id2:
+    if group_id:
         result, old_problem = await WordBankManage.update_word(
             replace,
             problem.result if problem.available else "",
             index.result if index.available else None,
-            gid,
+            group_id,
             word_scope,
         )
     else:
-        if session.id1 not in bot.config.superusers:
+        if session.user.id not in bot.config.superusers:
             await MessageUtils.build_message("权限不足捏...").finish(reply_to=True)
         result, old_problem = await WordBankManage.update_word(
             replace,
             problem.result if problem.available else "",
             index.result if index.available else None,
-            session.id3 or session.id2,
+            group_id,
             word_scope,
         )
     await MessageUtils.build_message(result).send(reply_to=True)
@@ -303,3 +332,19 @@ async def _(
         arparma.header_result,
         session=session,
     )
+
+
+@_import_matcher.handle()
+async def _(
+    session: Uninfo,
+    name: str,
+    arparma: Arparma,
+    all: Query[bool] = AlconnaQuery("all.value", False),
+):
+    await MessageUtils.build_message(f"开始尝试导入词条文件: {name}").send()
+    logger.info(f"导入词条: {name}", arparma.header_result, session=session)
+    try:
+        result = await ImportHelper.import_word(session, name, all.result)
+        await MessageUtils.build_message(result).send(reply_to=True)
+    except FileNotFoundError:
+        await MessageUtils.build_message("文件不存在捏...").finish()
