@@ -186,7 +186,7 @@ class OpenCaseManager:
             defaults={"open_cases_time_last": datetime.now()},
         )
         max_count = await cls.get_user_max_count(user_id, platform)
-        if num > max_count:
+        if user.today_open_total + num > max_count:
             return (
                 MessageUtils.build_message(
                     f"开箱次数不足哦，剩余开箱次数: {max_count - user.today_open_total}"
@@ -315,7 +315,9 @@ class OpenCaseManager:
                 "开箱",
                 session=session,
             )
+        user.open_cases_time_last = datetime.now()
         await user.save()
+        await OpenCasesLog.bulk_create(log_list)
         mark_image = await cls.__to_image(img_w, img_h, img_list)
         over_count = max_count - user.today_open_total
         result = "".join(

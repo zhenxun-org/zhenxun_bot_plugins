@@ -1,6 +1,5 @@
 import asyncio
 
-from httpx import HTTPStatusError
 from nonebot.adapters import Bot, Event
 from nonebot.plugin import PluginMetadata
 from nonebot.rule import Rule
@@ -8,24 +7,21 @@ from nonebot_plugin_alconna import (
     Alconna,
     Args,
     Arparma,
-    MultiVar,
     Option,
     Query,
     Reply,
-    UniMsg,
     on_alconna,
-    store_true,
 )
 from nonebot_plugin_alconna.uniseg import Receipt
 from nonebot_plugin_alconna.uniseg.tools import reply_fetch
 from nonebot_plugin_uninfo import Uninfo
+
 from zhenxun.configs.config import BotConfig
 from zhenxun.configs.utils import BaseBlock, PluginExtraData
 from zhenxun.services.log import logger
-from zhenxun.utils.depends import CheckConfig
 from zhenxun.utils.message import MessageUtils
 
-from .._config import InfoManage
+from ..config import InfoManage
 from .data_source import PixManage, base_config
 
 __plugin_meta__ = PluginMetadata(
@@ -41,41 +37,22 @@ __plugin_meta__ = PluginMetadata(
 
         pix图库 ?[tags](使用空格分隔)
 
-        引用消息 /star                      : 收藏图片
-        引用消息 /unatar                    : 取消收藏图片
         引用消息 /original                  : 获取原图
         引用消息 /info                      : 查看图片信息
-        引用消息 /block ?[level] ?[--all]   : block该pid
-            默认level为2，可选[1, 2], 1程度较轻，含有all时block该pid下所有图片
-        引用消息 /block -u                  : block该uid下的所有图片
-        引用消息 / nsfw n                   : 设置nsfw等级 n = [0, 1, 2] 其中
-            0: 普通
-            1: 色图
-            2: R18
 
-        pix添加 ['u', 'p'] [*content]: 可同时添加多个pid和uid
-            u: uid
-            p: pid
-            示例:
-                pix添加 u 123456789
-                pix添加 p 123456789
-                pix添加 u 123456789 12312332
+        示例：pix 萝莉 白丝
+        示例：pix 萝莉 白丝 -n 10  （10为数量）
 
-        pix收藏           : 查看个人收藏
-        pix排行 ?[10] -r: 查看收藏排行, 默认获取前10，包含-r时会获取包括r18在内的排行
-
-        pixtag ?[10] : 查看排名前10的tag，最大不能超过30
-            示例:
-                pixtag 20
     """.strip(),
     extra=PluginExtraData(
         author="HibiKier",
         version="0.1",
-        menu_type="PIX图库",
         superuser_help="""
         指令：
             pix -s ?*[tags]: 通过tag获取色图，不含tag时随机
+            pix -r ?*[tags]: 通过tag获取r18图，不含tag时随机
         """,
+        menu_type="来点好康的",
         limits=[BaseBlock(result="您有PIX图片正在处理，请稍等...")],
     ).dict(),
 )
@@ -100,12 +77,9 @@ def reply_check() -> Rule:
 _matcher = on_alconna(
     Alconna(
         "pix",
-        Args["tags?", MultiVar(str)],
+        Args["tags?", str] / "\n",
         Option("-n|--num", Args["num", int]),
-        Option("-r|--r18", action=store_true, help_text="是否是r18"),
-        Option("-noai", action=store_true, help_text="是否是过滤ai"),
     ),
-    aliases={"PIX"},
     priority=5,
     block=True,
 )
@@ -127,7 +101,7 @@ _info_matcher = on_alconna(
 )
 
 
-@_matcher.handle(parameterless=[CheckConfig("pix", "pix_api")])
+@_matcher.handle()
 async def _(
     bot: Bot,
     session: Uninfo,
@@ -147,31 +121,19 @@ async def _(
     ):
         await MessageUtils.build_message("给我滚出克私聊啊变态！").finish()
     is_ai = arparma.find("noai") or None
-    try:
-        result = await PixManage.get_pix(tags.result, num.result, is_r18, is_ai)
-        if not result.suc:
-            await MessageUtils.build_message(result.info).send()
-    except HTTPStatusError as e:
-        logger.debug("pix图库API出错...", arparma.header_result, session=session, e=e)
-        await MessageUtils.build_message(
-            f"pix图库API出错啦！code: {e.response.status_code}"
-        ).finish()
-    if not result.data:
+    result = await PixManage.get_pix(tags.result, num.result, is_r18, is_ai)
+    if not result:
         await MessageUtils.build_message("没有找到相关tag/pix/uid的图片...").finish()
-    task_list = [asyncio.create_task(PixManage.get_pix_result(r)) for r in result.data]
+    task_list = [asyncio.create_task(PixManage.get_pix_result(r)) for r in result]
     result_list = await asyncio.gather(*task_list)
     max_once_num2forward = base_config.get("MAX_ONCE_NUM2FORWARD")
-    if (
-        max_once_num2forward
-        and max_once_num2forward <= len(result.data)
-        and session.group
-    ):
+    if max_once_num2forward and max_once_num2forward <= len(result) and session.group:
         await MessageUtils.alc_forward_msg(
             [r[0] for r in result_list], bot.self_id, BotConfig.self_nickname
         ).send()
     else:
         for r, pix in result_list:
-            receipt: Receipt = await MessageUtils.build_message(r).send()
+            receipt = await MessageUtils.build_message(r).send()
             msg_id = receipt.msg_ids[0]["message_id"]
             InfoManage.add(str(msg_id), pix)
     logger.info(f"pix tags: {tags.result}", arparma.header_result, session=session)
@@ -181,17 +143,9 @@ async def _(
 async def _(bot: Bot, event: Event, arparma: Arparma, session: Uninfo):
     reply: Reply | None = await reply_fetch(event, bot)
     if reply and (pix_model := InfoManage.get(str(reply.id))):
-        try:
-            result = await PixManage.get_image(pix_model, True)
-            if not result:
-                await MessageUtils.build_message("下载图片数据失败...").finish()
-        except HTTPStatusError as e:
-            logger.error(
-                "pix图库API出错...", arparma.header_result, session=session, e=e
-            )
-            await MessageUtils.build_message(
-                f"pix图库API出错啦！ code: {e.response.status_code}"
-            ).finish()
+        result = await PixManage.get_image(pix_model, True)
+        if not result:
+            await MessageUtils.build_message("下载图片数据失败...").finish()
         receipt: Receipt = await MessageUtils.build_message(result).send(reply_to=True)
         msg_id = receipt.msg_ids[0]["message_id"]
         InfoManage.add(str(msg_id), pix_model)

@@ -3,9 +3,11 @@ from pathlib import Path
 
 from strenum import StrEnum
 
+from zhenxun.services.log import logger
+from zhenxun.utils._build_image import BuildImage
 from zhenxun.utils.http_utils import AsyncHttpx
 from zhenxun.configs.path_config import TEMP_PATH
-
+from .build_image import ConstructImage
 from .config import Response
 
 
@@ -50,38 +52,54 @@ class AnimeManage:
 
     @classmethod
     async def search(
-        cls, img_url: str, search_type: int
-    ) -> tuple[str | list[str], Path | None]:
-        file = await cls.download_image(img_url)
-        if not file:
-            return "下载图片失败...", None
-        # img = BuildImage.open(file)
+        cls, image_data: bytes, search_type: int
+    ) -> tuple[str | list[str], BuildImage, Path | None]:
+        rand = random.randint(1, 100000)
+        file = TEMP_PATH / f"what_anime_{rand}_test.png"
+        image = BuildImage.open(image_data)
+        await image.save(file)
+        search_type_enum = cls.int2type(search_type - 1)
         json_data = {
-            "model": cls.int2type(search_type),
+            "model": search_type_enum,
             "ai_detect": 1,
             "is_multi": 1,
         }
         file_data = {"image": file.open("rb")}
         response = await AsyncHttpx.post(cls.url, params=json_data, files=file_data)
-        data = Response(**response.json())
-        if er := code2error.get(data.new_code or data.code):
-            return er, file
+        json_data = response.json()
+        logger.debug(f"角色识别获取数据: {json_data}", "角色识别")
+        code = json_data.get("new_code") or json_data.get("code")
+        if er := code2error.get(code):
+            return er, image, file
+        data = Response(**json_data)
         if not data.data:
-            return "未找到角色信息...", file
+            return "未找到角色信息...", image, file
         message_list = []
+        width, height = image.size
+        info_list = []
         for item in data.data:
-            item.box = [int(i) for i in item.box]
-            chars = item.char[:5] if len(item.char) > 5 else item.char
+            box: tuple[int, int, int, int] = (
+                int(item.box[0] * width),
+                int(item.box[1] * height),
+                int(item.box[2] * width),
+                int(item.box[3] * height),
+            )
+            copy_image = image.copy()
+            crop: BuildImage = await copy_image.crop(box)
+            # circle_crop = await crop.circle()
+            chars = item.char[:10] if len(item.char) > 10 else item.char
             chars_list = [
                 f"角色名称: {char.name}\n出处: {char.cartoonname}\n相似度: {char.acc}"
                 "\n---------------------\n"
                 for char in chars
             ]
+            info: list[str] = [
+                f"角色名称: {char.name}\n出处: {char.cartoonname}\n相似度: {char.acc}"
+                for char in chars
+            ]
+            chars_list.insert(0, crop)  # type: ignore
+            info.insert(0, crop)  # type: ignore
             message_list.append(chars_list)
-        return message_list, file
-
-    @classmethod
-    async def download_image(cls, img_url: str) -> Path | None:
-        rand = random.randint(1, 100000)
-        file = TEMP_PATH / f"what_anime_{rand}_test.png"
-        return file if await AsyncHttpx.download_file(img_url, file) else None
+            info_list.append(info)
+        c = ConstructImage(search_type_enum, image, info_list)
+        return message_list, await c.to_image(), file
