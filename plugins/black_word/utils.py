@@ -1,20 +1,20 @@
-import random
 import contextlib
 from pathlib import Path
+import random
 
-import ujson as json
 from nonebot.adapters import Bot
-from nonebot_plugin_uninfo import Uninfo
 from nonebot.adapters.onebot.v11 import ActionFailed
+from nonebot_plugin_uninfo import Uninfo
+import ujson as json
 
-from zhenxun.utils.utils import cn2py
-from zhenxun.services.log import logger
 from zhenxun.configs.config import Config
-from zhenxun.utils.http_utils import AsyncHttpx
-from zhenxun.utils.platform import PlatformUtils
 from zhenxun.configs.path_config import DATA_PATH
 from zhenxun.models.ban_console import BanConsole
 from zhenxun.models.group_member_info import GroupInfoUser
+from zhenxun.services.log import logger
+from zhenxun.utils.http_utils import AsyncHttpx
+from zhenxun.utils.platform import PlatformUtils
+from zhenxun.utils.utils import cn2py
 
 from .model import BlackWord
 
@@ -155,14 +155,6 @@ async def _add_user_black_word(
         message: 原始文本
         punish_level: 惩罚等级
     """
-    # cycle_days = Config.get_config("black_word", "CYCLE_DAYS") or 7
-    # user_count = await BlackWord.get_user_count(user_id, cycle_days, punish_level)
-    add_punish_level_to_count = Config.get_config(
-        "black_word", "ADD_PUNISH_LEVEL_TO_COUNT"
-    )
-    # 周期内超过次数直接提升惩罚
-    if base_config.get("AUTO_ADD_PUNISH_LEVEL") and add_punish_level_to_count:
-        punish_level -= 1
     await BlackWord.create(
         user_id=user_id,
         group_id=group_id,
@@ -207,6 +199,18 @@ async def _punish_handle(
     punish_level = (
         await BlackWord.get_user_punish_level(user_id, cycle_days) or punish_level
     )
+    # 周期
+    add_punish_level_to_count = Config.get_config(
+        "black_word", "ADD_PUNISH_LEVEL_TO_COUNT"
+    )
+    auto_add_punish_level = base_config.get("AUTO_ADD_PUNISH_LEVEL")
+    # 周期内超过次数直接提升惩罚
+    if (
+        auto_add_punish_level
+        and user_count >= add_punish_level_to_count
+        and punish_level > 1
+    ):
+        punish_level -= 1
     # 容忍次数：List[int]
     tolerate_count = base_config.get("TOLERATE_COUNT")
     if not tolerate_count or len(tolerate_count) < 5:

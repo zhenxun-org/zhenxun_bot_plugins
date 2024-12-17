@@ -1,17 +1,17 @@
 from nonebot import on_message
-from nonebot.matcher import Matcher
 from nonebot.adapters import Bot, Event
-from nonebot_plugin_uninfo import Uninfo
+from nonebot.matcher import Matcher
+from nonebot.message import run_preprocessor
 from nonebot.plugin import PluginMetadata
 from nonebot_plugin_alconna import UniMsg
-from nonebot.message import run_preprocessor
+from nonebot_plugin_uninfo import Uninfo
 
-from zhenxun.services.log import logger
 from zhenxun.configs.config import Config
-from zhenxun.utils.enum import PluginType
 from zhenxun.configs.utils import PluginExtraData
 from zhenxun.models.ban_console import BanConsole
 from zhenxun.models.group_console import GroupConsole
+from zhenxun.services.log import logger
+from zhenxun.utils.enum import PluginType
 
 from .utils import black_word_manager
 

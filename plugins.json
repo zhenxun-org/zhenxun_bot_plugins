@@ -175,7 +175,7 @@
         "description": "请注意你的发言！",
         "usage": "惩罚机制: 检测内容提示\n    设置惩罚 [uid] [id] [level]: 设置惩罚内容, 此id需要通过`记录名单 -u:uid`来获取\n    记录名单: 查看检测记录名单\n    记录名单:\n        -u [uid] 指定用户记录名单\n        -g [gid] 指定群组记录名单\n        -d [date] 指定日期\n        -dt ['=', '>', '<'] 大于小于等于指定日期\n\n    示例:\n        设置惩罚 123123123 0 1\n        记录名单 -u 123123123\n        记录名单 -g 333333\n        记录名单 -d 2022-11-11\n        记录名单 -d 2022-11-11 -dt >",
         "author": "HibiKier",
-        "version": "0.1-89d294e",
+        "version": "0.2",
         "plugin_type": "SUPERUSER",
         "is_dir": true
     },

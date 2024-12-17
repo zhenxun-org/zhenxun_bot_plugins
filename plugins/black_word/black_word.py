@@ -3,15 +3,15 @@ from datetime import datetime
 from nonebot.adapters import Bot
 from nonebot.permission import SUPERUSER
 from nonebot.plugin import PluginMetadata
-from nonebot_plugin_session import EventSession
-from nonebot_plugin_alconna import Args, Match, Option, Alconna, Arparma, on_alconna
+from nonebot_plugin_alconna import Alconna, Args, Arparma, Match, Option, on_alconna
+from nonebot_plugin_uninfo import Uninfo
 
+from zhenxun.configs.config import BotConfig
+from zhenxun.configs.utils import PluginExtraData, RegisterConfig
 from zhenxun.services.log import logger
 from zhenxun.utils.enum import PluginType
-from zhenxun.configs.config import BotConfig
-from zhenxun.utils.message import MessageUtils
 from zhenxun.utils.image_utils import BuildImage
-from zhenxun.configs.utils import RegisterConfig, PluginExtraData
+from zhenxun.utils.message import MessageUtils
 
 from .data_source import set_user_punish, show_black_text_image
 
@@ -211,18 +211,19 @@ async def _():
 @_punish_matcher.handle()
 async def _(
     bot: Bot,
-    session: EventSession,
+    session: Uninfo,
     arparma: Arparma,
     uid: str,
     id: int,
     punish_level: int,
 ):
-    result = await set_user_punish(
-        bot, uid, session.id2 or session.id3, id, punish_level
-    )
+    group_id = None
+    if session.group:
+        group_id = session.group.parent.id if session.group.parent else session.group.id
+    result = await set_user_punish(bot, uid, group_id, id, punish_level)
     await MessageUtils.build_message(result).send(reply_to=True)
     logger.info(
-        f"设置惩罚 uid:{uid} id_:{id} punish_level:{punish_level} --> {result}",
+        f"设置惩罚 uid:{uid} id:{id} punish_level:{punish_level} --> {result}",
         arparma.header_result,
         session=session,
     )
