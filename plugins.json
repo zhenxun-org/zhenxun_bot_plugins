@@ -95,7 +95,7 @@
         "description": "不要小看涩图啊混蛋！",
         "usage": "搜索 lolicon 图库，每日色图time...\n    多个tag使用#连接\n    指令：\n        色图: 随机色图\n        色图 -r: 随机在线r18涩图\n        色图 -id [id]: 本地指定id色图\n        色图 *[tags]: 在线搜索指定tag色图\n        色图 *[tags] -r: 同上, r18色图\n        [1-9]张涩图: 本地随机色图连发\n        [1-9]张[tags]的涩图: 在线搜索指定tag色图连发\n    示例：色图 萝莉|少女#白丝|黑丝\n    示例：色图 萝莉#猫娘\n    注：\n        tag至多取前20项，| 为或，萝莉|少女=萝莉或者少女",
         "author": "HibiKier",
-        "version": "0.2-093c823",
+        "version": "0.4",
         "plugin_type": "NORMAL",
         "is_dir": true
     },
