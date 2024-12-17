@@ -1,10 +1,17 @@
+from collections import OrderedDict
+from pathlib import Path
+
 from nonebot_plugin_alconna import At, Image, UniMessage, UniMsg
 from nonebot_plugin_alconna import At as alcAt
 from nonebot_plugin_alconna import Image as alcImage
 from nonebot_plugin_alconna import Text as alcText
+from nonebot_plugin_uninfo import Uninfo
+import ujson as json
 
+from zhenxun.configs.path_config import DATA_PATH
 from zhenxun.utils.image_utils import ImageTemplate
 from zhenxun.utils.message import MessageUtils
+from zhenxun.utils.platform import PlatformUtils
 
 from ._config import ScopeType
 from ._model import WordBank
@@ -164,9 +171,15 @@ class WordBankManage:
         if word_scope == ScopeType.GLOBAL:
             group_id = None
         if index is not None:
-            problem, code = await cls.__get_problem_str(index, group_id, word_scope)
+            result_problem, code = await cls.__get_problem_str(
+                index, group_id, word_scope
+            )
             if code != 200:
                 return problem, ""
+            if isinstance(result_problem, Path):
+                problem = result_problem
+            else:
+                problem = result_problem
         if handle_type == "delete":
             if index:
                 problem, _problem_list = await WordBank.get_problem_all_answer(
@@ -194,7 +207,7 @@ class WordBankManage:
         idx: int,
         group_id: str | None = None,
         word_scope: ScopeType = ScopeType.GROUP,
-    ) -> tuple[str, int]:
+    ) -> tuple[str | Path, int]:
         """通过id获取问题字符串
 
         参数:
@@ -203,14 +216,21 @@ class WordBankManage:
             word_scope: 获取类型
         """
         if word_scope in [ScopeType.GLOBAL, ScopeType.PRIVATE]:
-            all_problem = await WordBank.get_problem_by_scope(word_scope)
+            all_problem = (
+                await WordBank.filter(word_scope=word_scope.value)
+                .order_by("create_time")
+                .all()
+            )
         elif group_id:
-            all_problem = await WordBank.get_group_all_problem(group_id)
+            all_problem = (
+                await WordBank.filter(group_id=group_id).order_by("create_time").all()
+            )
         else:
-            raise Exception("词条类型与群组id不能为空")
+            raise Exception("词条类型与群组id不能为空...")
+        filter_list = list(OrderedDict.fromkeys([wb.problem for wb in all_problem]))
         if idx < 0 or idx >= len(all_problem):
             return "问题下标id必须在范围内", 999
-        return all_problem[idx][0], 200
+        return filter_list[idx], 200
 
     @classmethod
     async def show_word(
@@ -293,3 +313,71 @@ class WordBankManage:
                 )
                 result.append(global_image)
             return MessageUtils.build_message(result)
+
+
+class ImportHelper:
+    @classmethod
+    def to_create_list(
+        cls, session: Uninfo, problem: str, answer_list: list[str], is_all: bool
+    ) -> list[WordBank]:
+        """获取创建列表
+
+        参数:
+            session: Uninfo
+            problem: 问题
+            answer_list: 回答列表
+            is_all: 是否全局
+
+        返回:
+            list[WordBank]: 创建列表
+        """
+        platform = PlatformUtils.get_platform(session)
+        scope = ScopeType.PRIVATE
+        group_id = None
+        if session.group:
+            scope = ScopeType.GROUP
+            group_id = session.group.id
+        if is_all:
+            scope = ScopeType.GLOBAL
+            group_id = None
+        create_list = []
+        for answer in answer_list:
+            create_list.append(
+                WordBank(
+                    user_id=session.user.id,
+                    group_id=group_id,
+                    word_scope=scope.value,
+                    word_type=0,
+                    status=True,
+                    problem=problem,
+                    answer=answer,
+                    platform=platform,
+                    author=session.user.id,
+                )
+            )
+        return create_list
+
+    @classmethod
+    async def import_word(cls, session: Uninfo, name: str, is_all: bool) -> str:
+        """导入词条
+
+        参数:
+            session: Uninfo
+            name: 文件名称
+            is_all: 是否全局
+
+        异常:
+            FileNotFoundError: 文件不存在
+        """
+        if not name.endswith(".json"):
+            name += ".json"
+        file = DATA_PATH / name
+        if not file.exists():
+            raise FileNotFoundError(f"文件 {file} 不存在")
+        with file.open(encoding="utf8") as f:
+            data = json.load(f)
+        create_list = []
+        for problem, answer_list in data.items():
+            create_list += cls.to_create_list(session, problem, answer_list, is_all)
+        await WordBank.bulk_create(create_list, 100)
+        return f"成功导入 {len(create_list)} 条词条！"
