@@ -1,11 +1,13 @@
-from typing import Literal
+import nonebot
 
 from zhenxun.utils.http_utils import AsyncHttpx
 
-from ..config import Config, KwHandleType, KwType
+from ..config import KwHandleType, KwType
 from ..models.pix_gallery import PixGallery
 from ..models.pix_keyword import PixKeyword
 from ..utils import get_api
+
+driver = nonebot.get_driver()
 
 
 class KeywordManage:
@@ -35,7 +37,7 @@ class KeywordManage:
         返回:
             str: 返回消息
         """
-        if not await cls.__check_id_exists(uid, "pid"):
+        if not await cls.__check_id_exists(uid, KwType.UID):
             return "当前UID不存在，请检查UID是否正确..."
         return await cls.__add_content(user_id, KwType.UID, uid)
 
@@ -52,7 +54,7 @@ class KeywordManage:
         """
         if await PixGallery.exists(pid=pid, img_p="p0"):
             return f"当前pid: {pid}已收录图库中，请勿重复添加！"
-        if not await cls.__check_id_exists(pid, "pid"):
+        if not await cls.__check_id_exists(pid, KwType.PID):
             return "当前PID不存在，请检查PID是否正确..."
         return await cls.__add_content(user_id, KwType.PID, pid)
 
@@ -77,7 +79,7 @@ class KeywordManage:
         返回:
             str: 返回消息
         """
-        if operator_id not in Config.superusers:
+        if operator_id not in driver.config.superusers:
             return "权限不足..."
         if id:
             data = await PixKeyword.get_or_none(id=id, handle_type__isnull=True)
@@ -133,7 +135,7 @@ class KeywordManage:
             kw_type=kw_type,
         )
         result = f"已成功添加pix搜图{kw_type}: {content}!"
-        if user_id in Config.superusers:
+        if user_id in driver.config.superusers:
             pkd.handle_type = KwHandleType.PASS
         else:
             result += "\n请等待管理员通过该关键词！"
@@ -141,7 +143,7 @@ class KeywordManage:
         return result
 
     @classmethod
-    async def __check_id_exists(cls, id: str, type: Literal["pid", "uid"]) -> bool:
+    async def __check_id_exists(cls, id: str, type: KwType) -> bool:
         """检查uid/pid是否存在
 
         参数:

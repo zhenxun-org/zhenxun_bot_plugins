@@ -35,7 +35,7 @@
         "description": "这里是PIX图库！",
         "usage": "指令：\n        pix ?*[tags]: 通过 tag 获取相似图片，不含tag时随机抽取\n        pid [uid]: 通过uid获取图片\n        pix pid[pid]: 查看图库中指定pid图片\n        示例：pix 萝莉 白丝\n        示例：pix 萝莉 白丝 10  （10为数量）\n        示例：pix #02      （当tag只有1个tag且为数字时，使用#标记，否则将被判定为数量）\n        示例：pix 34582394     （查询指定uid图片）\n        示例：pix pid:12323423     （查询指定pid图片）",
         "author": "HibiKier",
-        "version": "0.2",
+        "version": "0.3",
         "plugin_type": "NORMAL",
         "is_dir": true
     },
