@@ -1,7 +1,7 @@
 from tortoise import fields
-
-from zhenxun.builtin_plugins.pix_gallery.config import KwHandleType, KwType
 from zhenxun.services.db_context import Model
+
+from ..config import KwHandleType, KwType
 
 
 class PixKeyword(Model):
