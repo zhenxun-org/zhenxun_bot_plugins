@@ -288,7 +288,7 @@ async def _(
     _suc_cnt = 0
     platform = PlatformUtils.get_platform(session)
     for g in gl:
-        if target := PlatformUtils.get_target(bot, group_id=g):
+        if target := PlatformUtils.get_target(group_id=g):
             group_red_bag = RedBagManager.get_group_data(g)
             if festive_red_bag := group_red_bag.get_festive_red_bag():
                 group_red_bag.remove_festive_red_bag()
