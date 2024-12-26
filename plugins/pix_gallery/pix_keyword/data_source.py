@@ -199,12 +199,7 @@ class KeywordManage:
                 ignore_kw.append(c)
                 logger.warning(f"关键词: {c} 已存在，跳过添加")
         result = f"已成功添加pix搜图{kw_type}: {content}!"
-        if ignore_kw:
-            result += "\n以下关键词已存在，跳过添加: " + ", ".join(ignore_kw)
-        result += "\n请等待管理员通过该关键词！"
-        if pkd_list:
-            await PixKeyword.bulk_create(pkd_list, 10)
-        return result
+
 
     @classmethod
     async def __check_id_exists(cls, id: str, type: KwType) -> str:
