@@ -44,7 +44,7 @@ class RedBagManager:
             group_id: 群组id
             platform: 平台
         """
-        if target := PlatformUtils.get_target(bot, group_id=group_id):
+        if target := PlatformUtils.get_target(group_id=group_id):
             rank_num = Config.get_config("gold_redbag", "RANK_NUM") or 10
             group_red_bag = cls.get_group_data(group_id)
             red_bag = group_red_bag.get_festive_red_bag()

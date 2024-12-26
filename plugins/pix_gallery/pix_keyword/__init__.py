@@ -1,6 +1,6 @@
 from nonebot.permission import SUPERUSER
 from nonebot.plugin import PluginMetadata
-from nonebot_plugin_alconna import Alconna, Args, Arparma, on_alconna
+from nonebot_plugin_alconna import Alconna, Args, Arparma, MultiVar, on_alconna
 from nonebot_plugin_uninfo import Uninfo
 
 from zhenxun.configs.utils import PluginExtraData
@@ -15,7 +15,7 @@ __plugin_meta__ = PluginMetadata(
     description="PIX关键词/UID/PID添加管理",
     usage="""
     指令：
-        pix添加 ['u', 'p', 'k', 'b'] [content]
+        pix添加 ['u', 'p', 'k', 'b'] [content](多个用空格隔开)
             u: uid
             p: pid
             k: 关键词
@@ -38,7 +38,7 @@ __plugin_meta__ = PluginMetadata(
 _add_matcher = on_alconna(
     Alconna(
         "pix添加",
-        Args["add_type", ["u", "p", "k", "b"]]["content", str],
+        Args["add_type", ["u", "p", "k", "b"]]["content", MultiVar(str)],
     ),
     priority=5,
     block=True,
@@ -48,7 +48,7 @@ _add_matcher = on_alconna(
 _handle_matcher = on_alconna(
     Alconna(
         "pix处理",
-        Args["handle_type", ["a", "f", "i", "b"]]["id", int],
+        Args["handle_type", ["a", "f", "i", "b"]]["ids", MultiVar(int)],
     ),
     priority=1,
     block=True,
@@ -61,7 +61,7 @@ async def _(
     session: Uninfo,
     arparma: Arparma,
     add_type: str,
-    content: str,
+    content: tuple[str, ...],
 ):
     if add_type == "b":
         result = await KeywordManage.add_black_pid(session.user.id, content)
@@ -80,7 +80,7 @@ async def _(
     session: Uninfo,
     arparma: Arparma,
     handle_type: str,
-    id: int,
+    ids: tuple[int, ...],
 ):
     if handle_type == "b":
         result = await KeywordManage.handle_keyword(
