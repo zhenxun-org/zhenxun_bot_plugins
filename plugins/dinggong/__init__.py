@@ -56,7 +56,7 @@ async def _(session: EventSession, arparma: Arparma):
     voice = random.choice(files)
     index = voice.split(".")[0]
     text = text_data.get(index, "")
-    await UniMessage([Voice(path=RESOURCE_PATH / voice)]).send()
+    await UniMessage([Voice(raw=(RESOURCE_PATH / voice).read_bytes())]).send()
     if text:
         await MessageUtils.build_message(text).send()
     logger.info(f"发送钉宫骂人: {voice}", arparma.header_result, session=session)
