@@ -1,6 +1,5 @@
-from nonebot_plugin_alconna import Alconna, Args
+from nonebot_plugin_alconna import Alconna, Args, on_alconna
 from nonebot_plugin_alconna import At as alcAt
-from nonebot_plugin_alconna import on_alconna
 
 from zhenxun.utils.rules import ensure_group
 

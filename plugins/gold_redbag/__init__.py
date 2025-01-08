@@ -1,7 +1,7 @@
 import contextlib
+from datetime import datetime, timedelta
 import time
 import uuid
-from datetime import datetime, timedelta
 
 from apscheduler.jobstores.base import JobLookupError
 from nonebot.adapters import Bot
@@ -15,6 +15,7 @@ from nonebot_plugin_alconna import (
     Args,
     Arparma,
     At,
+    Field,
     Match,
     Option,
     Query,
@@ -91,8 +92,19 @@ __plugin_meta__ = PluginMetadata(
 
 
 _red_bag_matcher = on_alconna(
-    Alconna("塞红包", Args["amount", int]["num", int, 5]["user?", At]),
+    Alconna(
+        "塞红包",
+        Args[
+            "amount",
+            int,
+            Field(
+                missing_tips=lambda: "请在命令后跟随金币数量！",
+                unmatch_tips=lambda _: "金币数量必须为数字！",
+            ),
+        ]["num", int, 5]["user?", At],
+    ),
     aliases={"金币红包"},
+    skip_for_unmatch=False,
     priority=5,
     block=True,
     rule=ensure_group,

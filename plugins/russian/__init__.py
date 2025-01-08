@@ -3,6 +3,7 @@ from nonebot.plugin import PluginMetadata
 from nonebot_plugin_alconna import Arparma, Match, UniMsg
 from nonebot_plugin_alconna import At as alcAt
 from nonebot_plugin_session import EventSession
+
 from zhenxun.configs.utils import PluginExtraData, RegisterConfig
 from zhenxun.services.log import logger
 from zhenxun.utils.depends import UserName
@@ -32,7 +33,12 @@ __plugin_meta__ = PluginMetadata(
         开枪: 开出未知的一枪
         结算: 强行结束当前比赛 (仅当一方未开枪超过30秒时可使用)
         我的战绩: 对，你的战绩
-        轮盘胜场排行/轮盘败场排行/轮盘欧洲人排行/轮盘慈善家排行/轮盘最高连胜排行/轮盘最高连败排行: 各种排行榜
+        轮盘胜场排行
+        轮盘败场排行
+        轮盘欧洲人排行
+        轮盘慈善家排行
+        轮盘最高连胜排行
+        轮盘最高连败排行: 各种排行榜
         示例：装弹 3 100 @sdd
         * 注：同一时间群内只能有一场对决 *
     """.strip(),
@@ -189,7 +195,7 @@ async def _(session: EventSession, arparma: Arparma, rank_type: str, num: int):
         await MessageUtils.build_message("用户id为空...").finish()
     if not gid:
         await MessageUtils.build_message("群组id为空...").finish()
-    if 51 < num or num < 10:
+    if num > 51 or num < 10:
         num = 10
     result = await russian_manage.rank(session.id1, gid, rank_type, num)
     if isinstance(result, str):

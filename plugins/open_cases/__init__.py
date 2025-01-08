@@ -1,12 +1,13 @@
 import asyncio
-import random
 from datetime import datetime, timedelta
+import random
 
 import nonebot
 from nonebot.plugin import PluginMetadata
 from nonebot_plugin_alconna import Arparma, Match
 from nonebot_plugin_apscheduler import scheduler
 from nonebot_plugin_session import EventSession
+
 from zhenxun.configs.utils import PluginCdBlock, PluginExtraData, RegisterConfig, Task
 from zhenxun.services.log import logger
 from zhenxun.utils.common_utils import CommonUtils
@@ -208,6 +209,7 @@ async def _(session: EventSession, arparma: Arparma):
 @_show_case_matcher.handle()
 async def _(session: EventSession, arparma: Arparma, name: Match[str]):
     case_name = name.result.strip() if name.available else None
+    await MessageUtils.build_message("正在构建武器箱图片，请稍等...").send()
     result = await build_case_image(case_name)
     if isinstance(result, str):
         await MessageUtils.build_message(result).send()
