@@ -1,10 +1,9 @@
 from nonebot.plugin import PluginMetadata
-from nonebot_plugin_alconna import Alconna, Args, Arparma
+from nonebot_plugin_alconna import Alconna, Args, Arparma, Match, on_alconna
 from nonebot_plugin_alconna import Image as alcImg
-from nonebot_plugin_alconna import Match, on_alconna
 from nonebot_plugin_session import EventSession
 
-from zhenxun.configs.utils import PluginExtraData
+from zhenxun.configs.utils import Command, PluginExtraData
 from zhenxun.services.log import logger
 from zhenxun.utils.message import MessageUtils
 
@@ -20,8 +19,11 @@ __plugin_meta__ = PluginMetadata(
             识番 [图片]
     """.strip(),
     extra=PluginExtraData(
-        author="HibiKier", version="0.1-89d294e", menu_type="一些工具"
-    ).dict(),
+        author="HibiKier",
+        version="0.1-89d294e",
+        menu_type="一些工具",
+        commands=[Command(command="识番 [图片]")],
+    ).to_dict(),
 )
 
 
@@ -55,6 +57,4 @@ async def _(
         logger.info(
             f"识番 {image.url} 未找到...", arparma.header_result, session=session
         )
-        await MessageUtils.build_message("没有寻找到该番剧，果咩..").send(
-            reply_to=True
-        )
+        await MessageUtils.build_message("没有寻找到该番剧，果咩..").send(reply_to=True)

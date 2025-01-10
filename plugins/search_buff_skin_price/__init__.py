@@ -5,7 +5,7 @@ from nonebot_plugin_alconna import Alconna, Args, Arparma, Match, on_alconna
 from nonebot_plugin_session import EventSession
 
 from zhenxun.configs.config import BotConfig
-from zhenxun.configs.utils import BaseBlock, PluginExtraData, RegisterConfig
+from zhenxun.configs.utils import BaseBlock, Command, PluginExtraData, RegisterConfig
 from zhenxun.services.log import logger
 from zhenxun.utils.message import MessageUtils
 
@@ -24,6 +24,7 @@ __plugin_meta__ = PluginMetadata(
         author="HibiKier",
         version="0.1",
         menu_type="一些工具",
+        commands=[Command(command="查询皮肤 [枪械名] [皮肤名称]")],
         limits=[BaseBlock(result="您有皮肤正在搜索，请稍等...")],
         configs=[
             RegisterConfig(
@@ -37,7 +38,7 @@ __plugin_meta__ = PluginMetadata(
                 help="BUFF的账号cookie",
             ),
         ],
-    ).dict(),
+    ).to_dict(),
 )
 
 

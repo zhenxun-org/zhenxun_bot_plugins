@@ -1,19 +1,18 @@
-from nonebot_plugin_uninfo import Uninfo
 from nonebot.plugin import PluginMetadata
 from nonebot_plugin_alconna import (
-    Args,
-    Match,
-    Query,
     Alconna,
+    Args,
     Arparma,
     MultiVar,
+    Query,
     on_alconna,
 )
+from nonebot_plugin_uninfo import Uninfo
 
+from zhenxun.configs.utils import Command, PluginExtraData
 from zhenxun.services.log import logger
 from zhenxun.utils.depends import CheckConfig
 from zhenxun.utils.message import MessageUtils
-from zhenxun.configs.utils import PluginExtraData
 
 from .data_source import InfoManage
 
@@ -34,8 +33,11 @@ __plugin_meta__ = PluginMetadata(
             k: 关键词
             a: 全部(默认)
             """.strip(),
+        commands=[
+            Command(command="pix图库 ?[tags]"),
+        ],
         version="0.1",
-    ).dict(),
+    ).to_dict(),
 )
 
 _matcher = on_alconna(

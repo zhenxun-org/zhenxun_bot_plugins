@@ -30,7 +30,7 @@ __plugin_meta__ = PluginMetadata(
     """.strip(),
     extra=PluginExtraData(
         author="HibiKier", version="0.1", menu_type="来点好康的"
-    ).dict(),
+    ).to_dict(),
 )
 
 

@@ -12,15 +12,15 @@ from nonebot_plugin_alconna import (
     Option,
     Query,
     Reply,
-    UniMsg,
     on_alconna,
     store_true,
 )
 from nonebot_plugin_alconna.uniseg import Receipt
 from nonebot_plugin_alconna.uniseg.tools import reply_fetch
 from nonebot_plugin_uninfo import Uninfo
+
 from zhenxun.configs.config import BotConfig
-from zhenxun.configs.utils import BaseBlock, PluginExtraData
+from zhenxun.configs.utils import BaseBlock, Command, PluginExtraData
 from zhenxun.services.log import logger
 from zhenxun.utils.depends import CheckConfig
 from zhenxun.utils.message import MessageUtils
@@ -76,8 +76,13 @@ __plugin_meta__ = PluginMetadata(
         指令：
             pix -s ?*[tags]: 通过tag获取色图，不含tag时随机
         """,
+        commands=[
+            Command(command="pix ?*[tags] ?[-n 1]"),
+            Command(command="[引用消息] /original"),
+            Command(command="[引用消息] /info"),
+        ],
         limits=[BaseBlock(result="您有PIX图片正在处理，请稍等...")],
-    ).dict(),
+    ).to_dict(),
 )
 
 

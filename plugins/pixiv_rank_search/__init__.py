@@ -1,7 +1,6 @@
 from asyncio.exceptions import TimeoutError
 
 from httpx import NetworkError
-from zhenxun.configs.config import BotConfig
 from nonebot.plugin import PluginMetadata
 from nonebot_plugin_alconna import (
     Alconna,
@@ -15,8 +14,8 @@ from nonebot_plugin_alconna import (
 )
 from nonebot_plugin_uninfo import Uninfo
 
-from zhenxun.configs.config import Config
-from zhenxun.configs.utils import BaseBlock, PluginExtraData, RegisterConfig
+from zhenxun.configs.config import BotConfig, Config
+from zhenxun.configs.utils import BaseBlock, Command, PluginExtraData, RegisterConfig
 from zhenxun.services.log import logger
 from zhenxun.utils.message import MessageUtils
 from zhenxun.utils.platform import PlatformUtils
@@ -65,6 +64,10 @@ __plugin_meta__ = PluginMetadata(
         version="0.1-89d294e",
         aliases={"P站排行", "搜图"},
         menu_type="来点好康的",
+        commands=[
+            Command(command="p站排行 ?[参数] ?[数量] ?[日期]"),
+            Command(command="搜图 [关键词] ?[数量] ?[页数=1] ?[r18]"),
+        ],
         limits=[BaseBlock(result="P站排行榜或搜图正在搜索，请不要重复触发命令...")],
         configs=[
             RegisterConfig(
@@ -102,7 +105,7 @@ __plugin_meta__ = PluginMetadata(
                 help="Pixiv反向代理",
             ),
         ],
-    ).dict(),
+    ).to_dict(),
 )
 
 

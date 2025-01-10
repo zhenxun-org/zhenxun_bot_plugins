@@ -114,7 +114,7 @@ __plugin_meta__ = PluginMetadata(
             
         """,
         admin_level=base_config.get("WORD_BANK_LEVEL"),
-    ).dict(),
+    ).to_dict(),
 )
 
 

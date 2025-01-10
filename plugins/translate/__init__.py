@@ -2,7 +2,7 @@ from nonebot.plugin import PluginMetadata
 from nonebot_plugin_alconna import Alconna, Args, Arparma, Match, Option, on_alconna
 from nonebot_plugin_session import EventSession
 
-from zhenxun.configs.utils import PluginExtraData, RegisterConfig
+from zhenxun.configs.utils import Command, PluginExtraData, RegisterConfig
 from zhenxun.services.log import logger
 from zhenxun.utils.depends import CheckConfig
 from zhenxun.utils.image_utils import ImageTemplate
@@ -28,11 +28,12 @@ __plugin_meta__ = PluginMetadata(
         author="HibiKier",
         version="0.1",
         menu_type="一些工具",
+        commands=[Command(command="翻译语种 [text]")],
         configs=[
             RegisterConfig(key="APPID", value=None, help="百度翻译APPID"),
             RegisterConfig(key="SECRET_KEY", value=None, help="百度翻译秘钥"),
         ],
-    ).dict(),
+    ).to_dict(),
 )
 
 _matcher = on_alconna(
@@ -58,7 +59,7 @@ async def _(session: EventSession, arparma: Arparma):
         data_list.append([key, value])
     image = await ImageTemplate.table_page("翻译语种", "", column_list, data_list)
     await MessageUtils.build_message(image).send()
-    logger.info(f"查看翻译语种", arparma.header_result, session=session)
+    logger.info("查看翻译语种", arparma.header_result, session=session)
 
 
 @_matcher.handle(

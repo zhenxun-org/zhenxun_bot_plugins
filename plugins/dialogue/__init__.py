@@ -3,14 +3,13 @@ from nonebot import on_command
 from nonebot.adapters import Bot
 from nonebot.permission import SUPERUSER
 from nonebot.plugin import PluginMetadata
-from nonebot_plugin_alconna import At
-from nonebot_plugin_alconna import Target, Text, UniMsg
+from nonebot_plugin_alconna import At, Target, Text, UniMsg
 from nonebot_plugin_session import EventSession
-from nonebot_plugin_userinfo import EventUserInfo, UserInfo
 
-from zhenxun.configs.utils import PluginExtraData
+from zhenxun.configs.utils import Command, PluginExtraData
 from zhenxun.models.group_console import GroupConsole
 from zhenxun.services.log import logger
+from zhenxun.utils.depends import UserName
 from zhenxun.utils.exception import NotFindSuperuser
 from zhenxun.utils.message import MessageUtils
 from zhenxun.utils.platform import PlatformUtils
@@ -39,7 +38,8 @@ __plugin_meta__ = PluginMetadata(
             示例：/t -1 32848432 我不太好
             示例：/t 0 我收到你的话了
         """.strip(),
-    ).dict(),
+        commands=[Command(command="滴滴滴- ?[文本] ?[图片]")],
+    ).to_dict(),
 )
 
 config = nonebot.get_driver().config
@@ -53,12 +53,11 @@ async def _(
     bot: Bot,
     message: UniMsg,
     session: EventSession,
-    user_info: UserInfo = EventUserInfo(),
+    uname: str = UserName(),
 ):
     if session.id1:
         message[0] = Text(str(message[0]).replace("滴滴滴-", "", 1))
         platform = PlatformUtils.get_platform(bot)
-        uname = user_info.user_displayname or user_info.user_name
         group_name = ""
         gid = session.id3 or session.id2
         if gid:

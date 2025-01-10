@@ -105,7 +105,7 @@ __plugin_meta__ = PluginMetadata(
                 type=bool,
             ),
         ],
-    ).dict(),
+    ).to_dict(),
 )
 
 

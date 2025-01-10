@@ -3,7 +3,7 @@ from nonebot_plugin_alconna import Alconna, Arparma, on_alconna
 from nonebot_plugin_session import EventSession
 
 from zhenxun.configs.config import Config
-from zhenxun.configs.utils import PluginExtraData, RegisterConfig
+from zhenxun.configs.utils import Command, PluginExtraData, RegisterConfig
 from zhenxun.services.log import logger
 from zhenxun.utils.http_utils import AsyncHttpx
 from zhenxun.utils.message import MessageUtils
@@ -18,6 +18,7 @@ __plugin_meta__ = PluginMetadata(
     extra=PluginExtraData(
         author="HibiKier",
         version="0.1",
+        commands=[Command(command="来首诗")],
         configs=[
             RegisterConfig(
                 module="alapi",
@@ -26,7 +27,7 @@ __plugin_meta__ = PluginMetadata(
                 help="在https://admin.alapi.cn/user/login登录后获取token",
             )
         ],
-    ).dict(),
+    ).to_dict(),
 )
 
 _matcher = on_alconna(

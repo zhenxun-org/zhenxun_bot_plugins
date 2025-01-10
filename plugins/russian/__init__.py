@@ -4,7 +4,7 @@ from nonebot_plugin_alconna import Arparma, Match, UniMsg
 from nonebot_plugin_alconna import At as alcAt
 from nonebot_plugin_session import EventSession
 
-from zhenxun.configs.utils import PluginExtraData, RegisterConfig
+from zhenxun.configs.utils import Command, PluginExtraData, RegisterConfig
 from zhenxun.services.log import logger
 from zhenxun.utils.depends import UserName
 from zhenxun.utils.message import MessageUtils
@@ -46,6 +46,20 @@ __plugin_meta__ = PluginMetadata(
         author="HibiKier",
         version="0.2-89d294e",
         menu_type="群内小游戏",
+        commands=[
+            Command(command="装弹 [子弹数] ?[金额] ?[at]"),
+            Command(command="接受对决"),
+            Command(command="拒绝对决"),
+            Command(command="开枪"),
+            Command(command="结算"),
+            Command(command="我的战绩"),
+            Command(command="轮盘胜场排行"),
+            Command(command="轮盘败场排行"),
+            Command(command="轮盘欧洲人排行"),
+            Command(command="轮盘慈善家排行"),
+            Command(command="轮盘最高连胜排行"),
+            Command(command="轮盘最高连败排行"),
+        ],
         configs=[
             RegisterConfig(
                 key="MAX_RUSSIAN_BET_GOLD",
@@ -55,7 +69,7 @@ __plugin_meta__ = PluginMetadata(
                 type=int,
             )
         ],
-    ).dict(),
+    ).to_dict(),
 )
 
 

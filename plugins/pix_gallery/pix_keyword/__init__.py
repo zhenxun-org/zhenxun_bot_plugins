@@ -31,7 +31,7 @@ __plugin_meta__ = PluginMetadata(
         pix处理 ['a', 'f', 'i', 'b'] [id]
         """.strip(),
         version="0.1",
-    ).dict(),
+    ).to_dict(),
 )
 
 

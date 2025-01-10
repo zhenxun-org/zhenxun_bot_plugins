@@ -1,6 +1,6 @@
-import shutil
 from datetime import datetime
 from pathlib import Path
+import shutil
 
 import nonebot
 from nonebot.adapters import Bot
@@ -10,8 +10,9 @@ from nonebot_plugin_alconna import Alconna, Arparma, on_alconna
 from nonebot_plugin_apscheduler import scheduler
 from nonebot_plugin_session import EventSession
 from playwright.async_api import TimeoutError
+
 from zhenxun.configs.path_config import TEMPLATE_PATH
-from zhenxun.configs.utils import PluginExtraData, RegisterConfig, Task
+from zhenxun.configs.utils import Command, PluginExtraData, RegisterConfig, Task
 from zhenxun.services.log import logger
 from zhenxun.services.plugin_init import PluginInit
 from zhenxun.utils.common_utils import CommonUtils
@@ -32,6 +33,7 @@ __plugin_meta__ = PluginMetadata(
         author="HibiKier",
         version="0.2",
         superuser_help="""重置真寻日报""",
+        commands=[Command(command="真寻日报")],
         tasks=[Task(module="mahiro_report", name="真寻日报")],
         configs=[  # 添加配置项提示用户如何获取和填写ALAPI_TOKEN
             RegisterConfig(
@@ -41,7 +43,7 @@ __plugin_meta__ = PluginMetadata(
                 help="在https://admin.alapi.cn/user/login登录后获取token",
             )
         ],
-    ).dict(),
+    ).to_dict(),
 )
 
 

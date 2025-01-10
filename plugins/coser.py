@@ -1,5 +1,4 @@
 import time
-from typing import Tuple
 
 from nonebot.adapters import Bot
 from nonebot.plugin import PluginMetadata
@@ -8,7 +7,7 @@ from nonebot_plugin_session import EventSession
 
 from zhenxun.configs.config import Config
 from zhenxun.configs.path_config import TEMP_PATH
-from zhenxun.configs.utils import PluginExtraData, RegisterConfig
+from zhenxun.configs.utils import Command, PluginExtraData, RegisterConfig
 from zhenxun.services.log import logger
 from zhenxun.utils.http_utils import AsyncHttpx
 from zhenxun.utils.message import MessageUtils
@@ -25,16 +24,17 @@ __plugin_meta__ = PluginMetadata(
     extra=PluginExtraData(
         author="HibiKier",
         version="0.1",
+        commands=[Command(command="n（数字）连cos")],
         configs=[
             RegisterConfig(
                 key="WITHDRAW_COS_MESSAGE",
                 value=(0, 1),
                 help="自动撤回，参1：延迟撤回色图时间(秒)，0 为关闭 | 参2：监控聊天类型，0(私聊) 1(群聊) 2(群聊+私聊)",
                 default_value=(0, 1),
-                type=Tuple[int, int],
+                type=tuple[int, int],
             ),
         ],
-    ).dict(),
+    ).to_dict(),
 )
 
 _matcher = on_alconna(Alconna("get-cos", Args["num", int, 1]), priority=5, block=True)
@@ -79,11 +79,11 @@ async def _(
                     message_id,
                     withdraw_time[0],
                 )
-            logger.info(f"发送cos", arparma.header_result, session=session)
+            logger.info("发送cos", arparma.header_result, session=session)
         except Exception as e:
             await MessageUtils.build_message("你cos给我看！").send()
             logger.error(
-                f"cos错误",
+                "cos错误",
                 arparma.header_result,
                 session=session,
                 e=e,

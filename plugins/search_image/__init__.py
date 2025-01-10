@@ -2,12 +2,11 @@ from pathlib import Path
 
 from nonebot.adapters import Bot
 from nonebot.plugin import PluginMetadata
-from nonebot_plugin_alconna import Alconna, Args, Arparma
+from nonebot_plugin_alconna import Alconna, Args, Arparma, Match, on_alconna
 from nonebot_plugin_alconna import Image as alcImg
-from nonebot_plugin_alconna import Match, on_alconna
 from nonebot_plugin_session import EventSession
 
-from zhenxun.configs.utils import PluginExtraData, RegisterConfig
+from zhenxun.configs.utils import Command, PluginExtraData, RegisterConfig
 from zhenxun.services.log import logger
 from zhenxun.utils.message import MessageUtils
 from zhenxun.utils.platform import PlatformUtils
@@ -26,6 +25,7 @@ __plugin_meta__ = PluginMetadata(
         author="HibiKier",
         version="0.1-89d294e",
         menu_type="一些工具",
+        commands=[Command(command="识图 [图片]")],
         configs=[
             RegisterConfig(
                 key="MAX_FIND_IMAGE_COUNT",
@@ -40,7 +40,7 @@ __plugin_meta__ = PluginMetadata(
                 help="Saucenao的API_KEY，通过 https://saucenao.com/user.php?page=search-api 注册获取",
             ),
         ],
-    ).dict(),
+    ).to_dict(),
 )
 
 

@@ -23,7 +23,7 @@ __plugin_meta__ = PluginMetadata(
                 help="设置增删词库的权限等级",
             )
         ],
-    ).dict(),
+    ).to_dict(),
 )
 
 nonebot.load_plugins(str(Path(__file__).parent.resolve()))

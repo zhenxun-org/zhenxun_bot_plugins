@@ -16,6 +16,9 @@ class DialogueData(BaseModel):
     platform: str | None
     """平台"""
 
+    class Config:
+        arbitrary_types_allowed = True
+
 
 class DialogueManage:
     _data: dict[int, DialogueData] = {}  # noqa: RUF012

@@ -24,7 +24,7 @@ __plugin_meta__ = PluginMetadata(
         version="0.1",
         menu_type="其他",
         plugin_type=PluginType.DEPENDANT,
-    ).dict(),
+    ).to_dict(),
 )
 
 base_config = Config.get("black_word")

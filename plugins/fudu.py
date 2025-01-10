@@ -6,6 +6,7 @@ from nonebot.plugin import PluginMetadata
 from nonebot_plugin_alconna import Image as alcImg
 from nonebot_plugin_alconna import UniMsg
 from nonebot_plugin_uninfo import Uninfo
+
 from zhenxun.configs.config import BotConfig, Config
 from zhenxun.configs.path_config import TEMP_PATH
 from zhenxun.configs.utils import PluginExtraData, RegisterConfig, Task
@@ -45,7 +46,7 @@ __plugin_meta__ = PluginMetadata(
                 type=bool,
             ),
         ],
-    ).dict(),
+    ).to_dict(),
 )
 
 

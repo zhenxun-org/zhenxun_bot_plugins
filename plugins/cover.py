@@ -3,11 +3,10 @@ from nonebot_plugin_alconna import Alconna, Args, Arparma, Image, on_alconna
 from nonebot_plugin_session import EventSession
 
 from zhenxun.configs.config import Config
-from zhenxun.configs.utils import PluginExtraData, RegisterConfig
+from zhenxun.configs.utils import Command, PluginExtraData, RegisterConfig
 from zhenxun.services.log import logger
 from zhenxun.utils.http_utils import AsyncHttpx
 from zhenxun.utils.message import MessageUtils
-
 
 cover_url = "https://v2.alapi.cn/api/bilibili/cover"
 
@@ -22,6 +21,7 @@ __plugin_meta__ = PluginMetadata(
         author="HibiKier",
         version="0.1",
         menu_type="一些工具",
+        commands=[Command(command="b封面 [链接/av/bv/cv/直播id]")],
         configs=[
             RegisterConfig(
                 module="alapi",
@@ -30,7 +30,7 @@ __plugin_meta__ = PluginMetadata(
                 help="在https://admin.alapi.cn/user/login登录后获取token",
             )
         ],
-    ).dict(),
+    ).to_dict(),
 )
 
 _matcher = on_alconna(

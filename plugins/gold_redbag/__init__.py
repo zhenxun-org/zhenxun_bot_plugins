@@ -26,7 +26,12 @@ from nonebot_plugin_session import EventSession
 from nonebot_plugin_uninfo import Uninfo
 
 from zhenxun.configs.config import BotConfig
-from zhenxun.configs.utils import PluginCdBlock, PluginExtraData, RegisterConfig
+from zhenxun.configs.utils import (
+    Command,
+    PluginCdBlock,
+    PluginExtraData,
+    RegisterConfig,
+)
 from zhenxun.services.log import logger
 from zhenxun.utils.depends import GetConfig, UserName
 from zhenxun.utils.message import MessageUtils
@@ -63,6 +68,11 @@ __plugin_meta__ = PluginMetadata(
             节日红包 10000 20 明日出道贺金 -g 123123123
 
         """,
+        commands=[
+            Command(command="塞红包 [金币数] ?[红包数=5] ?[at指定人]"),
+            Command(command="开红包"),
+            Command(command="退回红包"),
+        ],
         configs=[
             RegisterConfig(
                 key="DEFAULT_TIMEOUT",
@@ -87,7 +97,7 @@ __plugin_meta__ = PluginMetadata(
             ),
         ],
         limits=[PluginCdBlock(result="急什么急什么，待会再发！")],
-    ).dict(),
+    ).to_dict(),
 )
 
 

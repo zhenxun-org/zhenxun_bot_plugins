@@ -54,7 +54,7 @@ __plugin_meta__ = PluginMetadata(
         """,
         menu_type="来点好康的",
         limits=[BaseBlock(result="您有PIX图片正在处理，请稍等...")],
-    ).dict(),
+    ).to_dict(),
 )
 
 

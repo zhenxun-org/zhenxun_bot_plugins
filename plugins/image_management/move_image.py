@@ -29,7 +29,7 @@ __plugin_meta__ = PluginMetadata(
         version="0.1",
         plugin_type=PluginType.ADMIN,
         admin_level=base_config.get("MOVE_IMAGE_LEVEL"),
-    ).dict(),
+    ).to_dict(),
 )
 
 

@@ -1,9 +1,9 @@
-import ujson as json
 from nonebot.plugin import PluginMetadata
 from nonebot_plugin_alconna import Alconna, Args, Arparma, on_alconna
 from nonebot_plugin_session import EventSession
+import ujson as json
 
-from zhenxun.configs.utils import PluginExtraData
+from zhenxun.configs.utils import Command, PluginExtraData
 from zhenxun.services.log import logger
 from zhenxun.utils.http_utils import AsyncHttpx
 from zhenxun.utils.message import MessageUtils
@@ -19,7 +19,12 @@ __plugin_meta__ = PluginMetadata(
         示例:
         nbnhhsh xsx
     """.strip(),
-    extra=PluginExtraData(author="HibiKier", version="0.1", aliases={"nbnhhsh"}).dict(),
+    extra=PluginExtraData(
+        author="HibiKier",
+        version="0.1",
+        aliases={"nbnhhsh"},
+        commands=[Command(command="能不能好好说话 [文本]")],
+    ).to_dict(),
 )
 
 URL = "https://lab.magiconch.com/api/nbnhhsh/guess"

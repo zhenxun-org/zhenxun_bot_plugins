@@ -1,12 +1,12 @@
 import re
 
-import ujson as json
 from nonebot.plugin import PluginMetadata
 from nonebot_plugin_alconna import Alconna, Arparma, on_alconna
 from nonebot_plugin_session import EventSession
+import ujson as json
 
 from zhenxun.configs.path_config import DATA_PATH
-from zhenxun.configs.utils import PluginExtraData
+from zhenxun.configs.utils import Command, PluginExtraData
 from zhenxun.services.log import logger
 from zhenxun.utils.message import MessageUtils
 from zhenxun.utils.rules import ensure_group
@@ -22,7 +22,8 @@ __plugin_meta__ = PluginMetadata(
         author="HibiKier",
         version="0.1",
         menu_type="其他",
-    ).dict(),
+        commands=[Command(command="群欢迎消息")],
+    ).to_dict(),
 )
 
 _matcher = on_alconna(Alconna("群欢迎消息"), rule=ensure_group, priority=5, block=True)

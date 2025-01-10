@@ -4,7 +4,8 @@ from nonebot.adapters.onebot.v12 import Bot as v12Bot
 from nonebot.plugin import PluginMetadata
 from nonebot_plugin_alconna import Alconna, Arparma, UniMessage, on_alconna
 from nonebot_plugin_session import EventSession
-from zhenxun.configs.utils import PluginExtraData
+
+from zhenxun.configs.utils import Command, PluginExtraData
 from zhenxun.services.log import logger
 from zhenxun.utils.message import MessageUtils
 
@@ -19,7 +20,8 @@ __plugin_meta__ = PluginMetadata(
     extra=PluginExtraData(
         author="AkashiCoin",
         version="0.1-89d294e",
-    ).dict(),
+        commands=[Command(command="epic")],
+    ).to_dict(),
 )
 
 _matcher = on_alconna(Alconna("epic"), priority=5, block=True)

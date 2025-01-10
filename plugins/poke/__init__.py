@@ -1,12 +1,14 @@
+import json
 import os
 import json
 import random
 
 from nonebot import on_notice
-from nonebot.adapters.onebot.v11 import PokeNotifyEvent, Bot
+from nonebot.adapters.onebot.v11 import Bot, PokeNotifyEvent
 from nonebot.adapters.onebot.v11.message import MessageSegment
 from nonebot.plugin import PluginMetadata
 from nonebot.rule import to_me
+
 from zhenxun.configs.config import BotConfig, Config
 from zhenxun.configs.path_config import IMAGE_PATH, RECORD_PATH
 from zhenxun.configs.utils import PluginExtraData
@@ -29,7 +31,7 @@ __plugin_meta__ = PluginMetadata(
         version="0.1-eb2b7db",
         menu_type="其他",
         plugin_type=PluginType.NORMAL,
-    ).dict(),
+    ).to_dict(),
 )
 
 REPLY_MESSAGE = [
@@ -91,7 +93,9 @@ async def _(bot: Bot, event: PokeNotifyEvent):
             rst = "气死我了！"
         await poke_.finish(rst + random.choice(REPLY_MESSAGE), at_sender=True)
     rand = random.random()
-    loaded_plugins = await PluginInfo.filter(load_status=True).values_list("module", flat=True)
+    loaded_plugins = await PluginInfo.filter(load_status=True).values_list(
+        "module", flat=True
+    )
     dir_list = Config.get_config("image_management", "IMAGE_DIR_LIST")
     path = (IMAGE_MANAGEMENT / cn2py(random.choice(dir_list))) if dir_list else None
     if (
@@ -135,7 +139,9 @@ async def _(bot: Bot, event: PokeNotifyEvent):
         except Exception:
             try:
                 if event.group_id:
-                    await bot.call_api("group_poke", user_id=event.user_id, group_id=event.group_id)
+                    await bot.call_api(
+                        "group_poke", user_id=event.user_id, group_id=event.group_id
+                    )
                 else:
                     await bot.call_api("friend_poke", user_id=event.user_id)
             except Exception:
