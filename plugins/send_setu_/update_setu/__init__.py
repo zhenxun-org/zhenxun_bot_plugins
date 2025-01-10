@@ -26,7 +26,7 @@ __plugin_meta__ = PluginMetadata(
         version="0.1",
         plugin_type=PluginType.SUPERUSER,
         limits=[BaseBlock(result="色图正在更新...")],
-    ).dict(),
+    ).to_dict(),
 )
 
 _matcher = on_alconna(

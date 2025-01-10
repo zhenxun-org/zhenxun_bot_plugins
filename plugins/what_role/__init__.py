@@ -15,8 +15,9 @@ from nonebot_plugin_alconna import (
 from nonebot_plugin_alconna.builtins.extensions.reply import ReplyMergeExtension
 from nonebot_plugin_alconna.uniseg.tools import image_fetch
 from nonebot_plugin_uninfo import Uninfo
+
 from zhenxun.configs.config import BotConfig
-from zhenxun.configs.utils import PluginExtraData
+from zhenxun.configs.utils import Command, PluginExtraData
 from zhenxun.services.log import logger
 from zhenxun.utils._build_image import BuildImage
 from zhenxun.utils.message import MessageUtils
@@ -46,8 +47,13 @@ __plugin_meta__ = PluginMetadata(
 
     """.strip(),
     extra=PluginExtraData(
-        author="HibiKier", version="0.2", menu_type="一些工具"
-    ).dict(),
+        author="HibiKier",
+        version="0.2",
+        menu_type="一些工具",
+        commands=[
+            Command(command="角色识别 ?[-t [1, 2, 3, 4, 5](识别类型，默认1)] [图片]")
+        ],
+    ).to_dict(),
 )
 
 

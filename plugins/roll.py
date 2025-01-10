@@ -7,7 +7,7 @@ from nonebot_plugin_alconna import UniMsg
 from nonebot_plugin_session import EventSession
 
 from zhenxun.configs.config import BotConfig
-from zhenxun.configs.utils import PluginExtraData
+from zhenxun.configs.utils import Command, PluginExtraData
 from zhenxun.services.log import logger
 from zhenxun.utils.depends import UserName
 from zhenxun.utils.message import MessageUtils
@@ -23,7 +23,9 @@ __plugin_meta__ = PluginMetadata(
         roll *[文本]: 随机事件
         示例：roll 吃饭 睡觉 打游戏
     """.strip(),
-    extra=PluginExtraData(author="HibiKier", version="0.1").dict(),
+    extra=PluginExtraData(
+        author="HibiKier", version="0.1", commands=[Command(command="roll ?*[tags]")]
+    ).to_dict(),
 )
 
 

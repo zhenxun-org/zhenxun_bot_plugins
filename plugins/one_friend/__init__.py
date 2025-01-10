@@ -1,12 +1,12 @@
-import random
 from io import BytesIO
+import random
 
 from nonebot.adapters import Bot
 from nonebot.plugin import PluginMetadata
 from nonebot_plugin_alconna import Alconna, Args, At, Match, on_alconna
 from nonebot_plugin_session import EventSession
 
-from zhenxun.configs.utils import PluginExtraData
+from zhenxun.configs.utils import Command, PluginExtraData
 from zhenxun.services.log import logger
 from zhenxun.utils.http_utils import AsyncHttpx
 from zhenxun.utils.image_utils import BuildImage
@@ -23,7 +23,8 @@ __plugin_meta__ = PluginMetadata(
     extra=PluginExtraData(
         author="HibiKier",
         version="0.1",
-    ).dict(),
+        commands=[Command(command="我有一个朋友想问问 [文本] ?[at]")],
+    ).to_dict(),
 )
 
 _matcher = on_alconna(

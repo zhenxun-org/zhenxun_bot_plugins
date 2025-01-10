@@ -1,10 +1,10 @@
 import asyncio
-import traceback
 from dataclasses import dataclass
+import traceback
 from typing import Any
 
-import nonebot
 from cn2an import cn2an
+import nonebot
 from nonebot import on_keyword, on_message, on_regex
 from nonebot.log import logger
 from nonebot.matcher import Matcher
@@ -16,7 +16,7 @@ from nonebot_plugin_apscheduler import scheduler
 from nonebot_plugin_session import EventSession
 
 from zhenxun.configs.config import Config
-from zhenxun.configs.utils import PluginExtraData
+from zhenxun.configs.utils import Command, PluginExtraData
 from zhenxun.utils.message import MessageUtils
 
 from .handles.azur_handle import AzurHandle
@@ -70,7 +70,22 @@ __plugin_meta__ = PluginMetadata(
         更新fgo信息
         更新阴阳师信息
         """,
-    ).dict(),
+        commands=[
+            Command(command="原神[1-180]抽"),
+            Command(command="原神角色[1-180]抽"),
+            Command(command="原神角色2池[1-180]抽"),
+            Command(command="原神武器[1-180]抽"),
+            Command(command="重置原神抽卡"),
+            Command(command="方舟[1-300]抽"),
+            Command(command="赛马娘[1-200]抽"),
+            Command(command="坎公骑冠剑[1-300]抽"),
+            Command(command="pcr[1-300]抽"),
+            Command(command="碧蓝[重型/轻型/特型/活动][1-300]抽"),
+            Command(command="fgo[1-300]抽"),
+            Command(command="阴阳师[1-300]抽"),
+            Command(command="ba[1-200]抽"),
+        ],
+    ).to_dict(),
 )
 
 _hidden = on_message(rule=lambda: False)

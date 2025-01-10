@@ -1,19 +1,19 @@
 from nonebot import on_message
 from nonebot.adapters import Bot
 from nonebot.plugin import PluginMetadata
+from nonebot_plugin_alconna import Image as alcImage
 from nonebot_plugin_alconna import UniMsg
 from nonebot_plugin_session import EventSession
-from nonebot_plugin_alconna import Image as alcImage
 
-from zhenxun.services.log import logger
-from zhenxun.utils.enum import PluginType
-from zhenxun.utils.utils import FreqLimiter
 from zhenxun.configs.config import BotConfig
-from zhenxun.utils.message import MessageUtils
-from zhenxun.utils.platform import PlatformUtils
 from zhenxun.configs.utils import PluginExtraData
 from zhenxun.models.ban_console import BanConsole
+from zhenxun.services.log import logger
+from zhenxun.utils.enum import PluginType
 from zhenxun.utils.image_utils import get_download_image_hash
+from zhenxun.utils.message import MessageUtils
+from zhenxun.utils.platform import PlatformUtils
+from zhenxun.utils.utils import FreqLimiter
 
 from ._data_source import mute_manage
 
@@ -26,7 +26,7 @@ __plugin_meta__ = PluginMetadata(
         version="0.1-473ecd8",
         menu_type="其他",
         plugin_type=PluginType.DEPENDANT,
-    ).dict(),
+    ).to_dict(),
 )
 
 _matcher = on_message(priority=1, block=False)

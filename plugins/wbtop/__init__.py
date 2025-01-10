@@ -3,12 +3,12 @@ from nonebot_plugin_alconna import Alconna, Args, Arparma, Match, on_alconna
 from nonebot_plugin_session import EventSession
 
 from zhenxun.configs.path_config import IMAGE_PATH
-from zhenxun.configs.utils import PluginExtraData, RegisterConfig
+from zhenxun.configs.utils import Command, PluginExtraData, RegisterConfig
 from zhenxun.services.log import logger
 from zhenxun.utils.http_utils import AsyncPlaywright
 from zhenxun.utils.message import MessageUtils
 
-from .data_source import get_hot_image, get_cookie
+from .data_source import get_cookie, get_hot_image
 
 __plugin_meta__ = PluginMetadata(
     name="微博热搜",
@@ -22,8 +22,9 @@ __plugin_meta__ = PluginMetadata(
     extra=PluginExtraData(
         author="HibiKier & yajiwa",
         version="0.1",
+        commands=[Command(command="微博热搜 ?[id]")],
         configs=[RegisterConfig(key="cookie", value=None, help="微博cookie")],
-    ).dict(),
+    ).to_dict(),
 )
 
 

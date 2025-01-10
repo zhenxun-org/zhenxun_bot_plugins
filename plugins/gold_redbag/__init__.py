@@ -1,7 +1,7 @@
 import contextlib
+from datetime import datetime, timedelta
 import time
 import uuid
-from datetime import datetime, timedelta
 
 from apscheduler.jobstores.base import JobLookupError
 from nonebot.adapters import Bot
@@ -15,6 +15,7 @@ from nonebot_plugin_alconna import (
     Args,
     Arparma,
     At,
+    Field,
     Match,
     Option,
     Query,
@@ -25,7 +26,12 @@ from nonebot_plugin_session import EventSession
 from nonebot_plugin_uninfo import Uninfo
 
 from zhenxun.configs.config import BotConfig
-from zhenxun.configs.utils import PluginCdBlock, PluginExtraData, RegisterConfig
+from zhenxun.configs.utils import (
+    Command,
+    PluginCdBlock,
+    PluginExtraData,
+    RegisterConfig,
+)
 from zhenxun.services.log import logger
 from zhenxun.utils.depends import GetConfig, UserName
 from zhenxun.utils.message import MessageUtils
@@ -62,6 +68,11 @@ __plugin_meta__ = PluginMetadata(
             节日红包 10000 20 明日出道贺金 -g 123123123
 
         """,
+        commands=[
+            Command(command="塞红包 [金币数] ?[红包数=5] ?[at指定人]"),
+            Command(command="开红包"),
+            Command(command="退回红包"),
+        ],
         configs=[
             RegisterConfig(
                 key="DEFAULT_TIMEOUT",
@@ -86,13 +97,24 @@ __plugin_meta__ = PluginMetadata(
             ),
         ],
         limits=[PluginCdBlock(result="急什么急什么，待会再发！")],
-    ).dict(),
+    ).to_dict(),
 )
 
 
 _red_bag_matcher = on_alconna(
-    Alconna("塞红包", Args["amount", int]["num", int, 5]["user?", At]),
+    Alconna(
+        "塞红包",
+        Args[
+            "amount",
+            int,
+            Field(
+                missing_tips=lambda: "请在命令后跟随金币数量！",
+                unmatch_tips=lambda _: "金币数量必须为数字！",
+            ),
+        ]["num", int, 5]["user?", At],
+    ),
     aliases={"金币红包"},
+    skip_for_unmatch=False,
     priority=5,
     block=True,
     rule=ensure_group,
@@ -288,7 +310,7 @@ async def _(
     _suc_cnt = 0
     platform = PlatformUtils.get_platform(session)
     for g in gl:
-        if target := PlatformUtils.get_target(bot, group_id=g):
+        if target := PlatformUtils.get_target(group_id=g):
             group_red_bag = RedBagManager.get_group_data(g)
             if festive_red_bag := group_red_bag.get_festive_red_bag():
                 group_red_bag.remove_festive_red_bag()

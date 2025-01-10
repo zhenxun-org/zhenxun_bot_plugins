@@ -1,5 +1,3 @@
-from typing import List
-
 from nonebot import on_message
 from nonebot.plugin import PluginMetadata
 from nonebot.rule import to_me
@@ -32,7 +30,7 @@ __plugin_meta__ = PluginMetadata(
                 value=None,
                 help="在 https://admin.alapi.cn/user/login 登录后获取token",
             ),
-            RegisterConfig(key="TL_KEY", value=[], help="图灵Key", type=List[str]),
+            RegisterConfig(key="TL_KEY", value=[], help="图灵Key", type=list[str]),
             RegisterConfig(
                 key="ALAPI_AI_CHECK",
                 value=False,
@@ -44,10 +42,10 @@ __plugin_meta__ = PluginMetadata(
                 key="TEXT_FILTER",
                 value=["鸡", "口交"],
                 help="文本过滤器，将敏感词更改为*",
-                type=List[str],
+                type=list[str],
             ),
         ],
-    ).dict(),
+    ).to_dict(),
 )
 
 

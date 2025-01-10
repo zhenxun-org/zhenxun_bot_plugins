@@ -14,7 +14,7 @@ __plugin_meta__ = PluginMetadata(
         author="HibiKier",
         version="0.1-473ecd8",
         plugin_type=PluginType.PARENT,
-    ).dict(),
+    ).to_dict(),
 )
 
 nonebot.load_plugins(str(Path(__file__).parent.resolve()))

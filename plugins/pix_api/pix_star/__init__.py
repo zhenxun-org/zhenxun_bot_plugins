@@ -1,24 +1,24 @@
 from httpx import HTTPStatusError
 from nonebot.adapters import Bot, Event
-from nonebot.rule import Rule
-from nonebot_plugin_uninfo import Uninfo
-from nonebot_plugin_alconna.uniseg.tools import reply_fetch
 from nonebot.plugin import PluginMetadata
-from zhenxun.configs.config import BotConfig
+from nonebot.rule import Rule
 from nonebot_plugin_alconna import (
+    Alconna,
     Args,
+    Arparma,
     Option,
     Query,
     Reply,
-    Alconna,
-    Arparma,
     on_alconna,
     store_true,
 )
+from nonebot_plugin_alconna.uniseg.tools import reply_fetch
+from nonebot_plugin_uninfo import Uninfo
 
+from zhenxun.configs.config import BotConfig
+from zhenxun.configs.utils import Command, PluginExtraData
 from zhenxun.services.log import logger
 from zhenxun.utils.message import MessageUtils
-from zhenxun.configs.utils import PluginExtraData
 from zhenxun.utils.platform import PlatformUtils
 
 from .._config import InfoManage
@@ -42,7 +42,12 @@ __plugin_meta__ = PluginMetadata(
         指令：
             pix -s ?*[tags]: 通过tag获取色图，不含tag时随机
         """,
-    ).dict(),
+        commands=[
+            Command(command="[引用消息] /star"),
+            Command(command="[引用消息] /unstar"),
+            Command(command="pix收藏 ?[数量=10] ?[-r]"),
+        ],
+    ).to_dict(),
 )
 
 

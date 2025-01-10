@@ -1,12 +1,12 @@
 from httpx import HTTPStatusError
-from nonebot_plugin_uninfo import Uninfo
 from nonebot.plugin import PluginMetadata
-from nonebot_plugin_alconna import Args, Alconna, Arparma, on_alconna, MultiVar
+from nonebot_plugin_alconna import Alconna, Args, Arparma, MultiVar, on_alconna
+from nonebot_plugin_uninfo import Uninfo
 
+from zhenxun.configs.utils import Command, PluginExtraData
 from zhenxun.services.log import logger
 from zhenxun.utils.depends import CheckConfig
 from zhenxun.utils.message import MessageUtils
-from zhenxun.configs.utils import PluginExtraData
 
 from .._enum import KwType
 from .data_source import KeywordManage
@@ -31,7 +31,8 @@ __plugin_meta__ = PluginMetadata(
         pix处理 ['a', 'f', 'i'] [id]
         """.strip(),
         version="0.1",
-    ).dict(),
+        commands=[Command(command="pix添加 ['u', 'p'] [*content]")],
+    ).to_dict(),
 )
 
 

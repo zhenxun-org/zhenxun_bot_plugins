@@ -2,7 +2,7 @@ from nonebot.plugin import PluginMetadata
 from nonebot_plugin_alconna import Alconna, Arparma, on_alconna
 from nonebot_plugin_session import EventSession
 
-from zhenxun.configs.utils import PluginExtraData
+from zhenxun.configs.utils import Command, PluginExtraData
 from zhenxun.services.log import logger
 from zhenxun.utils.http_utils import AsyncHttpx
 from zhenxun.utils.message import MessageUtils
@@ -16,7 +16,11 @@ __plugin_meta__ = PluginMetadata(
         指令：
             语录/二次元
     """.strip(),
-    extra=PluginExtraData(author="HibiKier", version="0.1").dict(),
+    extra=PluginExtraData(
+        author="HibiKier",
+        version="0.1",
+        commands=[Command(command="语录/二次元")],
+    ).to_dict(),
 )
 
 URL = "https://international.v1.hitokoto.cn/?c=a"
@@ -29,4 +33,4 @@ async def _(session: EventSession, arparma: Arparma):
     data = (await AsyncHttpx.get(URL, timeout=5)).json()
     result = f'{data["hitokoto"]}\t——{data["from"]}'
     await MessageUtils.build_message(result).send()
-    logger.info(f" 发送语录:" + result, arparma.header_result, session=session)
+    logger.info(" 发送语录:" + result, arparma.header_result, session=session)

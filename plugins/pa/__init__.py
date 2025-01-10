@@ -1,13 +1,14 @@
 import os
+from pathlib import Path
 import random
 import shutil
-from pathlib import Path
 
 from nonebot import on_regex
 from nonebot.plugin import PluginMetadata
 from nonebot_plugin_session import EventSession
+
 from zhenxun.configs.path_config import IMAGE_PATH
-from zhenxun.configs.utils import PluginExtraData
+from zhenxun.configs.utils import Command, PluginExtraData
 from zhenxun.services.log import logger
 from zhenxun.services.plugin_init import PluginInit
 from zhenxun.utils.message import MessageUtils
@@ -18,7 +19,9 @@ __plugin_meta__ = PluginMetadata(
     usage="""
     爬爬爬爬爬爬爬
     """.strip(),
-    extra=PluginExtraData(author="HibiKier", version="0.1").dict(),
+    extra=PluginExtraData(
+        author="HibiKier", version="0.1", commands=[Command(command="爬")]
+    ).to_dict(),
 )
 
 RESOURCE_PATH = IMAGE_PATH / "pa"

@@ -1,17 +1,18 @@
 from httpx import HTTPStatusError
-from nonebot_plugin_uninfo import Uninfo
 from nonebot.plugin import PluginMetadata
-from nonebot_plugin_alconna import Args, Alconna, Arparma, Query, on_alconna
+from nonebot_plugin_alconna import Alconna, Args, Arparma, Query, on_alconna
+from nonebot_plugin_uninfo import Uninfo
+
 from zhenxun.configs.config import Config
+from zhenxun.configs.utils import Command, PluginExtraData
 from zhenxun.services.log import logger
 from zhenxun.utils.depends import CheckConfig
 from zhenxun.utils.echart_utils import ChartUtils
 from zhenxun.utils.echart_utils.models import Barh
 from zhenxun.utils.http_utils import AsyncHttpx
 from zhenxun.utils.message import MessageUtils
-from zhenxun.configs.utils import PluginExtraData
+
 from .._config import PixResult, base_config
-from .._enum import KwType
 from .config import TagItem
 
 __plugin_meta__ = PluginMetadata(
@@ -30,7 +31,8 @@ __plugin_meta__ = PluginMetadata(
         pix处理 ['a', 'f', 'i'] [id]
         """.strip(),
         version="0.1",
-    ).dict(),
+        commands=[Command(command="pixtag ?[10]")],
+    ).to_dict(),
 )
 
 

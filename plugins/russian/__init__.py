@@ -3,7 +3,8 @@ from nonebot.plugin import PluginMetadata
 from nonebot_plugin_alconna import Arparma, Match, UniMsg
 from nonebot_plugin_alconna import At as alcAt
 from nonebot_plugin_session import EventSession
-from zhenxun.configs.utils import PluginExtraData, RegisterConfig
+
+from zhenxun.configs.utils import Command, PluginExtraData, RegisterConfig
 from zhenxun.services.log import logger
 from zhenxun.utils.depends import UserName
 from zhenxun.utils.message import MessageUtils
@@ -32,7 +33,12 @@ __plugin_meta__ = PluginMetadata(
         开枪: 开出未知的一枪
         结算: 强行结束当前比赛 (仅当一方未开枪超过30秒时可使用)
         我的战绩: 对，你的战绩
-        轮盘胜场排行/轮盘败场排行/轮盘欧洲人排行/轮盘慈善家排行/轮盘最高连胜排行/轮盘最高连败排行: 各种排行榜
+        轮盘胜场排行
+        轮盘败场排行
+        轮盘欧洲人排行
+        轮盘慈善家排行
+        轮盘最高连胜排行
+        轮盘最高连败排行: 各种排行榜
         示例：装弹 3 100 @sdd
         * 注：同一时间群内只能有一场对决 *
     """.strip(),
@@ -40,6 +46,20 @@ __plugin_meta__ = PluginMetadata(
         author="HibiKier",
         version="0.2-89d294e",
         menu_type="群内小游戏",
+        commands=[
+            Command(command="装弹 [子弹数] ?[金额] ?[at]"),
+            Command(command="接受对决"),
+            Command(command="拒绝对决"),
+            Command(command="开枪"),
+            Command(command="结算"),
+            Command(command="我的战绩"),
+            Command(command="轮盘胜场排行"),
+            Command(command="轮盘败场排行"),
+            Command(command="轮盘欧洲人排行"),
+            Command(command="轮盘慈善家排行"),
+            Command(command="轮盘最高连胜排行"),
+            Command(command="轮盘最高连败排行"),
+        ],
         configs=[
             RegisterConfig(
                 key="MAX_RUSSIAN_BET_GOLD",
@@ -49,7 +69,7 @@ __plugin_meta__ = PluginMetadata(
                 type=int,
             )
         ],
-    ).dict(),
+    ).to_dict(),
 )
 
 
@@ -189,7 +209,7 @@ async def _(session: EventSession, arparma: Arparma, rank_type: str, num: int):
         await MessageUtils.build_message("用户id为空...").finish()
     if not gid:
         await MessageUtils.build_message("群组id为空...").finish()
-    if 51 < num or num < 10:
+    if num > 51 or num < 10:
         num = 10
     result = await russian_manage.rank(session.id1, gid, rank_type, num)
     if isinstance(result, str):

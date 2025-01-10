@@ -1,6 +1,7 @@
 from nonebot.plugin import PluginMetadata
 from nonebot_plugin_alconna import Alconna, Args, Arparma, Match, Option, on_alconna
 from nonebot_plugin_session import EventSession
+
 from zhenxun.configs.config import BotConfig
 from zhenxun.configs.utils import PluginExtraData, RegisterConfig
 from zhenxun.services.log import logger
@@ -62,7 +63,7 @@ __plugin_meta__ = PluginMetadata(
                 type=int,
             ),
         ],
-    ).dict(),
+    ).to_dict(),
 )
 
 

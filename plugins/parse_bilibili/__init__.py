@@ -1,23 +1,23 @@
 import re
 import time
 
-import ujson as json
 from nonebot import on_message
 from nonebot.plugin import PluginMetadata
-from nonebot_plugin_session import EventSession
 from nonebot_plugin_alconna import Hyper, Image, UniMsg
-
-from zhenxun.services.log import logger
-from zhenxun.utils.enum import PluginType
-from zhenxun.utils.message import MessageUtils
-from zhenxun.utils.http_utils import AsyncHttpx
-from zhenxun.configs.path_config import TEMP_PATH
-from zhenxun.utils.common_utils import CommonUtils
-from zhenxun.configs.utils import Task, RegisterConfig, PluginExtraData
+from nonebot_plugin_session import EventSession
 from nonebot_plugin_uninfo import Uninfo
+import ujson as json
 
-from .parse_url import parse_bili_url
+from zhenxun.configs.path_config import TEMP_PATH
+from zhenxun.configs.utils import PluginExtraData, RegisterConfig, Task
+from zhenxun.services.log import logger
+from zhenxun.utils.common_utils import CommonUtils
+from zhenxun.utils.enum import PluginType
+from zhenxun.utils.http_utils import AsyncHttpx
+from zhenxun.utils.message import MessageUtils
+
 from .information_container import InformationContainer
+from .parse_url import parse_bili_url
 
 __plugin_meta__ = PluginMetadata(
     name="B站内容解析",
@@ -42,7 +42,7 @@ __plugin_meta__ = PluginMetadata(
             )
         ],
         tasks=[Task(module="bilibili_parse", name="b站转发解析")],
-    ).dict(),
+    ).to_dict(),
 )
 
 

@@ -2,6 +2,7 @@ from nonebot import on_message
 from nonebot.plugin import PluginMetadata
 from nonebot.typing import T_State
 from nonebot_plugin_session import EventSession
+
 from zhenxun.configs.utils import PluginExtraData
 from zhenxun.services.log import logger
 from zhenxun.utils.enum import PluginType
@@ -15,7 +16,7 @@ __plugin_meta__ = PluginMetadata(
     usage="""""",
     extra=PluginExtraData(
         author="HibiKier", version="0.1", plugin_type=PluginType.DEPENDANT
-    ).dict(),
+    ).to_dict(),
 )
 
 _matcher = on_message(priority=6, block=True, rule=check)

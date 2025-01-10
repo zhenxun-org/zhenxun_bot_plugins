@@ -2,6 +2,7 @@ from pathlib import Path
 
 import nonebot
 from nonebot.plugin import PluginMetadata
+
 from zhenxun.configs.utils import PluginExtraData
 from zhenxun.utils.enum import PluginType
 
@@ -13,7 +14,7 @@ __plugin_meta__ = PluginMetadata(
         author="HibiKier",
         version="0.2",
         plugin_type=PluginType.PARENT,
-    ).dict(),
+    ).to_dict(),
 )
 
 nonebot.load_plugins(str(Path(__file__).parent.resolve()))

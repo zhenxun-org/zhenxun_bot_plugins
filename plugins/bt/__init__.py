@@ -5,7 +5,7 @@ from nonebot.plugin import PluginMetadata
 from nonebot_plugin_alconna import Alconna, Args, Arparma, Match, on_alconna
 from nonebot_plugin_session import EventSession
 
-from zhenxun.configs.utils import PluginExtraData, RegisterConfig
+from zhenxun.configs.utils import Command, PluginExtraData, RegisterConfig
 from zhenxun.services.log import logger
 from zhenxun.utils.message import MessageUtils
 from zhenxun.utils.rules import ensure_private
@@ -25,6 +25,7 @@ __plugin_meta__ = PluginMetadata(
     extra=PluginExtraData(
         author="HibiKier",
         version="0.1",
+        commands=[Command(command="bt [关键词] ?[页数]")],
         configs=[
             RegisterConfig(
                 key="BT_MAX_NUM",
@@ -34,7 +35,7 @@ __plugin_meta__ = PluginMetadata(
                 type=int,
             ),
         ],
-    ).dict(),
+    ).to_dict(),
 )
 
 
@@ -69,8 +70,8 @@ async def _(
     except (TimeoutError, ConnectTimeout):
         await MessageUtils.build_message(f"搜索 {keyword} 超时...").finish()
     except Exception as e:
-        logger.error(f"bt 错误", arparma.header_result, session=session, e=e)
-        await MessageUtils.build_message(f"bt 其他未知错误..").finish()
+        logger.error("bt 错误", arparma.header_result, session=session, e=e)
+        await MessageUtils.build_message("bt 其他未知错误..").finish()
     if not send_flag:
         await MessageUtils.build_message(f"{keyword} 未搜索到...").send()
     logger.info(

@@ -1,24 +1,24 @@
-from nonebot.adapters import Bot, Event
-from nonebot.rule import Rule
 from httpx import HTTPStatusError
-from nonebot_plugin_uninfo import Uninfo
-from nonebot_plugin_alconna.uniseg.tools import reply_fetch
+from nonebot.adapters import Bot, Event
 from nonebot.plugin import PluginMetadata
-from nonebot_plugin_apscheduler import scheduler
+from nonebot.rule import Rule
 from nonebot_plugin_alconna import (
+    Alconna,
     Args,
+    Arparma,
+    Option,
     Query,
     Reply,
-    Option,
-    Alconna,
-    Arparma,
     on_alconna,
     store_true,
 )
+from nonebot_plugin_alconna.uniseg.tools import reply_fetch
+from nonebot_plugin_apscheduler import scheduler
+from nonebot_plugin_uninfo import Uninfo
 
+from zhenxun.configs.utils import Command, PluginExtraData
 from zhenxun.services.log import logger
 from zhenxun.utils.message import MessageUtils
-from zhenxun.configs.utils import PluginExtraData
 
 from .._config import InfoManage
 from .data_source import PixManage
@@ -40,7 +40,11 @@ __plugin_meta__ = PluginMetadata(
         author="HibiKier",
         version="0.1",
         menu_type="PIX图库",
-    ).dict(),
+        commands=[
+            Command(command="[引用消息] /block ?[-u]"),
+            Command(command="[引用消息] /nsfw [0, 1, 2]"),
+        ],
+    ).to_dict(),
 )
 
 

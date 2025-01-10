@@ -1,7 +1,6 @@
-import re
 from datetime import datetime, timedelta
+import re
 
-import pytz
 from nonebot import get_driver
 from nonebot.adapters.onebot.v11 import Message
 from nonebot.adapters.onebot.v11.event import GroupMessageEvent
@@ -10,8 +9,9 @@ from nonebot.params import Arg, Depends
 from nonebot.plugin import PluginMetadata
 from nonebot.typing import T_State
 from nonebot_plugin_alconna import Arparma, Match
+import pytz
 
-from zhenxun.configs.utils import PluginExtraData, RegisterConfig
+from zhenxun.configs.utils import Command, PluginExtraData, RegisterConfig
 from zhenxun.utils.enum import PluginType
 from zhenxun.utils.message import MessageUtils
 
@@ -46,6 +46,14 @@ __plugin_meta__ = PluginMetadata(
         author="yajiwa",
         version="0.1-89d294e",
         plugin_type=PluginType.NORMAL,
+        commands=[
+            Command(command="今日词云"),
+            Command(command="昨日词云"),
+            Command(command="本周词云"),
+            Command(command="本月词云"),
+            Command(command="年度词云"),
+            Command(command="历史词云"),
+        ],
         configs=[
             RegisterConfig(
                 key="WORD_CLOUDS_TEMPLATE",
@@ -54,7 +62,7 @@ __plugin_meta__ = PluginMetadata(
                 type=int,
             )
         ],
-    ).dict(),
+    ).to_dict(),
 )
 
 

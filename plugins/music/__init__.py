@@ -1,11 +1,11 @@
-from nonebot_plugin_uninfo import Uninfo
-from nonebot.plugin import PluginMetadata
 from nonebot.adapters.onebot.v11 import MessageSegment
-from nonebot_plugin_alconna import Args, Match, Alconna, Arparma, on_alconna
+from nonebot.plugin import PluginMetadata
+from nonebot_plugin_alconna import Alconna, Args, Arparma, Match, on_alconna
+from nonebot_plugin_uninfo import Uninfo
 
+from zhenxun.configs.utils import Command, PluginExtraData
 from zhenxun.services.log import logger
 from zhenxun.utils.message import MessageUtils
-from zhenxun.configs.utils import PluginExtraData
 
 from .music_163 import get_song_id
 
@@ -23,9 +23,8 @@ __plugin_meta__ = PluginMetadata(
         点歌 [歌名]
     """.strip(),
     extra=PluginExtraData(
-        author="HibiKier",
-        version="0.2",
-    ).dict(),
+        author="HibiKier", version="0.2", commands=[Command(command="点歌 [歌名]")]
+    ).to_dict(),
 )
 
 _matcher = on_alconna(Alconna("点歌", Args["name?", str]), priority=5, block=True)

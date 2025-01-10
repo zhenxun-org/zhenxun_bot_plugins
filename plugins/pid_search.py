@@ -3,9 +3,10 @@ from nonebot.plugin import PluginMetadata
 from nonebot_plugin_alconna import Alconna, Args, Arparma, Match, on_alconna
 from nonebot_plugin_uninfo import Uninfo
 from pydantic import BaseModel
+
 from zhenxun.configs.config import Config
 from zhenxun.configs.path_config import TEMP_PATH
-from zhenxun.configs.utils import PluginExtraData, RegisterConfig
+from zhenxun.configs.utils import Command, PluginExtraData, RegisterConfig
 from zhenxun.services.log import logger
 from zhenxun.utils.http_utils import AsyncHttpx
 from zhenxun.utils.message import MessageUtils
@@ -23,6 +24,7 @@ __plugin_meta__ = PluginMetadata(
     extra=PluginExtraData(
         author="HibiKier",
         version="0.2",
+        commands=[Command(command="p搜 [pid]")],
         configs=[
             RegisterConfig(
                 module="pixiv",
@@ -31,7 +33,7 @@ __plugin_meta__ = PluginMetadata(
                 help="PIXPixiv反向代理",
             )
         ],
-    ).dict(),
+    ).to_dict(),
 )
 
 

@@ -1,41 +1,41 @@
-import time
 from io import BytesIO
+import time
 
-import nonebot
-from nonebot import Driver
-from nonebot.log import logger
+from arclet.alconna.typing import CommandMeta
 from bilireq.login import Login
-from nonebot.params import ArgStr
-from nonebot.typing import T_State
+import nonebot
+from nonebot.adapters.onebot.v11 import Bot
+from nonebot.drivers import Driver
+from nonebot.log import logger
 from nonebot.matcher import Matcher
+from nonebot.params import ArgStr
 from nonebot.permission import SUPERUSER
 from nonebot.plugin import PluginMetadata
-from nonebot.adapters.onebot.v11 import Bot
-from arclet.alconna.typing import CommandMeta
-from nonebot_plugin_session import EventSession
+from nonebot.typing import T_State
+from nonebot_plugin_alconna import Alconna, Args, UniMessage, on_alconna
 from nonebot_plugin_apscheduler import scheduler
-from nonebot_plugin_alconna import Args, Alconna, UniMessage, on_alconna
+from nonebot_plugin_session import EventSession
 
 from zhenxun.configs.config import Config
-from zhenxun.utils.message import MessageUtils
-from zhenxun.utils.image_utils import text2image
-from zhenxun.utils.platform import PlatformUtils
+from zhenxun.configs.utils import PluginExtraData, RegisterConfig
 from zhenxun.models.group_console import GroupConsole
 from zhenxun.services.log import logger  # noqa: F811
-from zhenxun.configs.utils import RegisterConfig, PluginExtraData
+from zhenxun.utils.image_utils import text2image
+from zhenxun.utils.message import MessageUtils
+from zhenxun.utils.platform import PlatformUtils
 
 from .auth import AuthManager
-from .utils import calc_time_total
-from .data_source import delete_sub  # noqa: F401
 from .data_source import (
-    SubManager,
     BilibiliSub,
-    add_up_sub,
+    SubManager,
     add_live_sub,
-    get_media_id,
     add_season_sub,
+    add_up_sub,
+    delete_sub,  # noqa: F401
+    get_media_id,
     get_sub_status,
 )
+from .utils import calc_time_total
 
 base_config = Config.get("bilibili_sub")
 
@@ -97,7 +97,7 @@ __plugin_meta__ = PluginMetadata(
             ),
         ],
         admin_level=base_config.get("GROUP_BILIBILI_SUB_LEVEL"),
-    ).dict(),
+    ).to_dict(),
 )
 
 Config.add_plugin_config(

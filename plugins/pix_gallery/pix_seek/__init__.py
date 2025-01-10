@@ -30,7 +30,7 @@ __plugin_meta__ = PluginMetadata(
         author="HibiKier",
         plugin_type=PluginType.SUPERUSER,
         version="0.1",
-    ).dict(),
+    ).to_dict(),
 )
 
 

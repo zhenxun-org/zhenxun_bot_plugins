@@ -3,7 +3,7 @@ from nonebot_plugin_alconna import Alconna, Args, Arparma, Match, on_alconna
 from nonebot_plugin_session import EventSession
 
 from zhenxun.configs.config import Config
-from zhenxun.configs.utils import BaseBlock, PluginExtraData, RegisterConfig
+from zhenxun.configs.utils import BaseBlock, Command, PluginExtraData, RegisterConfig
 from zhenxun.services.log import logger
 from zhenxun.utils.message import MessageUtils
 
@@ -22,6 +22,7 @@ __plugin_meta__ = PluginMetadata(
         author="HibiKier",
         version="0.1",
         menu_type="一些工具",
+        commands=[Command(command="搜番 [番剧名称]")],
         limits=[BaseBlock(result="搜索还未完成，不要重复触发！")],
         configs=[
             RegisterConfig(
@@ -32,7 +33,7 @@ __plugin_meta__ = PluginMetadata(
                 type=int,
             )
         ],
-    ).dict(),
+    ).to_dict(),
 )
 
 _matcher = on_alconna(Alconna("搜番", Args["name?", str]), priority=5, block=True)

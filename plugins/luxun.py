@@ -3,7 +3,7 @@ from nonebot_plugin_alconna import Alconna, Args, Arparma, Match, on_alconna
 from nonebot_plugin_session import EventSession
 
 from zhenxun.configs.path_config import IMAGE_PATH
-from zhenxun.configs.utils import BaseBlock, PluginExtraData
+from zhenxun.configs.utils import BaseBlock, Command, PluginExtraData
 from zhenxun.services.log import logger
 from zhenxun.utils.image_utils import BuildImage
 from zhenxun.utils.message import MessageUtils
@@ -17,8 +17,9 @@ __plugin_meta__ = PluginMetadata(
     extra=PluginExtraData(
         author="HibiKier",
         version="0.1",
+        commands=[Command(command="鲁迅说 [文本]")],
         limits=[BaseBlock(result="你的鲁迅正在说，等会")],
-    ).dict(),
+    ).to_dict(),
 )
 
 _matcher = on_alconna(

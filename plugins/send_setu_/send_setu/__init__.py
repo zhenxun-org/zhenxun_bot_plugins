@@ -17,7 +17,12 @@ from nonebot_plugin_alconna import (
 from nonebot_plugin_session import EventSession
 
 from zhenxun.configs.config import BotConfig
-from zhenxun.configs.utils import PluginCdBlock, PluginExtraData, RegisterConfig
+from zhenxun.configs.utils import (
+    Command,
+    PluginCdBlock,
+    PluginExtraData,
+    RegisterConfig,
+)
 from zhenxun.models.sign_user import SignUser
 from zhenxun.models.user_console import UserConsole
 from zhenxun.services.log import logger
@@ -50,6 +55,7 @@ __plugin_meta__ = PluginMetadata(
         author="HibiKier",
         version="0.1",
         menu_type="来点好康的",
+        commands=[Command(command="色图 ?[tags]")],
         limits=[PluginCdBlock(result="您冲的太快了，请稍后再冲.")],
         configs=[
             RegisterConfig(
@@ -124,7 +130,7 @@ __plugin_meta__ = PluginMetadata(
                 default_value="i.pixiv.re",
             ),
         ],
-    ).dict(),
+    ).to_dict(),
 )
 
 

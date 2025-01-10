@@ -1,6 +1,7 @@
+import contextlib
+from datetime import datetime, timedelta
 import random
 import time
-from datetime import datetime, timedelta
 
 from apscheduler.jobstores.base import JobLookupError
 from nonebot.adapters import Bot
@@ -83,10 +84,8 @@ class RussianManage:
         参数:
             group_id: 群组id
         """
-        try:
+        with contextlib.suppress(JobLookupError):
             scheduler.remove_job(f"russian_job_{group_id}")
-        except JobLookupError:
-            pass
 
     def __build_job(
         self, bot: Bot, group_id: str, is_add: bool = False, platform: str | None = None
@@ -133,26 +132,29 @@ class RussianManage:
         返回:
             UniMessage: 返回消息
         """
-        russian = self._data.get(group_id)
-        if russian:
+        if russian := self._data.get(group_id):
             if russian.time + 30 < time.time():
                 if not russian.player2:
                     return MessageUtils.build_message(
-                        f"现在是 {russian.player1[1]} 发起的对决, 请接受对决或等待决斗超时..."
+                        f"现在是 {russian.player1[1]} 发起的对决,"
+                        f" 请接受对决或等待决斗超时..."
                     )
                 else:
                     return MessageUtils.build_message(
                         f"{russian.player1[1]} 和 {russian.player2[1]}的对决还未结束！"
                     )
             return MessageUtils.build_message(
-                f"现在是 {russian.player1[1]} 发起的对决\n请等待比赛结束后再开始下一轮..."
+                f"现在是 {russian.player1[1]} 发起的对决\n请等待比赛结束后再开始下一轮."
             )
         max_money = base_config.get("MAX_RUSSIAN_BET_GOLD")
         if rus.money > max_money:
             return MessageUtils.build_message(f"太多了！单次金额不能超过{max_money}！")
         user = await UserConsole.get_user(rus.player1[0])
         if user.gold < rus.money:
-            return MessageUtils.build_message("你没有足够的钱支撑起这场挑战")
+            return MessageUtils.build_message(
+                "你没有足够的钱支撑起这场挑战，如果需要指定金额，"
+                "可以输入 装弹 1(子弹数) 100(金额)"
+            )
         rus.bullet_arr = self.__random_bullet(rus.bullet_num)
         self._data[group_id] = rus
         message_list: list[str | At] = []
@@ -163,15 +165,18 @@ class RussianManage:
             message_list = [
                 f"{rus.player1[1]} 向",
                 At(flag="user", target=rus.at_user),
-                f"发起了决斗！请 {user.user_name if user else rus.at_user} 在30秒内回复‘接受对决’ or ‘拒绝对决’，超时此次决斗作废！",
+                f"发起了决斗！请 {user.user_name if user else rus.at_user}",
+                " 在30秒内回复‘接受对决’ or ‘拒绝对决’，超时此次决斗作废！",
             ]
         else:
             message_list = [
-                "若30秒内无人接受挑战则此次对决作废【首次游玩请at我发送 ’帮助俄罗斯轮盘‘ 来查看命令】"
+                "若30秒内无人接受挑战则此次对决作废"
+                "【首次游玩请at我发送 ’帮助俄罗斯轮盘‘ 来查看命令】"
             ]
         result = (
             "咔 " * rus.bullet_num
-            + f"装填完毕\n挑战金额：{rus.money}\n第一枪的概率为：{float(rus.bullet_num) / 7.0 * 100:.2f}%\n"
+            + f"装填完毕\n挑战金额：{rus.money}\n"
+            + "第一枪的概率为：{float(rus.bullet_num) / 7.0 * 100:.2f}%\n"
         )
 
         message_list.insert(0, result)
@@ -271,16 +276,13 @@ class RussianManage:
                 )
             if user_id not in [russian.player1[0], russian.player2[0]]:
                 """非玩家1和玩家2发送开枪"""
+                rand_list = [
+                    f"不要打扰 {russian.player1[1]} 和 {russian.player2[1]} 的决斗啊！",
+                    f"给我好好做好一个观众！不然{BotConfig.self_nickname}就要生气了",
+                    f"不要捣乱啊baka{uname}！",
+                ]
                 return (
-                    MessageUtils.build_message(
-                        random.choice(
-                            [
-                                f"不要打扰 {russian.player1[1]} 和 {russian.player2[1]} 的决斗啊！",
-                                f"给我好好做好一个观众！不然{BotConfig.self_nickname}就要生气了",
-                                f"不要捣乱啊baka{uname}！",
-                            ]
-                        )
-                    ),
+                    MessageUtils.build_message(random.choice(rand_list)),
                     None,
                 )
             if user_id != russian.next_user:
@@ -353,91 +355,90 @@ class RussianManage:
         返回:
             Text | MessageFactory: 返回消息
         """
-        if russian := self._data.get(group_id):
-            if not russian.player2:
-                if self.__check_is_timeout(group_id):
-                    del self._data[group_id]
-                    return MessageUtils.build_message(
-                        "规定时间内还未有人接受决斗，当前决斗过期..."
-                    )
-                return MessageUtils.build_message("决斗还未开始,，无法结算哦...")
-            if user_id and user_id not in [russian.player1[0], russian.player2[0]]:
-                return MessageUtils.build_message("吃瓜群众不要捣乱！黄牌警告！")
-            if not self.__check_is_timeout(group_id):
-                return MessageUtils.build_message(
-                    f"{russian.player1[1]} 和 {russian.player2[1]} 比赛并未超时，请继续比赛..."
-                )
-            win_user = None
-            lose_user = None
-            if win_user:
-                russian.next_user = (
-                    russian.player1[0]
-                    if win_user == russian.player2[0]
-                    else russian.player2[0]
-                )
-            if russian.next_user != russian.player1[0]:
-                win_user = russian.player1
-                lose_user = russian.player2
-            else:
-                win_user = russian.player2
-                lose_user = russian.player1
-            if win_user and lose_user:
-                rand = 0
-                if russian.money > 10:
-                    rand = random.randint(0, 5)
-                    fee = int(russian.money * float(rand) / 100)
-                    fee = 1 if fee < 1 and rand != 0 else fee
-                else:
-                    fee = 0
-                winner = await RussianUser.add_count(win_user[0], group_id, "win")
-                loser = await RussianUser.add_count(lose_user[0], group_id, "lose")
-                await RussianUser.money(
-                    win_user[0], group_id, "win", russian.money - fee
-                )
-                await RussianUser.money(lose_user[0], group_id, "lose", russian.money)
-                await UserConsole.add_gold(
-                    win_user[0], russian.money - fee, "russian", platform
-                )
-                try:
-                    await UserConsole.reduce_gold(
-                        lose_user[0],
-                        russian.money,
-                        GoldHandle.PLUGIN,
-                        "russian",
-                        platform,
-                    )
-                except InsufficientGold:
-                    if u := await UserConsole.get_user(lose_user[0]):
-                        u.gold = 0
-                        await u.save(update_fields=["gold"])
-                result = [
-                    "这场决斗是 ",
-                    At(flag="user", target=win_user[0]),
-                    " 胜利了!",
-                ]
-                image = await text2image(
-                    f"结算：\n"
-                    f"\t胜者：{win_user[1]}\n"
-                    f"\t赢取金币：{russian.money - fee}\n"
-                    f"\t累计胜场：{winner.win_count}\n"
-                    f"\t累计赚取金币：{winner.make_money}\n"
-                    f"-------------------\n"
-                    f"\t败者：{lose_user[1]}\n"
-                    f"\t输掉金币：{russian.money}\n"
-                    f"\t累计败场：{loser.fail_count}\n"
-                    f"\t累计输掉金币：{loser.lose_money}\n"
-                    f"-------------------\n"
-                    f"哼哼，{BotConfig.self_nickname}从中收取了 {float(rand)}%({fee}金币) 作为手续费！\n"
-                    f"子弹排列：{russian.bullet_arr}",
-                    padding=10,
-                    color="#f9f6f2",
-                )
-                self.__remove_job(group_id)
-                result.append(image)
+        if not (russian := self._data.get(group_id)):
+            return MessageUtils.build_message("比赛并没有开始...无法结算...")
+        if not russian.player2:
+            if self.__check_is_timeout(group_id):
                 del self._data[group_id]
-                return MessageUtils.build_message(result)
-            return MessageUtils.build_message("赢家和输家获取错误...")
-        return MessageUtils.build_message("比赛并没有开始...无法结算...")
+                return MessageUtils.build_message(
+                    "规定时间内还未有人接受决斗，当前决斗过期..."
+                )
+            return MessageUtils.build_message("决斗还未开始,，无法结算哦...")
+        if user_id and user_id not in [russian.player1[0], russian.player2[0]]:
+            return MessageUtils.build_message("吃瓜群众不要捣乱！黄牌警告！")
+        if not self.__check_is_timeout(group_id):
+            return MessageUtils.build_message(
+                f"{russian.player1[1]} 和 {russian.player2[1]} 比赛并未超时，请继续比赛"
+            )
+        win_user = None
+        lose_user = None
+        if win_user:
+            russian.next_user = (
+                russian.player1[0]
+                if win_user == russian.player2[0]
+                else russian.player2[0]
+            )
+        if russian.next_user != russian.player1[0]:
+            win_user = russian.player1
+            lose_user = russian.player2
+        else:
+            win_user = russian.player2
+            lose_user = russian.player1
+        if win_user and lose_user:
+            rand = 0
+            if russian.money > 10:
+                rand = random.randint(0, 5)
+                fee = int(russian.money * float(rand) / 100)
+                fee = 1 if fee < 1 and rand != 0 else fee
+            else:
+                fee = 0
+            winner = await RussianUser.add_count(win_user[0], group_id, "win")
+            loser = await RussianUser.add_count(lose_user[0], group_id, "lose")
+            await RussianUser.money(win_user[0], group_id, "win", russian.money - fee)
+            await RussianUser.money(lose_user[0], group_id, "lose", russian.money)
+            await UserConsole.add_gold(
+                win_user[0], russian.money - fee, "russian", platform
+            )
+            try:
+                await UserConsole.reduce_gold(
+                    lose_user[0],
+                    russian.money,
+                    GoldHandle.PLUGIN,
+                    "russian",
+                    platform,
+                )
+            except InsufficientGold:
+                if u := await UserConsole.get_user(lose_user[0]):
+                    u.gold = 0
+                    await u.save(update_fields=["gold"])
+            result = [
+                "这场决斗是 ",
+                At(flag="user", target=win_user[0]),
+                " 胜利了!",
+            ]
+            image = await text2image(
+                f"结算：\n"
+                f"\t胜者：{win_user[1]}\n"
+                f"\t赢取金币：{russian.money - fee}\n"
+                f"\t累计胜场：{winner.win_count}\n"
+                f"\t累计赚取金币：{winner.make_money}\n"
+                f"-------------------\n"
+                f"\t败者：{lose_user[1]}\n"
+                f"\t输掉金币：{russian.money}\n"
+                f"\t累计败场：{loser.fail_count}\n"
+                f"\t累计输掉金币：{loser.lose_money}\n"
+                f"-------------------\n"
+                f"哼哼，{BotConfig.self_nickname}从中收取了"
+                " {float(rand)}%({fee}金币) 作为手续费！\n"
+                f"子弹排列：{russian.bullet_arr}",
+                padding=10,
+                color="#f9f6f2",
+            )
+            self.__remove_job(group_id)
+            result.append(image)
+            del self._data[group_id]
+            return MessageUtils.build_message(result)
+        return MessageUtils.build_message("赢家和输家获取错误...")
 
     async def __get_x_index(self, users: list[RussianUser], group_id: str):
         uid_list = [u.user_id for u in users]
@@ -460,26 +461,6 @@ class RussianManage:
         data = []
         title = ""
         x_name = ""
-        if rank_type == "win":
-            users = (
-                await RussianUser.filter(group_id=group_id, win_count__not=0)
-                .order_by("win_count")
-                .limit(num)
-            )
-            x_index = await self.__get_x_index(users, group_id)
-            data = [u.win_count for u in users]
-            title = "胜场排行"
-            x_name = "场次"
-        if rank_type == "lose":
-            users = (
-                await RussianUser.filter(group_id=group_id, fail_count__not=0)
-                .order_by("fail_count")
-                .limit(num)
-            )
-            x_index = await self.__get_x_index(users, group_id)
-            data = [u.fail_count for u in users]
-            title = "败场排行"
-            x_name = "场次"
         if rank_type == "a":
             users = (
                 await RussianUser.filter(group_id=group_id, make_money__not=0)
@@ -490,7 +471,7 @@ class RussianManage:
             data = [u.make_money for u in users]
             title = "欧洲人排行"
             x_name = "金币"
-        if rank_type == "b":
+        elif rank_type == "b":
             users = (
                 await RussianUser.filter(group_id=group_id, lose_money__not=0)
                 .order_by("lose_money")
@@ -500,7 +481,27 @@ class RussianManage:
             data = [u.lose_money for u in users]
             title = "慈善家排行"
             x_name = "金币"
-        if rank_type == "max_win":
+        elif rank_type == "lose":
+            users = (
+                await RussianUser.filter(group_id=group_id, fail_count__not=0)
+                .order_by("fail_count")
+                .limit(num)
+            )
+            x_index = await self.__get_x_index(users, group_id)
+            data = [u.fail_count for u in users]
+            title = "败场排行"
+            x_name = "场次"
+        elif rank_type == "max_lose":
+            users = (
+                await RussianUser.filter(group_id=group_id, max_losing_streak__not=0)
+                .order_by("max_losing_streak")
+                .limit(num)
+            )
+            x_index = await self.__get_x_index(users, group_id)
+            data = [u.max_losing_streak for u in users]
+            title = "最高连败排行"
+            x_name = "场次"
+        elif rank_type == "max_win":
             users = (
                 await RussianUser.filter(group_id=group_id, max_winning_streak__not=0)
                 .order_by("max_winning_streak")
@@ -510,15 +511,15 @@ class RussianManage:
             data = [u.max_winning_streak for u in users]
             title = "最高连胜排行"
             x_name = "场次"
-        if rank_type == "max_lose":
+        elif rank_type == "win":
             users = (
-                await RussianUser.filter(group_id=group_id, max_losing_streak__not=0)
-                .order_by("max_losing_streak")
+                await RussianUser.filter(group_id=group_id, win_count__not=0)
+                .order_by("win_count")
                 .limit(num)
             )
             x_index = await self.__get_x_index(users, group_id)
-            data = [u.max_losing_streak for u in users]
-            title = "最高连败排行"
+            data = [u.win_count for u in users]
+            title = "胜场排行"
             x_name = "场次"
         if not data:
             return "当前数据为空..."
