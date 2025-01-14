@@ -2,10 +2,11 @@ import asyncio
 from pathlib import Path
 import random
 
+from zhenxun.configs.config import Config
 from zhenxun.configs.path_config import TEMP_PATH
 from zhenxun.services.log import logger
 from zhenxun.utils.http_utils import AsyncHttpx
-from zhenxun.configs.config import Config
+
 from .._config import PixModel, PixResult, base_config
 
 headers = {
@@ -85,16 +86,17 @@ class StarManage:
         data: PixResult = PixResult(**res.json())
         if not data.suc:
             return data.info
-        data.data = [PixModel(**pix) for pix in data.data]
-        task_list = [asyncio.create_task(cls.get_image(pix)) for pix in data.data]
+        data_list = [PixModel(**pix) for pix in data.data]
+        task_list = [asyncio.create_task(cls.get_image(pix)) for pix in data_list]
         result = await asyncio.gather(*task_list)
         message_list = []
-        for i in range(len(data.data)):
-            pix = data.data[i]
+        for i in range(len(data_list)):
+            pix = data_list[i]
             img = result[i] or "这张图片下载失败了..."
             message_list.append(
                 [
-                    f"rank: {i+1}\npid: {pix.pid}\nuid: {pix.title}\nstar: {pix.star}",
+                    f"rank: {i + 1}\ntitle: {pix.title}",
+                    f"pid: {pix.pid}\nuid: {pix.uid}\nstar: {pix.star}",
                     img,
                 ]
             )

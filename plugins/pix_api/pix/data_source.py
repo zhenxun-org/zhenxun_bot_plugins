@@ -1,10 +1,10 @@
-import random
 from pathlib import Path
+import random
 
-from zhenxun.services.log import logger
 from zhenxun.configs.config import Config
-from zhenxun.utils.http_utils import AsyncHttpx
 from zhenxun.configs.path_config import TEMP_PATH
+from zhenxun.services.log import logger
+from zhenxun.utils.http_utils import AsyncHttpx
 
 from .._config import PixModel, PixResult, base_config
 
@@ -18,20 +18,38 @@ headers = {
 class PixManage:
     @classmethod
     async def get_pix(
-        cls, tags: tuple[str, ...], num: int, is_r18: bool, ai: bool | None
+        cls,
+        tags: tuple[str, ...],
+        num: int,
+        is_r18: bool,
+        ai: bool | None,
+        nsfw: tuple[int, ...],
+        ratio_tuple: list[float] | None,
     ) -> PixResult[list[PixModel]]:
         """获取图片
 
         参数:
             tags: tags，包含uid和pid
             num: 数量
+            is_r18: 是否r18
+            ai: 是否ai
+            nsfw: nsfw标签
+            ratio_tuple: 图片比例范围
 
         返回:
             list[PixGallery]: 图片数据列表
         """
         size = base_config.get("PIX_IMAGE_SIZE")
         api = base_config.get("pix_api") + "/pix/get_pix"
-        json_data = {"tags": tags, "num": num, "r18": is_r18, "ai": ai, "size": size}
+        json_data = {
+            "tags": tags,
+            "num": num,
+            "r18": is_r18,
+            "ai": ai,
+            "size": size,
+            "nsfw_tag": nsfw or None,
+            "ratio": ratio_tuple,
+        }
         logger.debug(f"尝试调用pix api: {api}, 参数: {json_data}")
         headers = None
         if token := base_config.get("token"):
