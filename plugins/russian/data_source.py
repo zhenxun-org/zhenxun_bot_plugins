@@ -1,14 +1,13 @@
 import contextlib
-from datetime import datetime, timedelta
 import random
 import time
+from datetime import datetime, timedelta
 
 from apscheduler.jobstores.base import JobLookupError
 from nonebot.adapters import Bot
 from nonebot_plugin_alconna import At, UniMessage
 from nonebot_plugin_apscheduler import scheduler
 from pydantic import BaseModel
-
 from zhenxun.configs.config import BotConfig, Config
 from zhenxun.models.group_member_info import GroupInfoUser
 from zhenxun.models.user_console import UserConsole
@@ -176,7 +175,7 @@ class RussianManage:
         result = (
             "咔 " * rus.bullet_num
             + f"装填完毕\n挑战金额：{rus.money}\n"
-            + "第一枪的概率为：{float(rus.bullet_num) / 7.0 * 100:.2f}%\n"
+            + f"第一枪的概率为：{float(rus.bullet_num) / 7.0 * 100:.2f}%\n"
         )
 
         message_list.insert(0, result)
