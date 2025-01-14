@@ -1,10 +1,10 @@
 from zhenxun.services.log import logger
-from zhenxun.utils.http_utils import AsyncHttpx
 from zhenxun.utils._build_image import BuildImage
 from zhenxun.utils._image_template import ImageTemplate
+from zhenxun.utils.http_utils import AsyncHttpx
 
-from .config import ImageCount
 from .._config import base_config
+from .config import ImageCount
 
 
 class InfoManage:
@@ -35,6 +35,7 @@ class InfoManage:
             [
                 ["总数", data.count],
                 ["普通", data.normal],
+                ["色图", data.setu],
                 ["R18", data.r18],
                 ["AI", data.ai],
             ],
