@@ -1,5 +1,5 @@
-from pathlib import Path
 import random
+from pathlib import Path
 
 from zhenxun.configs.config import Config
 from zhenxun.configs.path_config import TEMP_PATH
@@ -25,6 +25,7 @@ class PixManage:
         ai: bool | None,
         nsfw: tuple[int, ...],
         ratio_tuple: list[float] | None,
+        retry_count: int = 0,
     ) -> PixResult[list[PixModel]]:
         """获取图片
 
@@ -35,6 +36,7 @@ class PixManage:
             ai: 是否ai
             nsfw: nsfw标签
             ratio_tuple: 图片比例范围
+            retry_count: 重新调用
 
         返回:
             list[PixGallery]: 图片数据列表
@@ -56,6 +58,11 @@ class PixManage:
         if token := base_config.get("token"):
             headers = {"Authorization": token}
         res = await AsyncHttpx.post(api, json=json_data, headers=headers)
+        if res.status_code == 502 and retry_count < 3:
+            logger.warning("pix api 502错误，请检查pix api是否正常")
+            return await cls.get_pix(
+                tags, num, is_r18, ai, nsfw, ratio_tuple, retry_count + 1
+            )
         res.raise_for_status()
         res_data = res.json()
         res_data["data"] = [PixModel(**item) for item in res_data["data"]]
