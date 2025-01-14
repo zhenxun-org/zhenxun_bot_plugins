@@ -39,6 +39,7 @@ class PixManage:
         返回:
             list[PixGallery]: 图片数据列表
         """
+        force_nsfw = base_config.get("FORCE_NSFW")
         size = base_config.get("PIX_IMAGE_SIZE")
         api = base_config.get("pix_api") + "/pix/get_pix"
         json_data = {
@@ -47,7 +48,7 @@ class PixManage:
             "r18": is_r18,
             "ai": ai,
             "size": size,
-            "nsfw_tag": nsfw or None,
+            "nsfw_tag": force_nsfw or nsfw or None,
             "ratio": ratio_tuple,
         }
         logger.debug(f"尝试调用pix api: {api}, 参数: {json_data}")
