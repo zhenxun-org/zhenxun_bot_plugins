@@ -1,16 +1,17 @@
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
 import xml.etree.ElementTree as ET
 
-from zhdate import ZhDate
 from nonebot_plugin_htmlrender import template_to_pic
+from zhdate import ZhDate
 
-from zhenxun.utils.http_utils import AsyncHttpx
-from zhenxun.utils._build_image import BuildImage
 from zhenxun.configs.config import Config
 from zhenxun.configs.path_config import TEMPLATE_PATH
+from zhenxun.utils._build_image import BuildImage
+from zhenxun.utils.http_utils import AsyncHttpx
 
-from .config import REPORT_PATH, Anime, Hitokoto, SixData, favs_arr, favs_list
+from .config import REPORT_PATH, Anime, Hitokoto, SixData
+from .date import get_festivals_dates
 
 
 class Report:
@@ -42,7 +43,7 @@ class Report:
             f.unlink()
         zhdata = ZhDate.from_datetime(now)
         data = {
-            "data_festival": cls.festival_calculation(),
+            "data_festival": get_festivals_dates(),
             "data_hitokoto": await cls.get_hitokoto(),
             "data_bili": await cls.get_bili(),
             "data_six": await cls.get_six(),
@@ -51,6 +52,7 @@ class Report:
             "week": cls.week[now.weekday()],
             "date": now.date(),
             "zh_date": zhdata.chinese().split()[0][5:],
+            "full_show": Config.get_config("mahiro_report", "full_show"),
         }
         image_bytes = await template_to_pic(
             template_path=str((TEMPLATE_PATH / "mahiro_report").absolute()),
@@ -64,22 +66,6 @@ class Report:
         )
         await BuildImage.open(image_bytes).save(file)
         return file
-
-    @classmethod
-    def festival_calculation(cls) -> list[tuple[str, str]]:
-        """计算节日"""
-        base_date = datetime(2016, 1, 1)
-        n = (datetime.now() - base_date).days
-        result = []
-
-        for i in range(0, len(favs_arr), 2):
-            if favs_arr[i] >= n:
-                result.extend(
-                    (favs_arr[i + j] - n, favs_list[favs_arr[i + j + 1]])
-                    for j in range(0, 14, 2)
-                )
-                break
-        return result
 
     @classmethod
     async def get_hitokoto(cls) -> str:

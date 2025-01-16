@@ -41,7 +41,14 @@ __plugin_meta__ = PluginMetadata(
                 key="ALAPI_TOKEN",
                 value=None,
                 help="在https://admin.alapi.cn/user/login登录后获取token",
-            )
+            ),
+            RegisterConfig(
+                key="FULL_SHOW",
+                value=False,
+                help="完全显示it资讯和60s",
+                default_value=False,
+                type=bool,
+            ),
         ],
     ).to_dict(),
 )
