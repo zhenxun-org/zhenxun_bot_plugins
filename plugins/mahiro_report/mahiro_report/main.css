@@ -26,15 +26,16 @@ body {
 }
 
 .wrapper {
-  height: 1885px;
+  /* height: 1885px; */
   width: 578px;
   background-color: #ffc0cb;
   position: relative;
-  padding: 10px;
+  padding: 15px;
+  /* box-sizing: border-box; */
 }
 
 .main {
-  height: 1860px;
+  /* height: 1860px; */
   width: 555px;
   background-color: #fffbfc;
   position: relative;
@@ -214,11 +215,15 @@ body {
   height: 370px;
   border-radius: 10px;
   position: relative;
-  float: left;
   padding: 17px;
   font-family: "Noto Sans SC";
   background-color: #fffbfc;
 }
+
+.two-border-border  {
+  float: left;
+}
+
 
 .anime-border {
   height: 170px;
@@ -245,25 +250,24 @@ body {
 
 .three-border {
   border: #e5aabe 3px solid;
-  width: 512px;
-  height: 300px;
+  width: 552px;
   border-radius: 10px;
   position: relative;
-  float: left;
+  /* float: left; */
   padding: 17px;
   font-family: "Noto Sans SC";
   margin-top: 46px;
   background-color: #fffbfc;
   font-size: 15px;
+  box-sizing: border-box;
 }
 
 .four-border {
   border: #e5aabe 3px solid;
   width: 512px;
-  height: 300px;
   border-radius: 10px;
   position: relative;
-  float: left;
+  /* float: left; */
   padding: 17px;
   font-family: "Noto Sans SC";
   margin-top: 46px;
@@ -276,7 +280,7 @@ body {
   width: 520px;
   border-radius: 10px;
   position: relative;
-  float: left;
+  /* float: left; */
   padding: 13px;
   font-family: "Noto Sans SC";
   margin-top: 46px;
@@ -290,12 +294,12 @@ body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  width: 450px;
+  /* width: 450px; */
 }
 
 ul {
   list-style-position: inside; /* 将项目符号放在内容内部 */
-  width: 450px;
+  /* width: 450px; */
 }
 
 li::marker {
