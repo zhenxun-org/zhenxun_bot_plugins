@@ -428,7 +428,7 @@ class RussianManage:
                 f"\t累计输掉金币：{loser.lose_money}\n"
                 f"-------------------\n"
                 f"哼哼，{BotConfig.self_nickname}从中收取了"
-                " {float(rand)}%({fee}金币) 作为手续费！\n"
+                f" {float(rand)}%({fee}金币) 作为手续费！\n"
                 f"子弹排列：{russian.bullet_arr}",
                 padding=10,
                 color="#f9f6f2",
