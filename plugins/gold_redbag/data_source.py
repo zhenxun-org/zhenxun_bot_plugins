@@ -233,7 +233,7 @@ class RedBagManager:
         # 剩余数量和金额
         text = (
             f"已领取"
-            f"{red_bag.num - len(red_bag.open_user)}"
+            f"{len(red_bag.open_user)}"
             f"/{red_bag.num}个，"
             f"共{sum(red_bag.open_user.values())}/{red_bag.amount}金币"
         )
