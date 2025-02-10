@@ -438,5 +438,15 @@
         "version": "0.3",
         "plugin_type": "NORMAL",
         "is_dir": true
+    },
+    "伪人AI": {
+        "module": "bym_ai",
+        "module_path": "plugins.bym_ai",
+        "description": "小真寻想成为人类...",
+        "usage": "你问小真寻的愿望？小真寻说她想成为人类！",
+        "author": "Chtholly",
+        "version": "0.1",
+        "plugin_type": "NORMAL",
+        "is_dir": true
     }
 }
