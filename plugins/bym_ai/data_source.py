@@ -2,18 +2,27 @@ import asyncio
 import os
 import random
 import re
-import json
+import time
 from typing import ClassVar, Literal
 
+from nonebot import require
 from nonebot.compat import model_dump
 from nonebot_plugin_alconna import Text, UniMessage, UniMsg
 from pydantic import BaseModel
 
 from zhenxun.configs.config import BotConfig, Config
 from zhenxun.configs.path_config import IMAGE_PATH
+from zhenxun.models.sign_user import SignUser
 from zhenxun.services.log import logger
 from zhenxun.utils.http_utils import AsyncHttpx
 from zhenxun.utils.message import MessageUtils
+
+require("sign_in")
+
+from zhenxun.builtin_plugins.sign_in.utils import (
+    get_level_and_next_impression,
+    level2attitude,
+)
 
 from .config import (
     BYM_CONTENT,
@@ -73,14 +82,37 @@ def __split_text(text: str, regex: str, limit: int) -> list[str]:
     global_regex = re.compile(regex)
 
     for match in global_regex.finditer(text):
-        if len(result) < limit - 1:
-            result.append(text[last_index : match.start()])
-            last_index = match.end()
-        else:
+        if len(result) >= limit - 1:
             break
 
+        result.append(text[last_index : match.start()])
+        last_index = match.end()
     result.append(text[last_index:])
     return result
+
+
+class TokenCounter:
+    def __init__(self):
+        if tokens := base_config.get("BYM_AI_CHAT_TOKEN"):
+            if isinstance(tokens, str):
+                tokens = [tokens]
+            self.tokens = {t: 0 for t in tokens}
+
+    def get_token(self) -> str:
+        """获取token，将时间最小的token返回"""
+        token_list = sorted(self.tokens.keys(), key=lambda x: self.tokens[x])
+        result_token = token_list[0]
+        self.tokens[result_token] = int(time.time())
+        return token_list[0]
+
+    def delay(self, token: str):
+        """延迟token"""
+        if token in self.tokens:
+            """等待15分钟"""
+            self.tokens[token] = int(time.time()) + 60 * 15
+
+
+token_counter = TokenCounter()
 
 
 class Conversation:
@@ -117,16 +149,16 @@ class Conversation:
             user_id: 用户id
             conversation: 消息记录
         """
-        if len(conversation) > 20:
-            conversation = conversation[-20:]
+        if len(conversation) > 40:
+            conversation = conversation[-40:]
         cls.history_data[user_id] = conversation
 
 
 class CallApi:
     def __init__(self):
         self.chat_url = base_config.get("BYM_AI_CHAT_URL")
-        self.chat_token = base_config.get("BYM_AI_CHAT_TOKEN")
         self.chat_model = base_config.get("BYM_AI_CHAT_MODEL")
+        self.chat_token = token_counter.get_token()
 
         self.tts_url = Config.get_config("bym_ai", "BYM_AI_TTS_URL")
         self.tts_token = Config.get_config("bym_ai", "BYM_AI_TTS_TOKEN")
@@ -151,15 +183,20 @@ class CallApi:
             },
             json=send_json,
         )
+        if response.status_code == 429:
+            logger.debug(
+                f"fetch_chat 请求失败: 限速, token: {self.chat_token} 延迟 15 分钟",
+                "BYM_AI",
+                session=user_id,
+            )
+            token_counter.delay(self.chat_token)
         response.raise_for_status()
         result = OpenAiResult(**response.json())
         assistant_reply = None
         if result.choices and (message := result.choices[0].message):
             assistant_reply = message.content.strip()
         if assistant_reply:
-            conversation.append(
-                ChatMessage(role="assistant", content=assistant_reply)
-            )
+            conversation.append(ChatMessage(role="assistant", content=assistant_reply))
             Conversation.set_history(user_id, conversation)
         return assistant_reply
 
@@ -191,11 +228,8 @@ class CallApi:
                     response.raise_for_status()
                     if "audio/mpeg" in response.headers.get("Content-Type", ""):
                         return response.content
-                    else:
-                        logger.warning(
-                            f"fetch_tts 请求失败: {response.content}", "BYM_AI"
-                        )
-                        await asyncio.sleep(delay)
+                    logger.warning(f"fetch_tts 请求失败: {response.content}", "BYM_AI")
+                    await asyncio.sleep(delay)
 
                 except Exception as e:
                     logger.error("fetch_tts 请求失败", "BYM_AI", e=e)
@@ -205,6 +239,7 @@ class CallApi:
 
 class ChatManager:
     group_cache: ClassVar[dict[str, list[MessageCache]]] = {}
+    user_impression: ClassVar[dict[str, float]] = {}
 
     @classmethod
     def format(
@@ -238,12 +273,13 @@ class ChatManager:
         ]
 
     @classmethod
-    def __get_normal_content(
-        cls, nickname: str, message: UniMsg
+    async def __get_normal_content(
+        cls, user_id: str, nickname: str, message: UniMsg
     ) -> list[dict[str, str]]:
         """获取普通回答文本内容
 
         参数:
+            user_id: 用户id
             nickname: 用户昵称
             message: 消息内容
 
@@ -251,7 +287,21 @@ class ChatManager:
             list[dict[str, str]]: 文本序列
         """
         content = cls.__build_content(message)
-        content.insert(0, cls.format("text", NORMAL_CONTENT.format(nickname=nickname)))
+        if user_id not in cls.user_impression:
+            sign_user = await SignUser.get_user(user_id)
+            cls.user_impression[user_id] = float(sign_user.impression)
+        level, _, _ = get_level_and_next_impression(cls.user_impression[user_id])
+        content.insert(
+            0,
+            cls.format(
+                "text",
+                NORMAL_CONTENT.format(
+                    nickname=nickname,
+                    impression=cls.user_impression[user_id],
+                    attitude=level2attitude[level],
+                ),
+            ),
+        )
         return content
 
     @classmethod
@@ -286,9 +336,7 @@ class ChatManager:
         return content
 
     @classmethod
-    def add_cache(
-        cls, user_id: str, group_id: str, nickname: str, message: UniMsg
-    ):
+    def add_cache(cls, user_id: str, group_id: str, nickname: str, message: UniMsg):
         """添加消息缓存
 
         参数:
@@ -297,7 +345,9 @@ class ChatManager:
             nickname: 用户昵称
             message: 消息内容
         """
-        message_cache = MessageCache(user_id=user_id, nickname=nickname, message=message)
+        message_cache = MessageCache(
+            user_id=user_id, nickname=nickname, message=message
+        )
         if group_id not in cls.group_cache:
             cls.group_cache[group_id] = [message_cache]
         cls.group_cache[group_id].append(message_cache)
@@ -331,7 +381,7 @@ class ChatManager:
             result = await CallApi().fetch_chat(user_id, content)
             result = None if result == "<EMPTY>" else result
         else:
-            content = cls.__get_normal_content(nickname, message)
+            content = await cls.__get_normal_content(user_id, nickname, message)
             result = await CallApi().fetch_chat(user_id, content)
         return result
 

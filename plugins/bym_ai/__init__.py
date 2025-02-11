@@ -34,7 +34,8 @@ __plugin_meta__ = PluginMetadata(
             RegisterConfig(
                 key="BYM_AI_CHAT_TOKEN",
                 value=None,
-                help="ai聊天接口密钥",
+                help="ai聊天接口密钥，使用列表",
+                type=list[str],
             ),
             RegisterConfig(
                 key="BYM_AI_CHAT_MODEL",
@@ -50,10 +51,10 @@ __plugin_meta__ = PluginMetadata(
             ),
             RegisterConfig(
                 key="BYM_AI_CHAT_RATE",
-                value=5,
-                help="伪人回复概率 0-100",
-                default_value=5,
-                type=int,
+                value=0.05,
+                help="伪人回复概率 0-1",
+                default_value=0.05,
+                type=float,
             ),
             RegisterConfig(
                 key="BYM_AI_TTS_URL",
@@ -84,11 +85,8 @@ async def rule(event: Event, session: Uninfo) -> bool:
     if event.is_tome() and not session.group:
         """私聊过滤"""
         return False
-    rand = random.randint(1, 100)
-    rate = base_config.get("BYM_AI_CHAT_RATE")
-    if rand <= rate:
-        return True
-    return False
+    rate = base_config.get("BYM_AI_CHAT_RATE") or 0
+    return random.random() <= rate
 
 
 _matcher = on_message(priority=998, rule=rule)
