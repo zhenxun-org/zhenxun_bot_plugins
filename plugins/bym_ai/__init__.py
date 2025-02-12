@@ -1,12 +1,13 @@
 import asyncio
-import random
 from pathlib import Path
+import random
 
 from nonebot import on_message
 from nonebot.adapters import Event
 from nonebot.plugin import PluginMetadata
 from nonebot_plugin_alconna import UniMsg, Voice
 from nonebot_plugin_uninfo import Uninfo
+
 from zhenxun.configs.config import BotConfig
 from zhenxun.configs.path_config import IMAGE_PATH
 from zhenxun.configs.utils import PluginExtraData, RegisterConfig
@@ -16,7 +17,7 @@ from zhenxun.utils.depends import UserName
 from zhenxun.utils.message import MessageUtils
 
 from .data_source import ChatManager, base_config, split_text
-from .goods_register import *  # noqa: F403
+from .goods_register import driver  # noqa: F401
 
 __plugin_meta__ = PluginMetadata(
     name="BYM_AI",
@@ -132,7 +133,7 @@ class MyPluginInit(PluginInit):
             if RESOURCE_FILE.exists():
                 RESOURCE_FILE.unlink()
             res.rename(RESOURCE_FILE)
-            logger.info(f"移动 BYM_AI 资源文件成功 {res} -> {RESOURCE_FILE}")
+            logger.info(f"更新 BYM_AI 资源文件成功 {res} -> {RESOURCE_FILE}")
 
     async def remove(self):
         if RESOURCE_FILE.exists():

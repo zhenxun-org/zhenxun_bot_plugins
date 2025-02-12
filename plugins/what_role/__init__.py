@@ -17,6 +17,7 @@ from nonebot_plugin_alconna.builtins.extensions.reply import ReplyMergeExtension
 from nonebot_plugin_alconna.uniseg.tools import image_fetch
 from nonebot_plugin_uninfo import Uninfo
 from nonebot_plugin_waiter import prompt, waiter
+
 from zhenxun.configs.config import BotConfig
 from zhenxun.configs.utils import Command, PluginExtraData
 from zhenxun.services.log import logger
@@ -96,19 +97,22 @@ async def _(
     session: Uninfo,
     search_type: Query[int] = Query("search_type", 1),
 ):
-    image_data = None
-    if data.available:
-        if isinstance(data.result, At):
-            if session.user.avatar:
-                platform = PlatformUtils.get_platform(session)
-                image_data = await PlatformUtils.get_user_avatar(
-                    data.result.target, platform, session.self_id
-                )
-        else:
-            image_data = await image_fetch(event, bot, state, data.result)
     if search_type.result not in [1, 2, 3, 4, 5]:
         await MessageUtils.build_message("识别类型错误，请输入1-5...").finish()
 
+    if not data.available:
+        await MessageUtils.build_message("图呢?").finish()
+
+    image_data = None
+    if isinstance(data.result, At):
+        if not session.user.avatar:
+            await MessageUtils.build_message("没拿到图图,请找管理员吧").finish()
+        platform = PlatformUtils.get_platform(session)
+        image_data = await PlatformUtils.get_user_avatar(
+            data.result.target, platform, session.self_id
+        )
+    else:
+        image_data = await image_fetch(event, bot, state, data.result)
     if not image_data:
         image_data = await get_image_data()
     await MessageUtils.build_message("开始识别了哦，请稍等...").send()
@@ -122,15 +126,9 @@ async def _(
     if not file or isinstance(result_list, str):
         await MessageUtils.build_message(str(result_list)).finish()
     await MessageUtils.build_message(image).send()
-    if PlatformUtils.get_platform(session) == "qq" and not PlatformUtils.is_qbot(
-        session
-    ):
-        """非qq时不发送消息避免刷屏"""
+    if PlatformUtils.is_forward_merge_supported(session):
+        # 非qq时不发送消息避免刷屏
         await MessageUtils.alc_forward_msg(
             [[file], *result_list], session.self_id, BotConfig.self_nickname
         ).send()
-    # else:
-    #     await MessageUtils.build_message(file).send()
-    #     for result in result_list:
-    #         await MessageUtils.build_message(result).send()
     logger.info("角色识别", arparma.header_result, session=session)

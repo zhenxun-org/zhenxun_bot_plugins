@@ -112,7 +112,7 @@ async def _(
             reply_to=True
         )
     b_num = int(num)
-    if b_num <= 0 or b_num > 6:
+    if not (1 <= b_num <= 6):
         await MessageUtils.build_message("子弹数量必须在1-6之间!").finish(reply_to=True)
     _at_user = at_user.result.target if at_user.available else None
     rus = Russian(

@@ -277,6 +277,10 @@ async def _(
             if user_red_bag and (
                 data := await group_red_bag.settlement(user_id, session.platform)
             ):
+                if not data[0]:
+                    await MessageUtils.build_message(
+                        "金币红包的金币已经被抢完了..."
+                    ).finish(reply_to=True)
                 image_result = await user_red_bag.build_amount_rank(
                     rank_num, session.platform
                 )
