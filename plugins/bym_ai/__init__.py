@@ -1,5 +1,6 @@
 import asyncio
 import random
+from pathlib import Path
 
 from nonebot import on_message
 from nonebot.adapters import Event
@@ -7,12 +8,15 @@ from nonebot.plugin import PluginMetadata
 from nonebot_plugin_alconna import UniMsg, Voice
 from nonebot_plugin_uninfo import Uninfo
 from zhenxun.configs.config import BotConfig
+from zhenxun.configs.path_config import IMAGE_PATH
 from zhenxun.configs.utils import PluginExtraData, RegisterConfig
 from zhenxun.services.log import logger
+from zhenxun.services.plugin_init import PluginInit
 from zhenxun.utils.depends import UserName
 from zhenxun.utils.message import MessageUtils
 
 from .data_source import ChatManager, base_config, split_text
+from .goods_register import *  # noqa: F403
 
 __plugin_meta__ = PluginMetadata(
     name="BYM_AI",
@@ -112,7 +116,25 @@ async def _(event: Event, message: UniMsg, session: Uninfo, uname: str = UserNam
     else:
         if not result:
             return MessageUtils.build_message(ChatManager.no_result()).finish()
-        await MessageUtils.build_message(result).send(reply_to=True)
+        await MessageUtils.build_message(result).send()
         if tts_data := await ChatManager.tts(result):
             await MessageUtils.build_message(Voice(raw=tts_data)).send()
     logger.info(f"BYM AI 问题: {message} | 回答: {result}", "BYM AI", session=session)
+
+
+RESOURCE_FILE = IMAGE_PATH / "shop_icon" / "reload_ai_card.png"
+
+
+class MyPluginInit(PluginInit):
+    async def install(self):
+        res = Path(__file__).parent / "reload_ai_card.png"
+        if res.exists():
+            if RESOURCE_FILE.exists():
+                RESOURCE_FILE.unlink()
+            res.rename(RESOURCE_FILE)
+            logger.info(f"移动 BYM_AI 资源文件成功 {res} -> {RESOURCE_FILE}")
+
+    async def remove(self):
+        if RESOURCE_FILE.exists():
+            RESOURCE_FILE.unlink()
+            logger.info(f"删除 BYM_AI 资源文件成功 {RESOURCE_FILE}")

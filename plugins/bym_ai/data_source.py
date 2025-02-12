@@ -153,6 +153,15 @@ class Conversation:
             conversation = conversation[-40:]
         cls.history_data[user_id] = conversation
 
+    @classmethod
+    def reset(cls, user_id: str):
+        """重置预设
+
+        参数:
+            user_id: 用户id
+        """
+        cls.history_data[user_id] = []
+
 
 class CallApi:
     def __init__(self):
