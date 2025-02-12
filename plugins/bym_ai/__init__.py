@@ -6,7 +6,6 @@ from nonebot.adapters import Event
 from nonebot.plugin import PluginMetadata
 from nonebot_plugin_alconna import UniMsg, Voice
 from nonebot_plugin_uninfo import Uninfo
-
 from zhenxun.configs.config import BotConfig
 from zhenxun.configs.utils import PluginExtraData, RegisterConfig
 from zhenxun.services.log import logger
@@ -112,7 +111,7 @@ async def _(event: Event, message: UniMsg, session: Uninfo, uname: str = UserNam
     else:
         if not result:
             return MessageUtils.build_message(ChatManager.no_result()).finish()
-        await MessageUtils.build_message(result).send()
+        await MessageUtils.build_message(result).send(reply_to=True)
         if tts_data := await ChatManager.tts(result):
             await MessageUtils.build_message(Voice(raw=tts_data)).send()
     logger.info(f"BYM AI 问题: {message} | 回答: {result}", "BYM AI", session=session)
