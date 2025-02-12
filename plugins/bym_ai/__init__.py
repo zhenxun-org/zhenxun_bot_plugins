@@ -24,6 +24,7 @@ __plugin_meta__ = PluginMetadata(
     extra=PluginExtraData(
         author="Chtholly",
         version="0.1",
+        ignore_prompt=True,
         configs=[
             RegisterConfig(
                 key="BYM_AI_CHAT_URL",
