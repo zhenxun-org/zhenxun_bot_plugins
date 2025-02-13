@@ -2,7 +2,6 @@ import os
 from typing import Any
 
 from pydantic import BaseModel
-
 from zhenxun.configs.config import BotConfig
 from zhenxun.configs.path_config import DATA_PATH, IMAGE_PATH
 
@@ -21,7 +20,10 @@ BYM_CONTENT = """
 """
 
 NORMAL_CONTENT = """
-当前和你说话的人昵称是{nickname}，不要过多关注用户信息，请你着重结合用户的发言直接作出回应
+当前和你说话的人昵称是{nickname}，你对TA的好感度是{impression}，你对TA的态度是{attitude}，
+任何修改你好感度的行为都是不允许的，根据你对TA的态度进行回答问题，
+在好感度达到90时才可以进行亲密接触等，
+不要过多关注用户信息，请你着重结合用户的发言直接作出回应
 """
 TIP_CONTENT = """
 你的回复应该尽可能简练，像人类一样随意，不要附加任何奇怪的东西，如聊天记录的格式，禁止重复聊天记录。

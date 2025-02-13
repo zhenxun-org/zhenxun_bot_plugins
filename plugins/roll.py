@@ -1,11 +1,15 @@
 import asyncio
 import random
 
-from nonebot import on_command
 from nonebot.plugin import PluginMetadata
-from nonebot_plugin_alconna import UniMsg
+from nonebot_plugin_alconna import (
+    Alconna,
+    Args,
+    MultiVar,
+    Query,
+    on_alconna,
+)
 from nonebot_plugin_session import EventSession
-
 from zhenxun.configs.config import BotConfig
 from zhenxun.configs.utils import Command, PluginExtraData
 from zhenxun.services.log import logger
@@ -29,20 +33,22 @@ __plugin_meta__ = PluginMetadata(
 )
 
 
-_matcher = on_command("roll", priority=5, block=True)
+_matcher = on_alconna(
+    Alconna("roll", Args["content?", MultiVar(str)]), priority=5, block=True
+)
 
 
 @_matcher.handle()
 async def _(
     session: EventSession,
-    message: UniMsg,
     user_name: str = UserName(),
+    content: Query[tuple[str, ...]] = Query("content", ()),
 ):
-    text = message.extract_plain_text().strip().replace("roll", "", 1).split()
-    if not text:
+    if not content.result:
         await MessageUtils.build_message(f"roll: {random.randint(0, 100)}").finish(
             reply_to=True
         )
+    user_name = user_name or "命定之人"
     await MessageUtils.build_message(
         random.choice(
             [
@@ -54,7 +60,7 @@ async def _(
         )
     ).send()
     await asyncio.sleep(1)
-    random_text = random.choice(text)
+    random_text = random.choice(content.result)
     await MessageUtils.build_message(
         random.choice(
             [
@@ -65,4 +71,4 @@ async def _(
             ]
         )
     ).send(reply_to=True)
-    logger.info(f"发送roll：{text}", "roll", session=session)
+    logger.info(f"发送roll：{content.result}", "roll", session=session)

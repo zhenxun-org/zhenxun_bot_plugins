@@ -6,7 +6,6 @@ from nonebot.plugin import PluginMetadata
 from nonebot_plugin_alconna import Image as alcImg
 from nonebot_plugin_alconna import UniMsg
 from nonebot_plugin_uninfo import Uninfo
-
 from zhenxun.configs.config import BotConfig, Config
 from zhenxun.configs.path_config import TEMP_PATH
 from zhenxun.configs.utils import PluginExtraData, RegisterConfig, Task
@@ -29,6 +28,7 @@ __plugin_meta__ = PluginMetadata(
         menu_type="其他",
         plugin_type=PluginType.DEPENDANT,
         tasks=[Task(module="fudu", name="复读")],
+        ignore_prompt=True,
         configs=[
             RegisterConfig(
                 key="FUDU_PROBABILITY",

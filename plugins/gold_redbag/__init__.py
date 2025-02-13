@@ -1,7 +1,9 @@
+import asyncio
 import contextlib
-from datetime import datetime, timedelta
+import random
 import time
 import uuid
+from datetime import datetime, timedelta
 
 from apscheduler.jobstores.base import JobLookupError
 from nonebot.adapters import Bot
@@ -24,7 +26,6 @@ from nonebot_plugin_alconna import (
 from nonebot_plugin_apscheduler import scheduler
 from nonebot_plugin_session import EventSession
 from nonebot_plugin_uninfo import Uninfo
-
 from zhenxun.configs.config import BotConfig
 from zhenxun.configs.utils import (
     Command,
@@ -276,13 +277,17 @@ async def _(
             if user_red_bag and (
                 data := await group_red_bag.settlement(user_id, session.platform)
             ):
+                if not data[0]:
+                    await MessageUtils.build_message(
+                        "金币红包的金币已经被抢完了..."
+                    ).finish(reply_to=True)
                 image_result = await user_red_bag.build_amount_rank(
                     rank_num, session.platform
                 )
                 logger.info(f"退回了红包 {data[0]} 金币", "红包退回", session=session)
                 await MessageUtils.build_message(
                     [
-                        f"已成功退还了 " f"{data[0]} 金币\n",
+                        f"已成功退还了 {data[0]} 金币\n",
                         image_result,
                     ]
                 ).finish(reply_to=True)
@@ -356,6 +361,13 @@ async def _(
                         image_result,
                     ]
                 ).send(target=target, bot=bot)
+                rand = random.randint(3, 10)
+                logger.debug(
+                    f"随机等待 {rand} 秒后发送节日红包图片信息...",
+                    "节日红包",
+                    session=session,
+                )
+                await asyncio.sleep(rand)
                 _suc_cnt += 1
                 logger.debug("节日红包图片信息发送成功...", "节日红包", group_id=g)
             except ActionFailed:
