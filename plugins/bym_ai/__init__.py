@@ -3,7 +3,7 @@ from pathlib import Path
 import random
 
 from nonebot import on_message
-from nonebot.adapters import Event
+from nonebot.adapters import Event, Bot
 from nonebot.plugin import PluginMetadata
 from nonebot_plugin_alconna import UniMsg, Voice
 from nonebot_plugin_uninfo import Uninfo
@@ -63,6 +63,13 @@ __plugin_meta__ = PluginMetadata(
                 type=float,
             ),
             RegisterConfig(
+                key="BYM_AI_CHAT_SMART",
+                value=False,
+                help="是否开启智能模式",
+                default_value=False,
+                type=bool,
+            ),
+            RegisterConfig(
                 key="BYM_AI_TTS_URL",
                 value=None,
                 help="tts接口地址",
@@ -106,36 +113,39 @@ _matcher = on_message(priority=998, rule=rule)
 
 
 @_matcher.handle(parameterless=[CheckConfig(config="BYM_AI_CHAT_TOKEN")])
-async def _(event: Event, message: UniMsg, session: Uninfo, uname: str = UserName()):
+async def _(bot: Bot, event: Event, message: UniMsg, session: Uninfo, uname: str = UserName()):
     if not message.extract_plain_text().strip():
         if event.is_tome():
             await MessageUtils.build_message(ChatManager.hello()).finish()
         return
     group_id = session.group.id if session.group else None
     is_bym = not event.is_tome()
-    result = await ChatManager.get_result(
-        session.user.id, group_id, uname, message, is_bym
+    results = ChatManager.get_result(
+        bot, event, session.user.id, group_id, uname, message, is_bym
     )
-    if is_bym:
-        """伪人回复，切割文本"""
-        if result:
-            for r, delay in split_text(result):
-                await MessageUtils.build_message(r).send()
-                await asyncio.sleep(delay)
-    else:
-        if not result:
-            await MessageUtils.build_message(ChatManager.no_result()).finish()
-        await MessageUtils.build_message(result).send(reply_to=True)
-        if tts_data := await ChatManager.tts(result):
-            await MessageUtils.build_message(Voice(raw=tts_data)).send()
-        if plain_text := message.extract_plain_text():
-            await BymChat.create(
-                user_id=session.user.id,
-                group_id=group_id,
-                plain_text=plain_text,
-                result=result,
-            )
-    logger.info(f"BYM AI 问题: {message} | 回答: {result}", "BYM AI", session=session)
+    async for result in results:
+        if is_bym:
+            """伪人回复，切割文本"""
+            if result:
+                for r, delay in split_text(result):
+                    await MessageUtils.build_message(r).send()
+                    await asyncio.sleep(delay)
+        else:
+            if result:
+                await MessageUtils.build_message(result).send(reply_to=bool(group_id))
+                if tts_data := await ChatManager.tts(result):
+                    await MessageUtils.build_message(Voice(raw=tts_data)).send()
+            else:
+                if not base_config.get("BYM_AI_CHAT_SMART"):
+                    await MessageUtils.build_message(ChatManager.no_result()).finish()
+            if plain_text := message.extract_plain_text():
+              await BymChat.create(
+                  user_id=session.user.id,
+                  group_id=group_id,
+                  plain_text=plain_text,
+                  result=result,
+              )
+        logger.info(f"BYM AI 问题: {message} | 回答: {result}", "BYM AI", session=session)    
 
 
 RESOURCE_FILE = IMAGE_PATH / "shop_icon" / "reload_ai_card.png"
