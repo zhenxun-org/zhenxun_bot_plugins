@@ -1,5 +1,6 @@
 import nonebot
 from nonebot.drivers import Driver
+
 from zhenxun.configs.config import BotConfig
 from zhenxun.utils.decorator.shop import shop_register
 
@@ -15,5 +16,5 @@ driver: Driver = nonebot.get_driver()
     icon="reload_ai_card.png",
 )
 async def _(user_id: str):
-    Conversation.reset(user_id)
+    await Conversation.reset(user_id)
     return f"{BotConfig.self_nickname}忘记了你之前说过的话，仿佛一切可以重新开始..."
