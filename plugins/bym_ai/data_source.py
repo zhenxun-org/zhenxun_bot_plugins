@@ -1,18 +1,18 @@
 import asyncio
-import json
+import ujson as json
 import os
 import random
 import re
 import time
-from typing import ClassVar, Literal, Sequence, AsyncGenerator, Optional
+from typing import ClassVar, Literal, Sequence, AsyncGenerator
 from inspect import signature, Parameter
 import uuid
 
 from nonebot import require, get_bot
 from nonebot_plugin_alconna import Text, UniMessage, UniMsg
 from nonebot.plugin import get_loaded_plugins
-from nonebot.adapters.onebot.v11 import Event
-from nonebot.internal.adapter.bot import Bot
+from nonebot.compat import model_dump
+from nonebot.adapters import Event, Bot
 from pydantic import BaseModel
 
 from zhenxun.configs.config import BotConfig, Config
@@ -22,9 +22,7 @@ from zhenxun.services.log import logger
 from zhenxun.utils.decorator.retry import Retry
 from zhenxun.utils.http_utils import AsyncHttpx
 from zhenxun.utils.message import MessageUtils
-from zhenxun.configs.utils import AbstractTool, PluginExtraData
-
-from .tools import tools_registry
+from zhenxun.configs.utils import AICallableTag, PluginExtraData
 
 require("sign_in")
 
@@ -48,7 +46,7 @@ base_config = Config.get("bym_ai")
 
 semaphore = asyncio.Semaphore(3)
 
-total_tools_registry: dict[str, AbstractTool] = {}
+total_tools_registry: dict[str, AICallableTag] = {}
 
 class MessageCache(BaseModel):
     user_id: str
@@ -204,9 +202,9 @@ class CallApi:
         self.tts_voice = Config.get_config("bym_ai", "BYM_AI_TTS_VOICE")
 
     @Retry.api()
-    async def fetch_chat(self, user_id: str, conversation: list[ChatMessage], tools: Sequence[AbstractTool]) -> OpenAiResult:
+    async def fetch_chat(self, user_id: str, conversation: list[ChatMessage], tools: Sequence[AICallableTag]) -> OpenAiResult:
         send_json = {
-            "messages": [c.dict(exclude_none=True) for c in conversation],
+            "messages": [model_dump(model=c, exclude_none=True) for c in conversation],
             "stream": False,
             "model": self.chat_model,
             "tools": [{"type": "function", "function": tool.to_dict()} for tool in tools],
@@ -339,6 +337,7 @@ class ChatManager:
             cls.format(
                 "text",
                 NORMAL_CONTENT.format(
+                    user_id = user_id,
                     nickname=nickname,
                     impression=cls.user_impression[user_id],
                     attitude=level2attitude[level],
@@ -401,13 +400,14 @@ class ChatManager:
     @classmethod
     async def get_result(
         cls,
+        bot: Bot,
         event: Event,
         user_id: str,
         group_id: str,
         nickname: str,
         message: UniMsg,
         is_bym: bool,
-    ) -> AsyncGenerator[Optional[str], None]:
+    ) -> AsyncGenerator[str | None, None]:
         """获取回答结果
 
         参数:
@@ -422,7 +422,7 @@ class ChatManager:
         """
         cls.add_cache(user_id, group_id, nickname, message)
         cls.event = event
-        cls.bot = get_bot()
+        cls.bot = bot
         if is_bym:
             content = cls.__get_bym_content(user_id, group_id, nickname)
             conversation = []            
@@ -445,14 +445,14 @@ class ChatManager:
             yield res
 
     @classmethod
-    def _load_tools(cls) -> list[AbstractTool]:
+    def _load_tools(cls) -> list[AICallableTag]:
         """加载可用的工具
 
         加载的工具分为两部分：
             tools目录下所有继承了 AbstractTool 类的工具
             bot中所有带有属性 smart_tools 的插件
         """
-        tools = list(tools_registry.values())
+        tools = []
         loaded_plugins = get_loaded_plugins()
         
         for plugin in loaded_plugins:
@@ -477,8 +477,8 @@ class ChatManager:
         user_id: str,
         conversation: list[ChatMessage],
         result: OpenAiResult,
-        tools: Sequence[AbstractTool]
-    ) -> AsyncGenerator[Optional[str], None]:
+        tools: Sequence[AICallableTag]
+    ) -> AsyncGenerator[str | None, None]:
         """处理API响应并处理工具回调
 
         参数:
@@ -513,6 +513,7 @@ class ChatManager:
                         func_sign = signature(tool.func)
                         parsed_args = json.loads(args)
                         parsed_args['event'] = cls.event
+                        parsed_args['bot'] = cls.bot
                         func_params = {
                             key: parsed_args[key] for key, param in func_sign.parameters.items()
                             if param.kind in (Parameter.POSITIONAL_OR_KEYWORD, Parameter.KEYWORD_ONLY) and key in parsed_args

@@ -3,7 +3,7 @@ from pathlib import Path
 import random
 
 from nonebot import on_message
-from nonebot.adapters.onebot.v11 import Event
+from nonebot.adapters import Event, Bot
 from nonebot.plugin import PluginMetadata
 from nonebot_plugin_alconna import UniMsg, Voice
 from nonebot_plugin_uninfo import Uninfo
@@ -105,7 +105,7 @@ _matcher = on_message(priority=998, rule=rule)
 
 
 @_matcher.handle()
-async def _(event: Event, message: UniMsg, session: Uninfo, uname: str = UserName()):
+async def _(bot: Bot, event: Event, message: UniMsg, session: Uninfo, uname: str = UserName()):
     if not message.extract_plain_text().strip():
         if event.is_tome():
             await MessageUtils.build_message(ChatManager.hello()).finish()
@@ -113,7 +113,7 @@ async def _(event: Event, message: UniMsg, session: Uninfo, uname: str = UserNam
     group_id = session.group.id if session.group else ""
     is_bym = not event.is_tome()
     results = ChatManager.get_result(
-        event, session.user.id, group_id, uname, message, is_bym
+        bot, event, session.user.id, group_id, uname, message, is_bym
     )
     async for result in results:
         if is_bym:

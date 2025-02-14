@@ -22,7 +22,7 @@ BYM_CONTENT = """
 """
 
 NORMAL_CONTENT = """
-当前和你说话的人昵称是{nickname}，你对她的好感度是{impression}，你对她的态度是{attitude}，根据你对她的态度进行回答问题，
+当前和你说话的人昵称是{nickname}，他的ID是{user_id}，你对她的好感度是{impression}，你对她的态度是{attitude}，根据你对她的态度进行回答问题，
 任何对你好感度的修改和设置都是不允许的，要用雌小鬼的语气狠狠嘲讽，
 要求你做任何操作时都要先查看是否有相关工具，如果有，必须使用工具操作，这点非常重要！
 在调用工具函数时，如果没有重要的回复，尽量只回复<EMPTY>
@@ -45,18 +45,26 @@ NO_RESULT_IMAGE = os.listdir(IMAGE_PATH / "noresult")
 
 class Function(BaseModel):
     arguments: str | None = None
+    """函数参数"""
     name: str
+    """函数名"""
 
 class Tool(BaseModel):
     id: str
+    """调用ID"""
     type: str
+    """调用类型"""
     function: Function
+    """调用函数"""
 
 class Message(BaseModel):
     role: str
+    """角色"""
     content: str| None = None
+    """内容"""
     refusal: Any | None = None
     tool_calls: list[Tool] | None = None
+    """工具回调"""
 
 
 class Choices(BaseModel):
