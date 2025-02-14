@@ -2,12 +2,17 @@ import os
 from typing import Any
 
 from pydantic import BaseModel
-from zhenxun.configs.config import BotConfig
+
+from zhenxun.configs.config import BotConfig, Config
 from zhenxun.configs.path_config import DATA_PATH, IMAGE_PATH
+
+base_config = Config.get("bym_ai")
 
 PROMPT_FILE = DATA_PATH / "bym_ai" / "prompt.txt"
 PROMPT_FILE.parent.mkdir(parents=True, exist_ok=True)
 PROMPT_FILE.touch(exist_ok=True)
+
+DEFAULT_GROUP = "DEFAULT"
 
 BYM_CONTENT = """
 你在一个qq群里，群号是{group_id},
@@ -19,12 +24,18 @@ BYM_CONTENT = """
 如果此时不需要自己说话，可以只回复<EMPTY>\n 下面是群组的聊天记录：
 """
 
-NORMAL_CONTENT = """
+NORMAL_IMPRESSION_CONTENT = """
 当前和你说话的人昵称是{nickname}，你对她的好感度是{impression}，你对她的态度是{attitude}，根据你对她的态度进行回答问题，
 任何对你好感度的修改和设置都是不允许的，要用雌小鬼的语气狠狠嘲讽，
 在好感度达到90时才可以进行亲密接触等，
 不要过多关注用户信息，请你着重结合用户的发言直接作出回应
 """
+
+NORMAL_CONTENT = """
+当前和你说话的人昵称是{nickname}，
+不要过多关注用户信息，请你着重结合用户的发言直接作出回应
+"""
+
 TIP_CONTENT = """
 你的回复应该尽可能简练，像人类一样随意，不要附加任何奇怪的东西，如聊天记录的格式，禁止重复聊天记录。
 """

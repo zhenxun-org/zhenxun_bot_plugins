@@ -13,11 +13,12 @@ from zhenxun.configs.path_config import IMAGE_PATH
 from zhenxun.configs.utils import PluginExtraData, RegisterConfig
 from zhenxun.services.log import logger
 from zhenxun.services.plugin_init import PluginInit
-from zhenxun.utils.depends import UserName
+from zhenxun.utils.depends import CheckConfig, UserName
 from zhenxun.utils.message import MessageUtils
 
 from .data_source import ChatManager, base_config, split_text
 from .goods_register import driver  # noqa: F401
+from .model import BymChat
 
 __plugin_meta__ = PluginMetadata(
     name="BYM_AI",
@@ -76,6 +77,13 @@ __plugin_meta__ = PluginMetadata(
                 value=None,
                 help="tts接口音色",
             ),
+            RegisterConfig(
+                key="ENABLE_IMPRESSION",
+                value=True,
+                help="使用签到数据作为基础好感度",
+                default_value=True,
+                type=bool,
+            ),
         ],
     ).dict(),
 )
@@ -97,13 +105,13 @@ async def rule(event: Event, session: Uninfo) -> bool:
 _matcher = on_message(priority=998, rule=rule)
 
 
-@_matcher.handle()
+@_matcher.handle(parameterless=[CheckConfig(config="BYM_AI_CHAT_TOKEN")])
 async def _(event: Event, message: UniMsg, session: Uninfo, uname: str = UserName()):
     if not message.extract_plain_text().strip():
         if event.is_tome():
             await MessageUtils.build_message(ChatManager.hello()).finish()
         return
-    group_id = session.group.id if session.group else ""
+    group_id = session.group.id if session.group else None
     is_bym = not event.is_tome()
     result = await ChatManager.get_result(
         session.user.id, group_id, uname, message, is_bym
@@ -116,10 +124,17 @@ async def _(event: Event, message: UniMsg, session: Uninfo, uname: str = UserNam
                 await asyncio.sleep(delay)
     else:
         if not result:
-            return MessageUtils.build_message(ChatManager.no_result()).finish()
-        await MessageUtils.build_message(result).send()
+            await MessageUtils.build_message(ChatManager.no_result()).finish()
+        await MessageUtils.build_message(result).send(reply_to=True)
         if tts_data := await ChatManager.tts(result):
             await MessageUtils.build_message(Voice(raw=tts_data)).send()
+        if plain_text := message.extract_plain_text():
+            await BymChat.create(
+                user_id=session.user.id,
+                group_id=group_id,
+                plain_text=plain_text,
+                result=result,
+            )
     logger.info(f"BYM AI 问题: {message} | 回答: {result}", "BYM AI", session=session)
 
 

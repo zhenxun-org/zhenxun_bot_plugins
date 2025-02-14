@@ -9,6 +9,7 @@ from nonebot import require
 from nonebot.compat import model_dump
 from nonebot_plugin_alconna import Text, UniMessage, UniMsg
 from pydantic import BaseModel
+
 from zhenxun.configs.config import BotConfig, Config
 from zhenxun.configs.path_config import IMAGE_PATH
 from zhenxun.models.sign_user import SignUser
@@ -16,6 +17,8 @@ from zhenxun.services.log import logger
 from zhenxun.utils.decorator.retry import Retry
 from zhenxun.utils.http_utils import AsyncHttpx
 from zhenxun.utils.message import MessageUtils
+
+from .model import BymChat
 
 require("sign_in")
 
@@ -26,15 +29,16 @@ from zhenxun.builtin_plugins.sign_in.utils import (
 
 from .config import (
     BYM_CONTENT,
+    DEFAULT_GROUP,
     NO_RESULT,
     NO_RESULT_IMAGE,
     NORMAL_CONTENT,
+    NORMAL_IMPRESSION_CONTENT,
     PROMPT_FILE,
     TIP_CONTENT,
     OpenAiResult,
+    base_config,
 )
-
-base_config = Config.get("bym_ai")
 
 semaphore = asyncio.Semaphore(3)
 
@@ -123,7 +127,39 @@ class Conversation:
     chat_prompt: str = ""
 
     @classmethod
-    def get_conversation(cls, user_id: str) -> list[ChatMessage]:
+    def add_system(cls) -> ChatMessage:
+        """添加系统预设"""
+        if not cls.chat_prompt:
+            cls.chat_prompt = PROMPT_FILE.open(encoding="utf8").read()
+        return ChatMessage(role="system", content=cls.chat_prompt)
+
+    @classmethod
+    async def get_db_data(cls, user_id: str) -> list[ChatMessage]:
+        """从数据库获取记录
+
+        参数:
+            user_id: 用户id
+
+        返回:
+            list[ChatMessage]: 记录列表
+        """
+        conversation = []
+        for db_data in (
+            await BymChat.filter(user_id=user_id).order_by("-id").limit(40).all()
+        ):
+            if db_data.is_reset:
+                break
+            conversation.extend(
+                (
+                    ChatMessage(role="assistant", content=db_data.result),
+                    ChatMessage(role="user", content=db_data.plain_text),
+                )
+            )
+        conversation.reverse()
+        return conversation
+
+    @classmethod
+    async def get_conversation(cls, user_id: str) -> list[ChatMessage]:
         """获取预设
 
         参数:
@@ -133,12 +169,13 @@ class Conversation:
             list[ChatMessage]: 预设数据
         """
         conversation = []
-        if not cls.chat_prompt:
-            cls.chat_prompt = PROMPT_FILE.open(encoding="utf8").read()
         if user_id in cls.history_data:
             conversation = cls.history_data[user_id]
-        elif cls.chat_prompt:
-            conversation.append(ChatMessage(role="system", content=cls.chat_prompt))
+        else:
+            # 尝试从数据库中获取历史对话
+            conversation = await cls.get_db_data(user_id)
+        if not conversation or conversation[0].role != "system":
+            conversation.insert(0, cls.add_system())
         return conversation
 
     @classmethod
@@ -154,13 +191,17 @@ class Conversation:
         cls.history_data[user_id] = conversation
 
     @classmethod
-    def reset(cls, user_id: str):
+    async def reset(cls, user_id: str):
         """重置预设
 
         参数:
             user_id: 用户id
         """
-        cls.history_data[user_id] = []
+        if db_data := await BymChat.filter(user_id=user_id).order_by("-id").first():
+            db_data.is_reset = True
+            await db_data.save(update_fields=["is_reset"])
+        if user_id in cls.history_data:
+            del cls.history_data[user_id]
 
 
 class CallApi:
@@ -175,7 +216,7 @@ class CallApi:
 
     @Retry.api()
     async def fetch_chat(self, user_id: str, content: list):
-        conversation = Conversation.get_conversation(user_id)
+        conversation = await Conversation.get_conversation(user_id)
         conversation.append(ChatMessage(role="user", content=content))
 
         send_json = {
@@ -307,10 +348,14 @@ class ChatManager:
             0,
             cls.format(
                 "text",
-                NORMAL_CONTENT.format(
+                NORMAL_IMPRESSION_CONTENT.format(
                     nickname=nickname,
                     impression=cls.user_impression[user_id],
                     attitude=level2attitude[level],
+                )
+                if base_config.get("ENABLE_IMPRESSION")
+                else NORMAL_CONTENT.format(
+                    nickname=nickname,
                 ),
             ),
         )
@@ -318,7 +363,7 @@ class ChatManager:
 
     @classmethod
     def __get_bym_content(
-        cls, user_id: str, group_id: str, nickname: str
+        cls, user_id: str, group_id: str | None, nickname: str
     ) -> list[dict[str, str]]:
         """获取伪人回答文本内容
 
@@ -330,6 +375,8 @@ class ChatManager:
         返回:
             list[dict[str, str]]: 文本序列
         """
+        if not group_id:
+            group_id = DEFAULT_GROUP
         content = [
             cls.format(
                 "text",
@@ -348,7 +395,9 @@ class ChatManager:
         return content
 
     @classmethod
-    def add_cache(cls, user_id: str, group_id: str, nickname: str, message: UniMsg):
+    def add_cache(
+        cls, user_id: str, group_id: str | None, nickname: str, message: UniMsg
+    ):
         """添加消息缓存
 
         参数:
@@ -357,6 +406,8 @@ class ChatManager:
             nickname: 用户昵称
             message: 消息内容
         """
+        if not group_id:
+            group_id = DEFAULT_GROUP
         message_cache = MessageCache(
             user_id=user_id, nickname=nickname, message=message
         )
@@ -370,7 +421,7 @@ class ChatManager:
     async def get_result(
         cls,
         user_id: str,
-        group_id: str,
+        group_id: str | None,
         nickname: str,
         message: UniMsg,
         is_bym: bool,
