@@ -9,11 +9,11 @@ from nonebot import require
 from nonebot.compat import model_dump
 from nonebot_plugin_alconna import Text, UniMessage, UniMsg
 from pydantic import BaseModel
-
 from zhenxun.configs.config import BotConfig, Config
 from zhenxun.configs.path_config import IMAGE_PATH
 from zhenxun.models.sign_user import SignUser
 from zhenxun.services.log import logger
+from zhenxun.utils.decorator.retry import Retry
 from zhenxun.utils.http_utils import AsyncHttpx
 from zhenxun.utils.message import MessageUtils
 
@@ -173,6 +173,7 @@ class CallApi:
         self.tts_token = Config.get_config("bym_ai", "BYM_AI_TTS_TOKEN")
         self.tts_voice = Config.get_config("bym_ai", "BYM_AI_TTS_VOICE")
 
+    @Retry.api()
     async def fetch_chat(self, user_id: str, content: list):
         conversation = Conversation.get_conversation(user_id)
         conversation.append(ChatMessage(role="user", content=content))
@@ -209,6 +210,7 @@ class CallApi:
             Conversation.set_history(user_id, conversation)
         return assistant_reply
 
+    @Retry.api()
     async def fetch_tts(
         self, content: str, retry_count: int = 3, delay: int = 5
     ) -> bytes | None:
@@ -300,6 +302,7 @@ class ChatManager:
             sign_user = await SignUser.get_user(user_id)
             cls.user_impression[user_id] = float(sign_user.impression)
         level, _, _ = get_level_and_next_impression(cls.user_impression[user_id])
+        level = "1" if level == "0" else level
         content.insert(
             0,
             cls.format(
