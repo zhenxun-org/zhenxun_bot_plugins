@@ -4,7 +4,6 @@ import uuid
 
 import nonebot
 from nonebot import get_loaded_plugins
-from nonebot.compat import model_dump
 from nonebot.utils import is_coroutine_callable
 import ujson as json
 
@@ -52,17 +51,18 @@ class AiCallTool:
             list[ChatMessage]: 聊天列表
         """
         temp_conversation = []
+        # 去重，避免函数多次调用
+        tool_calls = list({tool.function.name: tool for tool in tool_calls}.values())
         for tool_call in tool_calls:
             if not tool_call.id:
                 tool_call.id = str(uuid.uuid4())
             func = tool_call.function
             tool = cls.tools.get(func.name)
-            args = func.arguments
             if tool and tool.func:
                 func_sign = signature(tool.func)
 
-                parsed_args = model_dump(func_param)
-                if args:
+                parsed_args = func_param.to_dict()
+                if args := func.arguments:
                     parsed_args.update(json.loads(args))
 
                 func_params = {

@@ -170,7 +170,12 @@ async def _(
             logger.error("BYM AI 请求失败", "BYM_AI", session=session, e=e)
             await MessageUtils.build_message(
                 f"请求失败了哦，code: {e.response.status_code}"
-            ).finish()
+            ).finish(reply_to=True)
+        except Exception as e:
+            logger.error("BYM AI 其他错误", "BYM_AI", session=session, e=e)
+            await MessageUtils.build_message("发生了一些异常，想要休息一下...").finish(
+                reply_to=True
+            )
 
 
 RESOURCE_FILE = IMAGE_PATH / "shop_icon" / "reload_ai_card.png"

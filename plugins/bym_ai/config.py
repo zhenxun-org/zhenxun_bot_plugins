@@ -75,6 +75,15 @@ class FunctionParam(BaseModel):
     class Config:
         arbitrary_types_allowed = True
 
+    def to_dict(self):
+        return {
+            "bot": self.bot,
+            "event": self.event,
+            "arparma": self.arparma,
+            "session": self.session,
+            "message": self.message,
+        }
+
 
 class Function(BaseModel):
     arguments: str | None = None
