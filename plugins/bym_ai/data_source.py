@@ -220,17 +220,30 @@ class Conversation:
             cls.history_data[user_id] = conversation
 
     @classmethod
-    async def reset(cls, user_id: str):
+    async def reset(cls, user_id: str, group_id: str | None):
         """重置预设
 
         参数:
             user_id: 用户id
         """
-        if db_data := await BymChat.filter(user_id=user_id).order_by("-id").first():
-            db_data.is_reset = True
-            await db_data.save(update_fields=["is_reset"])
-        if user_id in cls.history_data:
-            del cls.history_data[user_id]
+        if base_config.get("ENABLE_GROUP_CHAT") and group_id:
+            # 群组内重置
+            if (
+                db_data := await BymChat.filter(group_id=group_id)
+                .order_by("-id")
+                .first()
+            ):
+                db_data.is_reset = True
+                await db_data.save(update_fields=["is_reset"])
+            if group_id in cls.history_data:
+                del cls.history_data[group_id]
+        elif user_id:
+            # 个人重置
+            if db_data := await BymChat.filter(user_id=user_id).order_by("-id").first():
+                db_data.is_reset = True
+                await db_data.save(update_fields=["is_reset"])
+            if user_id in cls.history_data:
+                del cls.history_data[user_id]
 
 
 class CallApi:
