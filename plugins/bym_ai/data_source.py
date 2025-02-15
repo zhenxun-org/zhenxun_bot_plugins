@@ -91,6 +91,10 @@ def remove_deep_seek(text: str) -> str:
     """去除深度探索"""
     if DEEP_SEEK_SPLIT in text:
         return text.split(DEEP_SEEK_SPLIT, 1)[-1].strip()
+    if match := re.search(r"```text\n([\s\S]*?)\n```", text, re.DOTALL):
+        text = match[1]
+    if text.endswith("```"):
+        text = text[:-3].strip()
     return re.sub(r"深度思考：[\s\S]*?\n\s*\n", "", text).strip()
 
 
@@ -146,20 +150,16 @@ class Conversation:
             list[ChatMessage]: 记录列表
         """
         conversation = []
-        if base_config.get("ENABLE_GROUP_CHAT") and group_id:
-            db_data_list = (
-                await BymChat.filter(group_id=group_id)
-                .order_by("-id")
-                .limit(base_config.get("CACHE_SIZE"))
-                .all()
-            )
+        enable_group_chat = base_config.get("ENABLE_GROUP_CHAT")
+        if enable_group_chat and group_id:
+            db_filter = BymChat.filter(group_id=group_id)
+        elif enable_group_chat:
+            db_filter = BymChat.filter(user_id=user_id, group_id=None)
         else:
-            db_data_list = (
-                await BymChat.filter(user_id=user_id)
-                .order_by("-id")
-                .limit(base_config.get("CACHE_SIZE"))
-                .all()
-            )
+            db_filter = BymChat.filter(user_id=user_id)
+        db_data_list = (
+            await db_filter.order_by("-id").limit(base_config.get("CACHE_SIZE")).all()
+        )
         for db_data in db_data_list:
             if db_data.is_reset:
                 break

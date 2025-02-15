@@ -3,7 +3,6 @@ from pathlib import Path
 import random
 
 from httpx import HTTPStatusError
-from nonebot import on_message
 from nonebot.adapters import Bot, Event
 from nonebot.plugin import PluginMetadata
 from nonebot_plugin_alconna import Alconna, Arparma, UniMsg, Voice, on_alconna
@@ -185,19 +184,24 @@ async def _(
             )
 
 
-RESOURCE_FILE = IMAGE_PATH / "shop_icon" / "reload_ai_card.png"
+RESOURCE_FILES = [
+    IMAGE_PATH / "shop_icon" / "reload_ai_card.png",
+    IMAGE_PATH / "shop_icon" / "reload_ai_card1.png",
+]
 
 
 class MyPluginInit(PluginInit):
     async def install(self):
-        res = Path(__file__).parent / "reload_ai_card.png"
-        if res.exists():
-            if RESOURCE_FILE.exists():
-                RESOURCE_FILE.unlink()
-            res.rename(RESOURCE_FILE)
-            logger.info(f"更新 BYM_AI 资源文件成功 {res} -> {RESOURCE_FILE}")
+        for res_file in RESOURCE_FILES:
+            res = Path(__file__).parent / res_file.name
+            if res.exists():
+                if res_file.exists():
+                    res_file.unlink()
+                res.rename(res_file)
+                logger.info(f"更新 BYM_AI 资源文件成功 {res} -> {res_file}")
 
     async def remove(self):
-        if RESOURCE_FILE.exists():
-            RESOURCE_FILE.unlink()
-            logger.info(f"删除 BYM_AI 资源文件成功 {RESOURCE_FILE}")
+        for res_file in RESOURCE_FILES:
+            if res_file.exists():
+                res_file.unlink()
+                logger.info(f"删除 BYM_AI 资源文件成功 {res_file}")
