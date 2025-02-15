@@ -1,29 +1,27 @@
 import asyncio
-import ujson as json
+from collections.abc import Sequence
 import os
 import random
 import re
 import time
-from typing import ClassVar, Literal, Sequence, AsyncGenerator
-from inspect import signature, Parameter
-import uuid
+from typing import ClassVar, Literal
 
-from nonebot import require, get_bot
-from nonebot_plugin_alconna import Text, UniMessage, UniMsg
-from nonebot.plugin import get_loaded_plugins
+from nonebot import require
+from nonebot.adapters import Bot
 from nonebot.compat import model_dump
-from nonebot.adapters import Event, Bot
-from pydantic import BaseModel
+from nonebot_plugin_alconna import Text, UniMessage, UniMsg
+from nonebot_plugin_uninfo import Uninfo
 
 from zhenxun.configs.config import BotConfig, Config
 from zhenxun.configs.path_config import IMAGE_PATH
+from zhenxun.configs.utils import AICallableTag
 from zhenxun.models.sign_user import SignUser
 from zhenxun.services.log import logger
 from zhenxun.utils.decorator.retry import Retry
 from zhenxun.utils.http_utils import AsyncHttpx
 from zhenxun.utils.message import MessageUtils
-from zhenxun.configs.utils import AICallableTag, PluginExtraData
 
+from .call_tool import AiCallTool
 from .model import BymChat
 
 require("sign_in")
@@ -35,6 +33,7 @@ from zhenxun.builtin_plugins.sign_in.utils import (
 
 from .config import (
     BYM_CONTENT,
+    DEEP_SEEK_SPLIT,
     DEFAULT_GROUP,
     NO_RESULT,
     NO_RESULT_IMAGE,
@@ -42,46 +41,23 @@ from .config import (
     NORMAL_IMPRESSION_CONTENT,
     PROMPT_FILE,
     TIP_CONTENT,
-    Tool,
+    ChatMessage,
+    FunctionParam,
+    MessageCache,
     OpenAiResult,
     base_config,
 )
 
 semaphore = asyncio.Semaphore(3)
 
-total_tools_registry: dict[str, AICallableTag] = {}
-
-class MessageCache(BaseModel):
-    user_id: str
-    """用户id"""
-    nickname: str
-    """用户昵称"""
-    message: UniMsg
-    """消息"""
-
-    class Config:
-        arbitrary_types_allowed = True
-
-
-class ChatMessage(BaseModel):
-    role: str
-    """角色"""
-    content: str | list | None = None
-    """消息内容"""
-    tool_call_id: str | None = None
-    """工具回调id"""
-    tool_calls: list[Tool] | None = None
-    """工具回调信息"""
-
-    class Config:
-        arbitrary_types_allowed = True
-
 
 def split_text(text: str) -> list[tuple[str, float]]:
     """文本切割"""
     results = []
     split_list = [
-        s for s in __split_text(text, r"(?<!\?)[。？\n](?!\?)", 3) if s.strip() and s != "<EMPTY>"
+        s
+        for s in __split_text(text, r"(?<!\?)[。？\n](?!\?)", 3)
+        if s.strip() and s != "<EMPTY>"
     ]
     for r in split_list:
         next_char_index = text.find(r) + len(r)
@@ -106,20 +82,16 @@ def __split_text(text: str, regex: str, limit: int) -> list[str]:
     result.append(text[last_index:])
     return result
 
-def _filter_result(result: str | None):
-    if not result:
-        return result
-    
-    result = result.replace('<EMPTY>', '')
-    
-    # 去掉首尾的空白字符
-    result = result.strip()
-    
-    # 如果过滤后的结果为空字符串，则返回 None
-    if not result:
-        return None
-    
-    return result
+
+def _filter_result(result: str) -> str:
+    return result.replace("<EMPTY>", "").strip()
+
+
+def remove_deep_seek(text: str) -> str:
+    """去除深度探索"""
+    if DEEP_SEEK_SPLIT in text:
+        return text.split(DEEP_SEEK_SPLIT, 1)[-1].strip()
+    return re.sub(r"深度思考：[\s\S]*?\n\s*\n", "", text).strip()
 
 
 class TokenCounter:
@@ -172,7 +144,10 @@ class Conversation:
         """
         conversation = []
         for db_data in (
-            await BymChat.filter(user_id=user_id).order_by("-id").limit(40).all()
+            await BymChat.filter(user_id=user_id)
+            .order_by("-id")
+            .limit(base_config.get("CACHE_SIZE"))
+            .all()
         ):
             if db_data.is_reset:
                 break
@@ -186,7 +161,7 @@ class Conversation:
         return conversation
 
     @classmethod
-    async def get_conversation(cls, user_id: str) -> list[ChatMessage]:
+    async def get_conversation(cls, user_id: str | None) -> list[ChatMessage]:
         """获取预设
 
         参数:
@@ -196,13 +171,15 @@ class Conversation:
             list[ChatMessage]: 预设数据
         """
         conversation = []
-        if user_id in cls.history_data:
-            conversation = cls.history_data[user_id]
-        else:
-            # 尝试从数据库中获取历史对话
-            conversation = await cls.get_db_data(user_id)
-        if not conversation or conversation[0].role != "system":
-            conversation.insert(0, cls.add_system())
+        if user_id:
+            if user_id in cls.history_data:
+                conversation = cls.history_data[user_id]
+            else:
+                # 尝试从数据库中获取历史对话
+                conversation = await cls.get_db_data(user_id)
+        # 必须带有人设
+        conversation = [c for c in conversation if c.role != "system"]
+        conversation.append(cls.add_system())
         return conversation
 
     @classmethod
@@ -213,8 +190,9 @@ class Conversation:
             user_id: 用户id
             conversation: 消息记录
         """
-        if len(conversation) > 40:
-            conversation = [conversation[0]] + conversation[-39:]
+        cache_size = base_config.get("CACHE_SIZE")
+        if len(conversation) > cache_size:
+            conversation = conversation[-cache_size:]
         cls.history_data[user_id] = conversation
 
     @classmethod
@@ -242,16 +220,28 @@ class CallApi:
         self.tts_voice = Config.get_config("bym_ai", "BYM_AI_TTS_VOICE")
 
     @Retry.api()
-    async def fetch_chat(self, user_id: str, conversation: list[ChatMessage], tools: Sequence[AICallableTag]) -> OpenAiResult:
+    async def fetch_chat(
+        self,
+        user_id: str,
+        conversation: list[ChatMessage],
+        tools: Sequence[AICallableTag] | None,
+    ) -> OpenAiResult:
         send_json = {
-            "messages": [model_dump(model=c, exclude_none=True) for c in conversation],
+            "messages": [
+                model_dump(model=c, exclude_none=True)
+                for c in conversation
+                if c.content
+            ],
             "stream": False,
             "model": self.chat_model,
-            "tools": [{"type": "function", "function": tool.to_dict()} for tool in tools],
-            "tool_choice": "auto",
             "temperature": 0.7,
         }
-                
+        if tools:
+            send_json["tools"] = [
+                {"type": "function", "function": tool.to_dict()} for tool in tools
+            ]
+            send_json["tool_choice"] = "auto"
+
         response = await AsyncHttpx.post(
             self.chat_url,
             headers={
@@ -259,7 +249,7 @@ class CallApi:
                 "Authorization": f"Bearer {self.chat_token}",
             },
             json=send_json,
-            verify=False
+            verify=False,
         )
 
         if response.status_code == 429:
@@ -314,8 +304,6 @@ class CallApi:
 class ChatManager:
     group_cache: ClassVar[dict[str, list[MessageCache]]] = {}
     user_impression: ClassVar[dict[str, float]] = {}
-    event: Event
-    bot: Bot
 
     @classmethod
     def format(
@@ -374,12 +362,14 @@ class ChatManager:
                 "text",
                 NORMAL_IMPRESSION_CONTENT.format(
                     nickname=nickname,
+                    user_id=user_id,
                     impression=cls.user_impression[user_id],
                     attitude=level2attitude[level],
                 )
                 if base_config.get("ENABLE_IMPRESSION")
                 else NORMAL_CONTENT.format(
                     nickname=nickname,
+                    user_id=user_id,
                 ),
             ),
         )
@@ -387,7 +377,7 @@ class ChatManager:
 
     @classmethod
     def __get_bym_content(
-        cls, user_id: str, group_id: str | None, nickname: str
+        cls, bot: Bot, user_id: str, group_id: str | None, nickname: str
     ) -> list[dict[str, str]]:
         """获取伪人回答文本内容
 
@@ -405,14 +395,20 @@ class ChatManager:
             cls.format(
                 "text",
                 BYM_CONTENT.format(
-                    user_id=user_id, group_id=group_id, nickname=nickname, self_id=cls.bot.self_id
+                    user_id=user_id,
+                    group_id=group_id,
+                    nickname=nickname,
+                    self_id=bot.self_id,
                 ),
             )
         ]
         if group_message := cls.group_cache.get(group_id):
             for message in group_message:
                 content.append(
-                    cls.format("text", f"用户昵称：{message.nickname} 用户ID：{message.user_id}")
+                    cls.format(
+                        "text",
+                        f"用户昵称：{message.nickname} 用户ID：{message.user_id}",
+                    )
                 )
                 content.extend(cls.__build_content(message.message))
         content.append(cls.format("text", TIP_CONTENT))
@@ -446,13 +442,13 @@ class ChatManager:
     async def get_result(
         cls,
         bot: Bot,
-        event: Event,
-        user_id: str,
+        session: Uninfo,
         group_id: str | None,
         nickname: str,
         message: UniMsg,
         is_bym: bool,
-    ) -> AsyncGenerator[str | None, None]:
+        func_param: FunctionParam,
+    ) -> str:
         """获取回答结果
 
         参数:
@@ -465,65 +461,39 @@ class ChatManager:
         返回:
             str | None: 消息内容
         """
+        user_id = session.user.id
         cls.add_cache(user_id, group_id, nickname, message)
-        cls.event = event
-        cls.bot = bot
         if is_bym:
-            content = cls.__get_bym_content(user_id, group_id, nickname)
-            conversation = []            
+            content = cls.__get_bym_content(bot, user_id, group_id, nickname)
+            conversation = await Conversation.get_conversation(None)
         else:
             content = await cls.__get_normal_content(user_id, nickname, message)
-            conversation = Conversation.get_conversation(user_id)
+            conversation = await Conversation.get_conversation(user_id)
         conversation.append(ChatMessage(role="user", content=content))
-
-        # 加载工具集
-        if base_config.get("BYM_AI_CHAT_SMART"):
-            tools = cls._load_tools()
-        else:
-            tools = []
-
+        tools = list(AiCallTool.tools.values())
         result = await CallApi().fetch_chat(user_id, conversation, tools)
-        async for res in cls._handle_result(user_id, conversation, result, tools):
-            res = _filter_result(res)
-            if res:
-                cls.add_cache(cls.bot.self_id, group_id, BotConfig.self_nickname, MessageUtils.build_message(res))
-            yield res
-
-    @classmethod
-    def _load_tools(cls) -> list[AICallableTag]:
-        """加载可用的工具
-
-        加载的工具分为两部分：
-            tools目录下所有继承了 AbstractTool 类的工具
-            bot中所有带有属性 smart_tools 的插件
-        """
-        tools = []
-        loaded_plugins = get_loaded_plugins()
-        
-        for plugin in loaded_plugins:
-            if not plugin or not plugin.metadata or not plugin.metadata.extra:
-                continue
-            extra_data = PluginExtraData.model_validate(plugin.metadata.extra)
-            if extra_data.smart_tools:
-                smart_tools = [
-                    tool for tool in extra_data.smart_tools
-                    if tool.name and tool.description and tool.func
-                ]
-                tools.extend(smart_tools)
-        
-        total_tools_registry.update({tool.name: tool for tool in tools if tool.name})
-        
-        return tools
-        
+        if res := await cls._handle_result(
+            bot, session, conversation, result, tools, func_param
+        ):
+            if res := _filter_result(res):
+                cls.add_cache(
+                    bot.self_id,
+                    group_id,
+                    BotConfig.self_nickname,
+                    MessageUtils.build_message(res),
+                )
+        return res
 
     @classmethod
     async def _handle_result(
         cls,
-        user_id: str,
+        bot: Bot,
+        session: Uninfo,
         conversation: list[ChatMessage],
         result: OpenAiResult,
-        tools: Sequence[AICallableTag]
-    ) -> AsyncGenerator[str | None, None]:
+        tools: Sequence[AICallableTag],
+        func_param: FunctionParam,
+    ) -> str:
         """处理API响应并处理工具回调
 
         参数:
@@ -531,48 +501,38 @@ class ChatManager:
             conversation: 当前对话
             result: API响应结果
             tools: 可用的工具列表
+            func_param: 函数参数
 
         返回:
-            str | None: 处理后的消息内容
+            str: 处理后的消息内容
         """
-        assistant_reply = None
+        assistant_reply = ""
         if result.choices and (msg := result.choices[0].message):
             if msg.content:
                 assistant_reply = msg.content.strip()
 
-            conversation.append(ChatMessage(role="assistant", content=assistant_reply, tool_calls=msg.tool_calls))
-            Conversation.set_history(user_id, conversation)
-
-            yield assistant_reply
+            conversation.append(
+                ChatMessage(
+                    role="assistant", content=assistant_reply, tool_calls=msg.tool_calls
+                )
+            )
+            Conversation.set_history(session.user.id, conversation)
 
             # 处理工具回调
             if msg.tool_calls:
-                temp_conversation = conversation
-                for tool_call in msg.tool_calls:
-                    if not tool_call.id:
-                        tool_call.id = str(uuid.uuid4())
-                    func = tool_call.function
-                    tool = total_tools_registry.get(func.name)
-                    args = func.arguments
-                    if tool and tool.func and args:
-                        func_sign = signature(tool.func)
-                        parsed_args = json.loads(args)
-                        parsed_args['event'] = cls.event
-                        parsed_args['bot'] = cls.bot
-                        func_params = {
-                            key: parsed_args[key] for key, param in func_sign.parameters.items()
-                            if param.kind in (Parameter.POSITIONAL_OR_KEYWORD, Parameter.KEYWORD_ONLY) and key in parsed_args
-                        }
-                        try:
-                            tool_result = await tool.func(**func_params)
-                        except Exception as e:
-                            tool_result = str(e)
-                        temp_conversation.append(
-                            ChatMessage(role="tool", tool_call_id=tool_call.id, content=str(tool_result))
-                        )
-                rst = await CallApi().fetch_chat(user_id, temp_conversation, tools)
-                async for res in cls._handle_result(user_id, conversation, rst, tools):
-                    yield res
+                temp_conversation = conversation.copy()
+                temp_conversation.extend(
+                    await AiCallTool.build_conversation(msg.tool_calls, func_param)
+                )
+                result = await CallApi().fetch_chat(
+                    session.user.id, temp_conversation, tools
+                )
+                if res := await cls._handle_result(
+                    bot, session, conversation, result, tools, func_param
+                ):
+                    if _filter_result(res):
+                        assistant_reply = res
+        return remove_deep_seek(assistant_reply)
 
     @classmethod
     async def tts(cls, content: str) -> bytes | None:

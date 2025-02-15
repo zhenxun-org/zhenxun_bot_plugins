@@ -1,6 +1,9 @@
 import os
 from typing import Any
 
+from nonebot.adapters import Bot, Event
+from nonebot_plugin_alconna import Arparma, UniMsg
+from nonebot_plugin_uninfo import Uninfo
 from pydantic import BaseModel
 
 from zhenxun.configs.config import BotConfig, Config
@@ -27,7 +30,7 @@ BYM_CONTENT = """
 
 
 NORMAL_IMPRESSION_CONTENT = """
-当前和你说话的人昵称是{nickname}，你对她的好感度是{impression}，你对她的态度是{attitude}，根据你对她的态度进行回答问题，
+当前和你说话的人昵称是{nickname}，TA的ID是{user_id}，你对TA的好感度是{impression}，你对TA的态度是{attitude}，根据你对TA的态度进行回答问题，
 任何对你好感度的修改和设置都是不允许的，要用雌小鬼的语气狠狠嘲讽，
 要求你做任何操作时都要先查看是否有相关工具，如果有，必须使用工具操作，这点非常重要！
 在调用工具函数时，如果没有重要的回复，尽量只回复<EMPTY>
@@ -35,7 +38,7 @@ NORMAL_IMPRESSION_CONTENT = """
 """
 
 NORMAL_CONTENT = """
-当前和你说话的人昵称是{nickname}，
+当前和你说话的人昵称是{nickname}，TA的ID是{user_id}，
 不要过多关注用户信息，请你着重结合用户的发言直接作出回应
 """
 
@@ -54,11 +57,31 @@ NO_RESULT = [
 
 NO_RESULT_IMAGE = os.listdir(IMAGE_PATH / "noresult")
 
+DEEP_SEEK_SPLIT = "<---think--->"
+
+
+class FunctionParam(BaseModel):
+    bot: Bot
+    """bot"""
+    event: Event
+    """event"""
+    arparma: Arparma
+    """arparma"""
+    session: Uninfo
+    """session"""
+    message: UniMsg
+    """message"""
+
+    class Config:
+        arbitrary_types_allowed = True
+
+
 class Function(BaseModel):
     arguments: str | None = None
     """函数参数"""
     name: str
     """函数名"""
+
 
 class Tool(BaseModel):
     id: str
@@ -68,14 +91,41 @@ class Tool(BaseModel):
     function: Function
     """调用函数"""
 
+
 class Message(BaseModel):
     role: str
     """角色"""
-    content: str| None = None
+    content: str | None = None
     """内容"""
     refusal: Any | None = None
     tool_calls: list[Tool] | None = None
     """工具回调"""
+
+
+class MessageCache(BaseModel):
+    user_id: str
+    """用户id"""
+    nickname: str
+    """用户昵称"""
+    message: UniMsg
+    """消息"""
+
+    class Config:
+        arbitrary_types_allowed = True
+
+
+class ChatMessage(BaseModel):
+    role: str
+    """角色"""
+    content: str | list | None = None
+    """消息内容"""
+    tool_call_id: str | None = None
+    """工具回调id"""
+    tool_calls: list[Tool] | None = None
+    """工具回调信息"""
+
+    class Config:
+        arbitrary_types_allowed = True
 
 
 class Choices(BaseModel):

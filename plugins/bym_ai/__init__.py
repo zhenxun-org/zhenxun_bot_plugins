@@ -2,10 +2,11 @@ import asyncio
 from pathlib import Path
 import random
 
+from httpx import HTTPStatusError
 from nonebot import on_message
-from nonebot.adapters import Event, Bot
+from nonebot.adapters import Bot, Event
 from nonebot.plugin import PluginMetadata
-from nonebot_plugin_alconna import UniMsg, Voice
+from nonebot_plugin_alconna import Alconna, Arparma, UniMsg, Voice, on_alconna
 from nonebot_plugin_uninfo import Uninfo
 
 from zhenxun.configs.config import BotConfig
@@ -16,6 +17,7 @@ from zhenxun.services.plugin_init import PluginInit
 from zhenxun.utils.depends import CheckConfig, UserName
 from zhenxun.utils.message import MessageUtils
 
+from .config import FunctionParam
 from .data_source import ChatManager, base_config, split_text
 from .goods_register import driver  # noqa: F401
 from .model import BymChat
@@ -91,6 +93,13 @@ __plugin_meta__ = PluginMetadata(
                 default_value=True,
                 type=bool,
             ),
+            RegisterConfig(
+                key="CACHE_SIZE",
+                value=40,
+                help="缓存聊天记录数据大小（每位用户）",
+                default_value=40,
+                type=int,
+            ),
         ],
     ).dict(),
 )
@@ -109,43 +118,59 @@ async def rule(event: Event, session: Uninfo) -> bool:
     return random.random() <= rate
 
 
-_matcher = on_message(priority=998, rule=rule)
+_matcher = on_alconna(Alconna("re:.*"), priority=998, rule=rule)
 
 
 @_matcher.handle(parameterless=[CheckConfig(config="BYM_AI_CHAT_TOKEN")])
-async def _(bot: Bot, event: Event, message: UniMsg, session: Uninfo, uname: str = UserName()):
+async def _(
+    bot: Bot,
+    event: Event,
+    message: UniMsg,
+    arparma: Arparma,
+    session: Uninfo,
+    uname: str = UserName(),
+):
     if not message.extract_plain_text().strip():
         if event.is_tome():
             await MessageUtils.build_message(ChatManager.hello()).finish()
         return
+    fun_param = FunctionParam(
+        bot=bot, event=event, arparma=arparma, session=session, message=message
+    )
     group_id = session.group.id if session.group else None
     is_bym = not event.is_tome()
-    results = ChatManager.get_result(
-        bot, event, session.user.id, group_id, uname, message, is_bym
+    result = await ChatManager.get_result(
+        bot, session, group_id, uname, message, is_bym, fun_param
     )
-    async for result in results:
-        if is_bym:
-            """伪人回复，切割文本"""
-            if result:
-                for r, delay in split_text(result):
-                    await MessageUtils.build_message(r).send()
-                    await asyncio.sleep(delay)
-        else:
+    if is_bym:
+        """伪人回复，切割文本"""
+        if result:
+            for r, delay in split_text(result):
+                await MessageUtils.build_message(r).send()
+                await asyncio.sleep(delay)
+    else:
+        try:
             if result:
                 await MessageUtils.build_message(result).send(reply_to=bool(group_id))
                 if tts_data := await ChatManager.tts(result):
                     await MessageUtils.build_message(Voice(raw=tts_data)).send()
-            else:
-                if not base_config.get("BYM_AI_CHAT_SMART"):
-                    await MessageUtils.build_message(ChatManager.no_result()).finish()
+            elif not base_config.get("BYM_AI_CHAT_SMART"):
+                await MessageUtils.build_message(ChatManager.no_result()).finish()
             if plain_text := message.extract_plain_text():
-              await BymChat.create(
-                  user_id=session.user.id,
-                  group_id=group_id,
-                  plain_text=plain_text,
-                  result=result,
-              )
-        logger.info(f"BYM AI 问题: {message} | 回答: {result}", "BYM AI", session=session)    
+                await BymChat.create(
+                    user_id=session.user.id,
+                    group_id=group_id,
+                    plain_text=plain_text,
+                    result=result,
+                )
+            logger.info(
+                f"BYM AI 问题: {message} | 回答: {result}", "BYM_AI", session=session
+            )
+        except HTTPStatusError as e:
+            logger.error("BYM AI 请求失败", "BYM_AI", session=session, e=e)
+            await MessageUtils.build_message(
+                f"请求失败了哦，code: {e.response.status_code}"
+            ).finish()
 
 
 RESOURCE_FILE = IMAGE_PATH / "shop_icon" / "reload_ai_card.png"
