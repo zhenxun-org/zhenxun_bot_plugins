@@ -100,8 +100,15 @@ __plugin_meta__ = PluginMetadata(
                 default_value=40,
                 type=int,
             ),
+            RegisterConfig(
+                key="ENABLE_GROUP_CHAT",
+                value=True,
+                help="在群组中时共用缓存",
+                default_value=True,
+                type=bool,
+            ),
         ],
-    ).dict(),
+    ).to_dict(),
 )
 
 

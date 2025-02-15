@@ -133,22 +133,34 @@ class Conversation:
         return ChatMessage(role="system", content=cls.chat_prompt)
 
     @classmethod
-    async def get_db_data(cls, user_id: str) -> list[ChatMessage]:
+    async def get_db_data(
+        cls, user_id: str | None, group_id: str | None = None
+    ) -> list[ChatMessage]:
         """从数据库获取记录
 
         参数:
             user_id: 用户id
+            group_id: 群组id，获取群组内记录时使用
 
         返回:
             list[ChatMessage]: 记录列表
         """
         conversation = []
-        for db_data in (
-            await BymChat.filter(user_id=user_id)
-            .order_by("-id")
-            .limit(base_config.get("CACHE_SIZE"))
-            .all()
-        ):
+        if base_config.get("ENABLE_GROUP_CHAT") and group_id:
+            db_data_list = (
+                await BymChat.filter(group_id=group_id)
+                .order_by("-id")
+                .limit(base_config.get("CACHE_SIZE"))
+                .all()
+            )
+        else:
+            db_data_list = (
+                await BymChat.filter(user_id=user_id)
+                .order_by("-id")
+                .limit(base_config.get("CACHE_SIZE"))
+                .all()
+            )
+        for db_data in db_data_list:
             if db_data.is_reset:
                 break
             conversation.extend(
@@ -161,7 +173,9 @@ class Conversation:
         return conversation
 
     @classmethod
-    async def get_conversation(cls, user_id: str | None) -> list[ChatMessage]:
+    async def get_conversation(
+        cls, user_id: str | None, group_id: str | None
+    ) -> list[ChatMessage]:
         """获取预设
 
         参数:
@@ -171,19 +185,26 @@ class Conversation:
             list[ChatMessage]: 预设数据
         """
         conversation = []
-        if user_id:
-            if user_id in cls.history_data:
-                conversation = cls.history_data[user_id]
-            else:
-                # 尝试从数据库中获取历史对话
-                conversation = await cls.get_db_data(user_id)
+        if (
+            base_config.get("ENABLE_GROUP_CHAT")
+            and group_id
+            and group_id in cls.history_data
+        ):
+            conversation = cls.history_data[group_id]
+        if user_id and user_id in cls.history_data:
+            conversation = cls.history_data[user_id]
+        # 尝试从数据库中获取历史对话
+        if not conversation:
+            conversation = await cls.get_db_data(user_id, group_id)
         # 必须带有人设
         conversation = [c for c in conversation if c.role != "system"]
         conversation.append(cls.add_system())
         return conversation
 
     @classmethod
-    def set_history(cls, user_id: str, conversation: list[ChatMessage]):
+    def set_history(
+        cls, user_id: str, group_id: str | None, conversation: list[ChatMessage]
+    ):
         """设置历史预设
 
         参数:
@@ -193,7 +214,10 @@ class Conversation:
         cache_size = base_config.get("CACHE_SIZE")
         if len(conversation) > cache_size:
             conversation = conversation[-cache_size:]
-        cls.history_data[user_id] = conversation
+        if base_config.get("ENABLE_GROUP_CHAT") and group_id:
+            cls.history_data[group_id] = conversation
+        else:
+            cls.history_data[user_id] = conversation
 
     @classmethod
     async def reset(cls, user_id: str):
@@ -465,10 +489,10 @@ class ChatManager:
         cls.add_cache(user_id, group_id, nickname, message)
         if is_bym:
             content = cls.__get_bym_content(bot, user_id, group_id, nickname)
-            conversation = await Conversation.get_conversation(None)
+            conversation = await Conversation.get_conversation(None, group_id)
         else:
             content = await cls.__get_normal_content(user_id, nickname, message)
-            conversation = await Conversation.get_conversation(user_id)
+            conversation = await Conversation.get_conversation(user_id, group_id)
         conversation.append(ChatMessage(role="user", content=content))
         tools = list(AiCallTool.tools.values())
         result = await CallApi().fetch_chat(user_id, conversation, tools)
@@ -506,6 +530,11 @@ class ChatManager:
         返回:
             str: 处理后的消息内容
         """
+        group_id = None
+        if session.group:
+            group_id = (
+                session.group.parent.id if session.group.parent else session.group.id
+            )
         assistant_reply = ""
         if result.choices and (msg := result.choices[0].message):
             if msg.content:
@@ -516,7 +545,7 @@ class ChatManager:
                     role="assistant", content=assistant_reply, tool_calls=msg.tool_calls
                 )
             )
-            Conversation.set_history(session.user.id, conversation)
+            Conversation.set_history(session.user.id, group_id, conversation)
 
             # 处理工具回调
             if msg.tool_calls:
