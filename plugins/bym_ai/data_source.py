@@ -1,17 +1,17 @@
 import asyncio
-from collections.abc import Sequence
 import os
 import random
 import re
 import time
+from collections.abc import Sequence
 from typing import ClassVar, Literal
 
+import ujson as json
 from nonebot import require
 from nonebot.adapters import Bot
 from nonebot.compat import model_dump
 from nonebot_plugin_alconna import Text, UniMessage, UniMsg
 from nonebot_plugin_uninfo import Uninfo
-
 from zhenxun.configs.config import BotConfig, Config
 from zhenxun.configs.path_config import IMAGE_PATH
 from zhenxun.configs.utils import AICallableTag
@@ -94,15 +94,6 @@ def _filter_result(result: str) -> str:
 
 def remove_deep_seek(text: str) -> str:
     """去除深度探索"""
-    print("---------------------------------")
-    print("---------------------------------")
-    print("---------------------------------")
-    print("---------------------------------")
-    print("text " + text)
-    print("---------------------------------")
-    print("---------------------------------")
-    print("---------------------------------")
-    print("---------------------------------")
     if DEEP_SEEK_SPLIT in text:
         return text.split(DEEP_SEEK_SPLIT, 1)[-1].strip()
     if match := re.search(r"```text\n([\s\S]*?)\n```", text, re.DOTALL):
@@ -316,7 +307,20 @@ class CallApi:
             token_counter.delay(self.chat_token)
 
         response.raise_for_status()
-        return OpenAiResult(**response.json())
+        result = OpenAiResult(**response.json())
+        try:
+            if content := result.choices[0].message.content:
+                if match := re.search(r"```json([\s\S]*?)```", content, re.DOTALL):
+                    content = match[1]
+                    json_content = json.loads(content)
+                    result.choices[0].message.content = json_content["content"]
+        except Exception as e:
+            logger.warning(
+                f"fetch_chat 解析失败返回消息错误: {result.choices[0].message.content}",
+                "BYM_AI",
+                e=e,
+            )
+        return result
 
     @Retry.api()
     async def fetch_tts(
