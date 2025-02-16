@@ -124,7 +124,7 @@ async def rule(event: Event, session: Uninfo) -> bool:
     return random.random() <= rate
 
 
-_matcher = on_alconna(Alconna("re:.*"), priority=998, rule=rule)
+_matcher = on_alconna(Alconna(r"re:[\s\S]+"), priority=998, rule=rule)
 
 
 @_matcher.handle(parameterless=[CheckConfig(config="BYM_AI_CHAT_TOKEN")])

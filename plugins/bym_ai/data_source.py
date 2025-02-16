@@ -15,6 +15,7 @@ from nonebot_plugin_uninfo import Uninfo
 from zhenxun.configs.config import BotConfig, Config
 from zhenxun.configs.path_config import IMAGE_PATH
 from zhenxun.configs.utils import AICallableTag
+from zhenxun.models.group_console import GroupConsole
 from zhenxun.models.sign_user import SignUser
 from zhenxun.services.log import logger
 from zhenxun.utils.decorator.retry import Retry
@@ -35,6 +36,7 @@ from .config import (
     BYM_CONTENT,
     DEEP_SEEK_SPLIT,
     DEFAULT_GROUP,
+    GROUP_CONTENT,
     NO_RESULT,
     NO_RESULT_IMAGE,
     NORMAL_CONTENT,
@@ -49,6 +51,9 @@ from .config import (
 )
 
 semaphore = asyncio.Semaphore(3)
+
+
+GROUP_NAME_CACHE = {}
 
 
 def split_text(text: str) -> list[tuple[str, float]]:
@@ -89,6 +94,15 @@ def _filter_result(result: str) -> str:
 
 def remove_deep_seek(text: str) -> str:
     """去除深度探索"""
+    print("---------------------------------")
+    print("---------------------------------")
+    print("---------------------------------")
+    print("---------------------------------")
+    print("text " + text)
+    print("---------------------------------")
+    print("---------------------------------")
+    print("---------------------------------")
+    print("---------------------------------")
     if DEEP_SEEK_SPLIT in text:
         return text.split(DEEP_SEEK_SPLIT, 1)[-1].strip()
     if match := re.search(r"```text\n([\s\S]*?)\n```", text, re.DOTALL):
@@ -191,7 +205,7 @@ class Conversation:
             and group_id in cls.history_data
         ):
             conversation = cls.history_data[group_id]
-        if user_id and user_id in cls.history_data:
+        elif user_id and user_id in cls.history_data:
             conversation = cls.history_data[user_id]
         # 尝试从数据库中获取历史对话
         if not conversation:
@@ -239,7 +253,11 @@ class Conversation:
                 del cls.history_data[group_id]
         elif user_id:
             # 个人重置
-            if db_data := await BymChat.filter(user_id=user_id).order_by("-id").first():
+            if (
+                db_data := await BymChat.filter(user_id=user_id, group_id=None)
+                .order_by("-id")
+                .first()
+            ):
                 db_data.is_reset = True
                 await db_data.save(update_fields=["is_reset"])
             if user_id in cls.history_data:
@@ -375,7 +393,7 @@ class ChatManager:
 
     @classmethod
     async def __get_normal_content(
-        cls, user_id: str, nickname: str, message: UniMsg
+        cls, user_id: str, group_id: str | None, nickname: str, message: UniMsg
     ) -> list[dict[str, str]]:
         """获取普通回答文本内容
 
@@ -392,23 +410,33 @@ class ChatManager:
             sign_user = await SignUser.get_user(user_id)
             cls.user_impression[user_id] = float(sign_user.impression)
         level, _, _ = get_level_and_next_impression(cls.user_impression[user_id])
-        level = "1" if level == "0" else level
+        level = "2" if level in ["0", "1"] else level
+        content_result = (
+            NORMAL_IMPRESSION_CONTENT.format(
+                nickname=nickname,
+                user_id=user_id,
+                impression=cls.user_impression[user_id],
+                attitude=level2attitude[level],
+            )
+            if base_config.get("ENABLE_IMPRESSION")
+            else NORMAL_CONTENT.format(
+                nickname=nickname,
+                user_id=user_id,
+            )
+        )
+        if group_id and base_config.get("ENABLE_GROUP_CHAT"):
+            if group_id not in GROUP_NAME_CACHE:
+                if group := await GroupConsole.get_group(group_id):
+                    GROUP_NAME_CACHE[group_id] = group.group_name
+            content_result = (
+                GROUP_CONTENT.format(
+                    group_id=group_id, group_name=GROUP_NAME_CACHE.get(group_id, "")
+                )
+                + content_result
+            )
         content.insert(
             0,
-            cls.format(
-                "text",
-                NORMAL_IMPRESSION_CONTENT.format(
-                    nickname=nickname,
-                    user_id=user_id,
-                    impression=cls.user_impression[user_id],
-                    attitude=level2attitude[level],
-                )
-                if base_config.get("ENABLE_IMPRESSION")
-                else NORMAL_CONTENT.format(
-                    nickname=nickname,
-                    user_id=user_id,
-                ),
-            ),
+            cls.format("text", content_result),
         )
         return content
 
@@ -504,7 +532,9 @@ class ChatManager:
             content = cls.__get_bym_content(bot, user_id, group_id, nickname)
             conversation = await Conversation.get_conversation(None, group_id)
         else:
-            content = await cls.__get_normal_content(user_id, nickname, message)
+            content = await cls.__get_normal_content(
+                user_id, group_id, nickname, message
+            )
             conversation = await Conversation.get_conversation(user_id, group_id)
         conversation.append(ChatMessage(role="user", content=content))
         tools = list(AiCallTool.tools.values())

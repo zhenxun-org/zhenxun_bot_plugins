@@ -33,7 +33,9 @@ async def _(user_id: str, group_id: str):
 
 
 @shop_register.before_handle(name="群组失忆卡")
-async def _():
+async def _(group_id: str | None):
+    if not group_id:
+        raise NotMeetUseConditionsException("请在群组中使用该道具...")
     if not base_config.get("ENABLE_GROUP_CHAT"):
         raise NotMeetUseConditionsException(
             "当前未开启群组个人记忆分离，无法使用道具。"
