@@ -2,10 +2,10 @@ import asyncio
 from pathlib import Path
 import random
 
-from nonebot import on_message
-from nonebot.adapters import Event
+from httpx import HTTPStatusError
+from nonebot.adapters import Bot, Event
 from nonebot.plugin import PluginMetadata
-from nonebot_plugin_alconna import UniMsg, Voice
+from nonebot_plugin_alconna import Alconna, Arparma, UniMsg, Voice, on_alconna
 from nonebot_plugin_uninfo import Uninfo
 
 from zhenxun.configs.config import BotConfig
@@ -13,11 +13,13 @@ from zhenxun.configs.path_config import IMAGE_PATH
 from zhenxun.configs.utils import PluginExtraData, RegisterConfig
 from zhenxun.services.log import logger
 from zhenxun.services.plugin_init import PluginInit
-from zhenxun.utils.depends import UserName
+from zhenxun.utils.depends import CheckConfig, UserName
 from zhenxun.utils.message import MessageUtils
 
+from .config import FunctionParam
 from .data_source import ChatManager, base_config, split_text
 from .goods_register import driver  # noqa: F401
+from .model import BymChat
 
 __plugin_meta__ = PluginMetadata(
     name="BYM_AI",
@@ -62,6 +64,13 @@ __plugin_meta__ = PluginMetadata(
                 type=float,
             ),
             RegisterConfig(
+                key="BYM_AI_CHAT_SMART",
+                value=False,
+                help="是否开启智能模式",
+                default_value=False,
+                type=bool,
+            ),
+            RegisterConfig(
                 key="BYM_AI_TTS_URL",
                 value=None,
                 help="tts接口地址",
@@ -76,8 +85,29 @@ __plugin_meta__ = PluginMetadata(
                 value=None,
                 help="tts接口音色",
             ),
+            RegisterConfig(
+                key="ENABLE_IMPRESSION",
+                value=True,
+                help="使用签到数据作为基础好感度",
+                default_value=True,
+                type=bool,
+            ),
+            RegisterConfig(
+                key="CACHE_SIZE",
+                value=40,
+                help="缓存聊天记录数据大小（每位用户）",
+                default_value=40,
+                type=int,
+            ),
+            RegisterConfig(
+                key="ENABLE_GROUP_CHAT",
+                value=True,
+                help="在群组中时共用缓存",
+                default_value=True,
+                type=bool,
+            ),
         ],
-    ).dict(),
+    ).to_dict(),
 )
 
 
@@ -94,19 +124,29 @@ async def rule(event: Event, session: Uninfo) -> bool:
     return random.random() <= rate
 
 
-_matcher = on_message(priority=998, rule=rule)
+_matcher = on_alconna(Alconna(r"re:[\s\S]+"), priority=998, rule=rule)
 
 
-@_matcher.handle()
-async def _(event: Event, message: UniMsg, session: Uninfo, uname: str = UserName()):
+@_matcher.handle(parameterless=[CheckConfig(config="BYM_AI_CHAT_TOKEN")])
+async def _(
+    bot: Bot,
+    event: Event,
+    message: UniMsg,
+    arparma: Arparma,
+    session: Uninfo,
+    uname: str = UserName(),
+):
     if not message.extract_plain_text().strip():
         if event.is_tome():
             await MessageUtils.build_message(ChatManager.hello()).finish()
         return
-    group_id = session.group.id if session.group else ""
+    fun_param = FunctionParam(
+        bot=bot, event=event, arparma=arparma, session=session, message=message
+    )
+    group_id = session.group.id if session.group else None
     is_bym = not event.is_tome()
     result = await ChatManager.get_result(
-        session.user.id, group_id, uname, message, is_bym
+        bot, session, group_id, uname, message, is_bym, fun_param
     )
     if is_bym:
         """伪人回复，切割文本"""
@@ -115,27 +155,53 @@ async def _(event: Event, message: UniMsg, session: Uninfo, uname: str = UserNam
                 await MessageUtils.build_message(r).send()
                 await asyncio.sleep(delay)
     else:
-        if not result:
-            return MessageUtils.build_message(ChatManager.no_result()).finish()
-        await MessageUtils.build_message(result).send()
-        if tts_data := await ChatManager.tts(result):
-            await MessageUtils.build_message(Voice(raw=tts_data)).send()
-    logger.info(f"BYM AI 问题: {message} | 回答: {result}", "BYM AI", session=session)
+        try:
+            if result:
+                await MessageUtils.build_message(result).send(reply_to=bool(group_id))
+                if tts_data := await ChatManager.tts(result):
+                    await MessageUtils.build_message(Voice(raw=tts_data)).send()
+            elif not base_config.get("BYM_AI_CHAT_SMART"):
+                await MessageUtils.build_message(ChatManager.no_result()).finish()
+            if plain_text := message.extract_plain_text():
+                await BymChat.create(
+                    user_id=session.user.id,
+                    group_id=group_id,
+                    plain_text=plain_text,
+                    result=result,
+                )
+            logger.info(
+                f"BYM AI 问题: {message} | 回答: {result}", "BYM_AI", session=session
+            )
+        except HTTPStatusError as e:
+            logger.error("BYM AI 请求失败", "BYM_AI", session=session, e=e)
+            await MessageUtils.build_message(
+                f"请求失败了哦，code: {e.response.status_code}"
+            ).finish(reply_to=True)
+        except Exception as e:
+            logger.error("BYM AI 其他错误", "BYM_AI", session=session, e=e)
+            await MessageUtils.build_message("发生了一些异常，想要休息一下...").finish(
+                reply_to=True
+            )
 
 
-RESOURCE_FILE = IMAGE_PATH / "shop_icon" / "reload_ai_card.png"
+RESOURCE_FILES = [
+    IMAGE_PATH / "shop_icon" / "reload_ai_card.png",
+    IMAGE_PATH / "shop_icon" / "reload_ai_card1.png",
+]
 
 
 class MyPluginInit(PluginInit):
     async def install(self):
-        res = Path(__file__).parent / "reload_ai_card.png"
-        if res.exists():
-            if RESOURCE_FILE.exists():
-                RESOURCE_FILE.unlink()
-            res.rename(RESOURCE_FILE)
-            logger.info(f"更新 BYM_AI 资源文件成功 {res} -> {RESOURCE_FILE}")
+        for res_file in RESOURCE_FILES:
+            res = Path(__file__).parent / res_file.name
+            if res.exists():
+                if res_file.exists():
+                    res_file.unlink()
+                res.rename(res_file)
+                logger.info(f"更新 BYM_AI 资源文件成功 {res} -> {res_file}")
 
     async def remove(self):
-        if RESOURCE_FILE.exists():
-            RESOURCE_FILE.unlink()
-            logger.info(f"删除 BYM_AI 资源文件成功 {RESOURCE_FILE}")
+        for res_file in RESOURCE_FILES:
+            if res_file.exists():
+                res_file.unlink()
+                logger.info(f"删除 BYM_AI 资源文件成功 {res_file}")
