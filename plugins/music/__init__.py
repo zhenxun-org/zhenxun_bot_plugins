@@ -2,7 +2,6 @@ from nonebot.adapters.onebot.v11 import MessageSegment
 from nonebot.plugin import PluginMetadata
 from nonebot_plugin_alconna import Alconna, Args, Arparma, Match, on_alconna
 from nonebot_plugin_uninfo import Uninfo
-
 from zhenxun.configs.utils import (
     AICallableParam,
     AICallableProperties,
@@ -55,7 +54,7 @@ __plugin_meta__ = PluginMetadata(
         smart_tools=[
             AICallableTag(
                 name="call_music",
-                description="如果你想为某人点赞，调用此方法",
+                description="如果你想为某人点歌，调用此方法",
                 parameters=AICallableParam(
                     type="object",
                     properties={

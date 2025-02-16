@@ -1,17 +1,17 @@
 import asyncio
+from collections.abc import Sequence
 import os
 import random
 import re
 import time
-from collections.abc import Sequence
 from typing import ClassVar, Literal
 
-import ujson as json
 from nonebot import require
 from nonebot.adapters import Bot
 from nonebot.compat import model_dump
 from nonebot_plugin_alconna import Text, UniMessage, UniMsg
 from nonebot_plugin_uninfo import Uninfo
+
 from zhenxun.configs.config import BotConfig, Config
 from zhenxun.configs.path_config import IMAGE_PATH
 from zhenxun.configs.utils import AICallableTag
@@ -310,10 +310,8 @@ class CallApi:
         result = OpenAiResult(**response.json())
         try:
             if content := result.choices[0].message.content:
-                if match := re.search(r"```json([\s\S]*?)```", content, re.DOTALL):
-                    content = match[1]
-                    json_content = json.loads(content)
-                    result.choices[0].message.content = json_content["content"]
+                if match := re.search(r'"content":\s?"([^"]*)"', content, re.DOTALL):
+                    result.choices[0].message.content = match[1]
         except Exception as e:
             logger.warning(
                 f"fetch_chat 解析失败返回消息错误: {result.choices[0].message.content}",
