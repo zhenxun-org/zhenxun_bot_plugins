@@ -1,8 +1,7 @@
-from pathlib import Path
 import random
+from pathlib import Path
 
 from strenum import StrEnum
-
 from zhenxun.configs.path_config import TEMP_PATH
 from zhenxun.services.log import logger
 from zhenxun.utils._build_image import BuildImage
@@ -85,7 +84,7 @@ class AnimeManage:
             copy_image = image.copy()
             crop: BuildImage = await copy_image.crop(box)
             # circle_crop = await crop.circle()
-            chars = item.character[:10] if len(item.character) > 10 else item.char
+            chars = item.character[:10] if len(item.character) > 10 else item.character
             chars_list = [
                 f"角色名称: {char.work}\n出处: {char.character}"
                 "\n---------------------\n"
