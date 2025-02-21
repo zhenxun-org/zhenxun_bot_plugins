@@ -2,18 +2,16 @@ from pydantic import BaseModel
 
 
 class Char(BaseModel):
-    name: str
+    work: str
     """名称"""
-    cartoonname: str
+    character: str
     """动漫名称"""
-    acc: float
-    """准确率"""
 
 
 class Item(BaseModel):
     box: list[float]
     """box"""
-    char: list[Char]
+    character: list[Char]
     """识别数据"""
     box_id: str
     """box_id"""
@@ -24,6 +22,6 @@ class Response(BaseModel):
     """code"""
     ai: bool
     """ai"""
-    new_code: int
+    trace_id: str
     """new_code"""
     data: list[Item]

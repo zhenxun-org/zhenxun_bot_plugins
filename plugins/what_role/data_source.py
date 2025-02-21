@@ -1,12 +1,13 @@
-import random
 from pathlib import Path
+import random
 
 from strenum import StrEnum
 
+from zhenxun.configs.path_config import TEMP_PATH
 from zhenxun.services.log import logger
 from zhenxun.utils._build_image import BuildImage
 from zhenxun.utils.http_utils import AsyncHttpx
-from zhenxun.configs.path_config import TEMP_PATH
+
 from .build_image import ConstructImage
 from .config import Response
 
@@ -20,9 +21,7 @@ class SearchType(StrEnum):
     """高级动画识别模型②"""
     ANIME = "anime"
     """普通动画识别模型"""
-    GAME = "game"
-    """普通Gal识别模型"""
-    GAME_MODEL_KIRAKIRA = "game_model_kirakira"
+    FULL_GAME_MODEL_KIRA = "full_game_model_kira "
     """高级Gal识别模型"""
 
 
@@ -44,7 +43,7 @@ code2error = {
 
 
 class AnimeManage:
-    url: str = "https://aiapiv2.animedb.cn/ai/api/detect"
+    url: str = "https://api.animetrace.com/v1/search"
 
     @classmethod
     def int2type(cls, n: int) -> str:
@@ -63,13 +62,12 @@ class AnimeManage:
             "model": search_type_enum,
             "ai_detect": 1,
             "is_multi": 1,
+            "base64": image.pic2bs4()[9:],
         }
-        file_data = {"image": file.open("rb")}
-        response = await AsyncHttpx.post(cls.url, params=json_data, files=file_data)
+        response = await AsyncHttpx.post(cls.url, json=json_data)
         json_data = response.json()
         logger.debug(f"角色识别获取数据: {json_data}", "角色识别")
-        code = json_data.get("new_code") or json_data.get("code")
-        if er := code2error.get(code):
+        if er := code2error.get(json_data.get("code")):
             return er, image, file
         data = Response(**json_data)
         if not data.data:
@@ -87,15 +85,14 @@ class AnimeManage:
             copy_image = image.copy()
             crop: BuildImage = await copy_image.crop(box)
             # circle_crop = await crop.circle()
-            chars = item.char[:10] if len(item.char) > 10 else item.char
+            chars = item.character[:10] if len(item.character) > 10 else item.char
             chars_list = [
-                f"角色名称: {char.name}\n出处: {char.cartoonname}\n相似度: {char.acc}"
+                f"角色名称: {char.work}\n出处: {char.character}"
                 "\n---------------------\n"
                 for char in chars
             ]
             info: list[str] = [
-                f"角色名称: {char.name}\n出处: {char.cartoonname}\n相似度: {char.acc}"
-                for char in chars
+                f"角色名称: {char.work}\n出处: {char.character}\n" for char in chars
             ]
             chars_list.insert(0, crop)  # type: ignore
             info.insert(0, crop)  # type: ignore
