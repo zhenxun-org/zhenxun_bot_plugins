@@ -16,7 +16,7 @@ from nonebot_plugin_alconna import (
 from nonebot_plugin_alconna.builtins.extensions.reply import ReplyMergeExtension
 from nonebot_plugin_alconna.uniseg.tools import image_fetch
 from nonebot_plugin_uninfo import Uninfo
-from nonebot_plugin_waiter import prompt, waiter
+from nonebot_plugin_waiter import waiter
 
 from zhenxun.configs.config import BotConfig
 from zhenxun.configs.utils import Command, PluginExtraData
@@ -32,13 +32,12 @@ __plugin_meta__ = PluginMetadata(
     description="动漫以及gal游戏的角色识别",
     usage="""
     指令：
-        角色识别 ?[-t [1, 2, 3, 4, 5](识别类型，默认1)] [图片]
+        角色识别 ?[-t [1, 2, 3, 4](识别类型，默认1)] [图片]
 
         1: 高级动画识别模型①（默认）
         2: 高级动画识别模型②
         3: 普通动画识别模型
-        4: 普通Gal识别模型
-        5: 高级Gal识别模型
+        4: 高级Gal识别模型
 
         示例:
             角色识别 [图片]
@@ -53,7 +52,7 @@ __plugin_meta__ = PluginMetadata(
         version="0.2",
         menu_type="一些工具",
         commands=[
-            Command(command="角色识别 ?[-t [1, 2, 3, 4, 5](识别类型，默认1)] [图片]")
+            Command(command="角色识别 ?[-t [1, 2, 3, 4](识别类型，默认1)] [图片]")
         ],
     ).to_dict(),
 )
@@ -97,8 +96,8 @@ async def _(
     session: Uninfo,
     search_type: Query[int] = Query("search_type", 1),
 ):
-    if search_type.result not in [1, 2, 3, 4, 5]:
-        await MessageUtils.build_message("识别类型错误，请输入1-5...").finish()
+    if search_type.result not in [1, 2, 3, 4]:
+        await MessageUtils.build_message("识别类型错误，请输入1-4...").finish()
 
     if not data.available:
         await MessageUtils.build_message("图呢?").finish()
