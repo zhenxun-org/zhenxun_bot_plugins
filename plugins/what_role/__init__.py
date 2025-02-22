@@ -1,3 +1,4 @@
+from httpx import HTTPStatusError
 from nonebot.adapters import Bot, Event
 from nonebot.plugin import PluginMetadata
 from nonebot.typing import T_State
@@ -99,19 +100,17 @@ async def _(
     if search_type.result not in [1, 2, 3, 4]:
         await MessageUtils.build_message("识别类型错误，请输入1-4...").finish()
 
-    if not data.available:
-        await MessageUtils.build_message("图呢?").finish()
-
     image_data = None
-    if isinstance(data.result, At):
-        if not session.user.avatar:
-            await MessageUtils.build_message("没拿到图图,请找管理员吧").finish()
-        platform = PlatformUtils.get_platform(session)
-        image_data = await PlatformUtils.get_user_avatar(
-            data.result.target, platform, session.self_id
-        )
-    else:
-        image_data = await image_fetch(event, bot, state, data.result)
+    if data.available:
+        if isinstance(data.result, At):
+            if not session.user.avatar:
+                await MessageUtils.build_message("没拿到图图,请找管理员吧").finish()
+            platform = PlatformUtils.get_platform(session)
+            image_data = await PlatformUtils.get_user_avatar(
+                data.result.target, platform, session.self_id
+            )
+        else:
+            image_data = await image_fetch(event, bot, state, data.result)
     if not image_data:
         image_data = await get_image_data()
     await MessageUtils.build_message("开始识别了哦，请稍等...").send()
@@ -119,6 +118,16 @@ async def _(
         result_list, image, file = await AnimeManage.search(
             image_data, search_type.result
         )
+    except HTTPStatusError as e:
+        logger.error(
+            f"识别请求失败 code: {e.response.status_code}",
+            arparma.header_result,
+            session=session,
+            e=e,
+        )
+        return await MessageUtils.build_message(
+            f"识别请求失败 code: {e.response.status_code}"
+        ).send()
     except Exception as e:
         logger.error("角色识别错误", arparma.header_result, session=session, e=e)
         await MessageUtils.build_message("识别失败，请稍后再试...").finish()
