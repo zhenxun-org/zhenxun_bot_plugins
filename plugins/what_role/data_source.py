@@ -1,7 +1,8 @@
-import random
 from pathlib import Path
+import random
 
 from strenum import StrEnum
+
 from zhenxun.configs.path_config import TEMP_PATH
 from zhenxun.services.log import logger
 from zhenxun.utils._build_image import BuildImage
@@ -64,6 +65,7 @@ class AnimeManage:
             "base64": image.pic2bs4()[9:],
         }
         response = await AsyncHttpx.post(cls.url, json=json_data)
+        response.raise_for_status()
         json_data = response.json()
         logger.debug(f"角色识别获取数据: {json_data}", "角色识别")
         if er := code2error.get(json_data.get("code")):
@@ -86,12 +88,12 @@ class AnimeManage:
             # circle_crop = await crop.circle()
             chars = item.character[:10] if len(item.character) > 10 else item.character
             chars_list = [
-                f"角色名称: {char.work}\n出处: {char.character}"
+                f"角色名称: {char.character}\n出处: {char.work}"
                 "\n---------------------\n"
                 for char in chars
             ]
             info: list[str] = [
-                f"角色名称: {char.work}\n出处: {char.character}\n" for char in chars
+                f"角色名称: {char.character}\n出处: {char.work}\n" for char in chars
             ]
             chars_list.insert(0, crop)  # type: ignore
             info.insert(0, crop)  # type: ignore
