@@ -1,6 +1,6 @@
 import asyncio
-from pathlib import Path
 import random
+from pathlib import Path
 
 from httpx import HTTPStatusError
 from nonebot import on_message
@@ -8,7 +8,6 @@ from nonebot.adapters import Bot, Event
 from nonebot.plugin import PluginMetadata
 from nonebot_plugin_alconna import UniMsg, Voice
 from nonebot_plugin_uninfo import Uninfo
-
 from zhenxun.configs.config import BotConfig
 from zhenxun.configs.path_config import IMAGE_PATH
 from zhenxun.configs.utils import (
@@ -40,7 +39,7 @@ __plugin_meta__ = PluginMetadata(
     {BotConfig.self_nickname}说她想成为人类！
     """.strip(),
     extra=PluginExtraData(
-        author="Chtholly",
+        author="Chtholly & HibiKier",
         version="0.1",
         ignore_prompt=True,
         configs=[
