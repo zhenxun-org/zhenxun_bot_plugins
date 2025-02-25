@@ -1,5 +1,6 @@
 from io import BytesIO
 
+import ujson as json
 from httpx import HTTPStatusError
 from nonebot.adapters import Bot, Event
 from nonebot.plugin import PluginMetadata
@@ -16,8 +17,6 @@ from nonebot_plugin_alconna import (
 from nonebot_plugin_alconna.builtins.extensions.reply import ReplyMergeExtension
 from nonebot_plugin_alconna.uniseg.tools import image_fetch
 from nonebot_plugin_uninfo import Uninfo
-import ujson as json
-
 from zhenxun.configs.utils import PluginExtraData
 from zhenxun.services.log import logger
 from zhenxun.utils.http_utils import AsyncHttpx
@@ -75,7 +74,7 @@ async def _(
     files = {"file": ("image.jpg", BytesIO(image_data), "image/jpeg")}
     try:
         response = await AsyncHttpx.post(
-            "https://api.3000y.ac.cn/v1/image-mask", files=files
+            "https://api.3000y.ac.cn/esr?noimg=true", files=files
         )
         response.raise_for_status()
         image_url, result = parser(json.loads(response.text))
