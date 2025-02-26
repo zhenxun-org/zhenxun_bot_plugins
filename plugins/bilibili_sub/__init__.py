@@ -67,7 +67,7 @@ __plugin_meta__ = PluginMetadata(
         """.strip(),
     extra=PluginExtraData(
         author="HibiKier",
-        version="0.4",
+        version="0.5",
         configs=[
             RegisterConfig(
                 module="bilibili_sub",
