@@ -56,20 +56,18 @@ __plugin_meta__ = PluginMetadata(
                 添加订阅番剧 史莱姆 <-(支持模糊搜索)
                 添加订阅番剧 125344 <-(番剧id)
                 删除订阅id 2324344 <-(任意id，通过查看订阅获取)
-        """.strip(),
-    extra=PluginExtraData(
-        author="HibiKier",
-        version="0.4",
-        superuser_help="""
-    登录b站获取cookie防止风控：
-            bil_check/检测b站
-            bil_login/登录b站
-            bil_logout/退出b站 uid
+            以下指令为超级用户命令：
+                bil_check/检测b站
+                bil_login/登录b站
+                bil_logout/退出b站 uid
             示例:
                 登录b站 
                 检测b站
                 bil_logout 12345<-(退出登录的b站uid，通过检测b站获取)
-        """,
+        """.strip(),
+    extra=PluginExtraData(
+        author="HibiKier",
+        version="0.4",
         configs=[
             RegisterConfig(
                 module="bilibili_sub",
