@@ -18,7 +18,7 @@ __plugin_meta__ = PluginMetadata(
     """.strip(),
     extra=PluginExtraData(
         author="HibiKier",
-        version="0.1",
+        version="0.2",
         menu_type="一些工具",
         commands=[Command(command="b封面 [链接/av/bv/cv/直播id]")],
         configs=[
