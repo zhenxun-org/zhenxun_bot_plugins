@@ -16,7 +16,7 @@ from .date import get_festivals_dates
 
 class Report:
     hitokoto_url = "https://v1.hitokoto.cn/?c=a"
-    alapi_url = "https://v2.alapi.cn/api/zaobao"
+    alapi_url = "https://v3.alapi.cn/api/zaobao"
     six_url = "https://60s.viki.moe/?v2=1"
     bili_url = "https://s.search.bilibili.com/main/hotword"
     it_url = "https://www.ithome.com/rss/"
