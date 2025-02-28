@@ -425,7 +425,7 @@
         "description": "简易网易云点歌",
         "usage": "点歌 [歌名]",
         "author": "HibiKier",
-        "version": "0.1",
+        "version": "0.2",
         "plugin_type": "NORMAL",
         "is_dir": true
     },
@@ -445,7 +445,7 @@
         "description": "小真寻想成为人类...",
         "usage": "你问小真寻的愿望？小真寻说她想成为人类！",
         "author": "Chtholly & HibiKier",
-        "version": "0.1",
+        "version": "0.2",
         "plugin_type": "NORMAL",
         "is_dir": true
     },
