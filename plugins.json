@@ -165,7 +165,7 @@
         "description": "快捷的b站视频封面获取方式",
         "usage": "b封面 [链接/av/bv/cv/直播id]\n    示例:b封面 av86863038",
         "author": "HibiKier",
-        "version": "0.1",
+        "version": "0.2",
         "plugin_type": "NORMAL",
         "is_dir": true
     },
