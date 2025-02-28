@@ -145,7 +145,7 @@
         "description": "屑Ai",
         "usage": "与小真寻普普通通的对话吧！",
         "author": "HibiKier",
-        "version": "0.1",
+        "version": "0.2",
         "plugin_type": "NORMAL",
         "is_dir": true
     },
