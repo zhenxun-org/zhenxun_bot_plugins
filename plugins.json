@@ -265,7 +265,7 @@
         "description": "为什么突然文艺起来了！",
         "usage": "平白无故念首诗\n    示例：念诗/来首诗/念首诗",
         "author": "HibiKier",
-        "version": "0.1",
+        "version": "0.2",
         "plugin_type": "NORMAL",
         "is_dir": true
     },
