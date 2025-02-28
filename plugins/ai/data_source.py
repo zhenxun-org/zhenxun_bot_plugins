@@ -15,7 +15,7 @@ from .utils import ai_message_manager
 
 url = "http://openapi.tuling123.com/openapi/api/v2"
 
-check_url = "https://v2.alapi.cn/api/censor/text"
+check_url = "https://v3.alapi.cn/api/censor/text"
 
 index = 0
 
