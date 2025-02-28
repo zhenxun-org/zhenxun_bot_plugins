@@ -8,7 +8,7 @@ from zhenxun.services.log import logger
 from zhenxun.utils.http_utils import AsyncHttpx
 from zhenxun.utils.message import MessageUtils
 
-comments_163_url = "https://v2.alapi.cn/api/comment"
+comments_163_url = "https://v3.alapi.cn/api/comment"
 
 __plugin_meta__ = PluginMetadata(
     name="网易云热评",
@@ -20,7 +20,7 @@ __plugin_meta__ = PluginMetadata(
     """.strip(),
     extra=PluginExtraData(
         author="HibiKier",
-        version="0.1",
+        version="0.2",
         commands=[Command(command="网易云热评/到点了")],
         configs=[
             RegisterConfig(
