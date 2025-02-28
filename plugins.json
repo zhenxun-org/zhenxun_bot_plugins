@@ -25,7 +25,7 @@
         "description": "生了个人，我很抱歉",
         "usage": "到点了，还是防不了下塔\n    指令：\n        网易云热评/到点了/12点了",
         "author": "HibiKier",
-        "version": "0.1-36e70ae",
+        "version": "0.2",
         "plugin_type": "NORMAL",
         "is_dir": false
     },
