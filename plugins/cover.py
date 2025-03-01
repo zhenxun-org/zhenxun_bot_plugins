@@ -7,7 +7,7 @@ from zhenxun.services.log import logger
 from zhenxun.utils.http_utils import AsyncHttpx
 from zhenxun.utils.message import MessageUtils
 
-cover_url = "https://v2.alapi.cn/api/bilibili/cover"
+cover_url = "https://v3.alapi.cn/api/bilibili/cover"
 
 __plugin_meta__ = PluginMetadata(
     name="b封面",
@@ -18,7 +18,7 @@ __plugin_meta__ = PluginMetadata(
     """.strip(),
     extra=PluginExtraData(
         author="HibiKier",
-        version="0.1",
+        version="0.2",
         menu_type="一些工具",
         commands=[Command(command="b封面 [链接/av/bv/cv/直播id]")],
         configs=[

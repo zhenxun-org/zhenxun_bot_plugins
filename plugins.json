@@ -5,7 +5,7 @@
         "description": "喏，亲手为你煮的鸡汤",
         "usage": "不喝点什么感觉有点不舒服\n    指令：\n        鸡汤",
         "author": "HibiKier",
-        "version": "0.1-36e70ae",
+        "version": "0.2",
         "plugin_type": "NORMAL",
         "is_dir": false
     },
@@ -25,7 +25,7 @@
         "description": "生了个人，我很抱歉",
         "usage": "到点了，还是防不了下塔\n    指令：\n        网易云热评/到点了/12点了",
         "author": "HibiKier",
-        "version": "0.1-36e70ae",
+        "version": "0.2",
         "plugin_type": "NORMAL",
         "is_dir": false
     },
@@ -145,7 +145,7 @@
         "description": "屑Ai",
         "usage": "与小真寻普普通通的对话吧！",
         "author": "HibiKier",
-        "version": "0.1",
+        "version": "0.2",
         "plugin_type": "NORMAL",
         "is_dir": true
     },
@@ -165,7 +165,7 @@
         "description": "快捷的b站视频封面获取方式",
         "usage": "b封面 [链接/av/bv/cv/直播id]\n    示例:b封面 av86863038",
         "author": "HibiKier",
-        "version": "0.1",
+        "version": "0.2",
         "plugin_type": "NORMAL",
         "is_dir": true
     },
@@ -265,7 +265,7 @@
         "description": "为什么突然文艺起来了！",
         "usage": "平白无故念首诗\n    示例：念诗/来首诗/念首诗",
         "author": "HibiKier",
-        "version": "0.1",
+        "version": "0.2",
         "plugin_type": "NORMAL",
         "is_dir": true
     },
@@ -405,7 +405,7 @@
         "description": "嗨嗨，这里是小记者真寻哦",
         "usage": "真寻日报",
         "author": "HibiKier",
-        "version": "0.2",
+        "version": "0.3",
         "plugin_type": "NORMAL",
         "is_dir": true
     },

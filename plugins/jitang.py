@@ -7,7 +7,7 @@ from zhenxun.services.log import logger
 from zhenxun.utils.http_utils import AsyncHttpx
 from zhenxun.utils.message import MessageUtils
 
-url = "https://v2.alapi.cn/api/soul"
+url = "https://v3.alapi.cn/api/soul"
 
 __plugin_meta__ = PluginMetadata(
     name="鸡汤",
@@ -19,7 +19,7 @@ __plugin_meta__ = PluginMetadata(
     """.strip(),
     extra=PluginExtraData(
         author="HibiKier",
-        version="0.1",
+        version="0.2",
         commands=[Command(command="鸡汤")],
         configs=[
             RegisterConfig(

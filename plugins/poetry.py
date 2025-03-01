@@ -16,7 +16,7 @@ __plugin_meta__ = PluginMetadata(
     """.strip(),
     extra=PluginExtraData(
         author="HibiKier",
-        version="0.1",
+        version="0.2",
         commands=[Command(command="来首诗")],
         configs=[
             RegisterConfig(
@@ -43,7 +43,7 @@ _matcher.shortcut(
 )
 
 
-poetry_url = "https://v2.alapi.cn/api/shici"
+poetry_url = "https://v3.alapi.cn/api/shici"
 
 
 async def get_data(url: str, params: dict | None = None) -> tuple[dict | str, int]:
