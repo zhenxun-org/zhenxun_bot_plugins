@@ -105,7 +105,7 @@
         "description": "群友的本质是什么？是复读机哒！",
         "usage": "usage：\n        重复3次相同的消息时会复读",
         "author": "HibiKier",
-        "version": "0.1-89d294e",
+        "version": "0.2",
         "plugin_type": "DEPENDANT",
         "is_dir": false
     },
