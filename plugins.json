@@ -439,6 +439,16 @@
         "plugin_type": "NORMAL",
         "is_dir": true
     },
+        "点赞小助手": {
+        "module": "send_like",
+        "module_path": "plugins.send_like",
+        "description": "如果你想为某人点赞，调用此方法",
+        "usage": "需要好感度到达10及以上才行哦",
+        "author": "HibiKier",
+        "version": "0.1",
+        "plugin_type": "DEPENDANT",
+        "is_dir": true
+    },
     "伪人AI": {
         "module": "bym_ai",
         "module_path": "plugins.bym_ai",
