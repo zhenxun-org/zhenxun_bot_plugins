@@ -14,7 +14,7 @@ from zhenxun.services.plugin_init import PluginInit
 from zhenxun.utils.message import MessageUtils
 
 __plugin_meta__ = PluginMetadata(
-    name="给我爬",
+    name="爬爬爬",
     description="给我爬吧表情包",
     usage="""
     爬爬爬爬爬爬爬
