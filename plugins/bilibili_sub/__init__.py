@@ -56,10 +56,11 @@ __plugin_meta__ = PluginMetadata(
                 添加订阅番剧 史莱姆 <-(支持模糊搜索)
                 添加订阅番剧 125344 <-(番剧id)
                 删除订阅id 2324344 <-(任意id，通过查看订阅获取)
+            更多指令使用 “帮助B站订阅 -s” 查看
         """.strip(),
     extra=PluginExtraData(
         author="HibiKier",
-        version="0.4",
+        version="0.5",
         superuser_help="""
     登录b站获取cookie防止风控：
             bil_check/检测b站
