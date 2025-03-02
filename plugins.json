@@ -169,7 +169,7 @@
         "plugin_type": "NORMAL",
         "is_dir": true
     },
-    "敏感词检测": {
+    "敏感词警察": {
         "module": "black_word",
         "module_path": "plugins.black_word",
         "description": "请注意你的发言！",
