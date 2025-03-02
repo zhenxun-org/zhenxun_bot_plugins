@@ -425,7 +425,7 @@
         "description": "简易网易云点歌",
         "usage": "点歌 [歌名]",
         "author": "HibiKier",
-        "version": "0.1",
+        "version": "0.2",
         "plugin_type": "NORMAL",
         "is_dir": true
     },
