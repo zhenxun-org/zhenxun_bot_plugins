@@ -275,7 +275,7 @@
         "description": "刚买完瓜，在吃瓜现场",
         "usage": "指令：\n        微博热搜：发送实时热搜\n        微博热搜 [id]：截图该热搜页面\n        示例：微博热搜 5",
         "author": "HibiKier & yajiwa",
-        "version": "0.1-89d294e",
+        "version": "0.2",
         "plugin_type": "NORMAL",
         "is_dir": true
     },
