@@ -21,7 +21,7 @@ __plugin_meta__ = PluginMetadata(
     """.strip(),
     extra=PluginExtraData(
         author="HibiKier & yajiwa",
-        version="0.1",
+        version="0.2",
         commands=[Command(command="微博热搜 ?[id]")],
         configs=[RegisterConfig(key="cookie", value=None, help="微博cookie")],
     ).to_dict(),

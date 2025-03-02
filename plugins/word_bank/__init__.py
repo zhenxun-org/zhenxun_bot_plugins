@@ -7,11 +7,11 @@ from zhenxun.configs.utils import PluginExtraData, RegisterConfig
 from zhenxun.utils.enum import PluginType
 
 __plugin_meta__ = PluginMetadata(
-    name="词库",
+    name="词库问答",
     description="",
     usage="",
     extra=PluginExtraData(
-        author="HibiKier",
+        author="HibiKier & yajiwa",
         version="0.7",
         plugin_type=PluginType.PARENT,
         configs=[

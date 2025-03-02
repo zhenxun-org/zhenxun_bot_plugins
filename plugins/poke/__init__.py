@@ -28,7 +28,7 @@ __plugin_meta__ = PluginMetadata(
     """.strip(),
     extra=PluginExtraData(
         author="HibiKier",
-        version="0.1-eb2b7db",
+        version="0.2",
         menu_type="其他",
         plugin_type=PluginType.NORMAL,
     ).to_dict(),
