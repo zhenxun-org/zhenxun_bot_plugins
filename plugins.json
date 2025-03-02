@@ -446,7 +446,7 @@
         "usage": "需要好感度到达10及以上才行哦",
         "author": "HibiKier",
         "version": "0.1",
-        "plugin_type": "DEPENDANT",
+        "plugin_type": "NORMAL",
         "is_dir": true
     },
     "伪人AI": {
