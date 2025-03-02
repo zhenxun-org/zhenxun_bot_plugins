@@ -10,7 +10,7 @@ from zhenxun.utils.enum import PluginType
 Config.set_name("pix", "PIX图库")
 
 __plugin_meta__ = PluginMetadata(
-    name="PIX",
+    name="Pix",
     description="",
     usage="",
     extra=PluginExtraData(
