@@ -58,6 +58,10 @@
 |[roll](https://github.com/zhenxun-org/zhenxun_bot_plugins/tree/main/plugins/roll)|犹豫不决吗？那就让我帮你决定吧|
 |[点歌](https://github.com/zhenxun-org/zhenxun_bot_plugins/tree/main/plugins/music)|简易版网易云点歌|
 |[角色识别](https://github.com/zhenxun-org/zhenxun_bot_plugins/tree/main/plugins/what_role)|动漫以及gal游戏的角色识别|
+|[三千API](https://github.com/zhenxun-org/zhenxun_bot_plugins/tree/main/plugins/qian_api)|包含 抠图/上色/超分 功能|
+|[点赞](https://github.com/zhenxun-org/zhenxun_bot_plugins/tree/main/plugins/send_like)|给你点赞|
+|[伪人AI](https://github.com/zhenxun-org/zhenxun_bot_plugins/tree/main/plugins/bym_ai)|超级强力AI（引入养成系统）|
+
 
 
 

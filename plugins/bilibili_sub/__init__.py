@@ -1,9 +1,9 @@
-from io import BytesIO
 import time
+from io import BytesIO
 
+import nonebot
 from arclet.alconna.typing import CommandMeta
 from bilireq.login import Login
-import nonebot
 from nonebot.adapters.onebot.v11 import Bot
 from nonebot.drivers import Driver
 from nonebot.log import logger
@@ -15,7 +15,6 @@ from nonebot.typing import T_State
 from nonebot_plugin_alconna import Alconna, Args, UniMessage, on_alconna
 from nonebot_plugin_apscheduler import scheduler
 from nonebot_plugin_session import EventSession
-
 from zhenxun.configs.config import Config
 from zhenxun.configs.utils import PluginExtraData, RegisterConfig
 from zhenxun.models.group_console import GroupConsole
@@ -354,7 +353,6 @@ async def _():
                 if msg_list:
                     await send_sub_msg(msg_list, sub, bot)
                     if sub.sub_type == "live":
-                        msg_list = await get_sub_status(sub.sub_id, "up")
                         await send_sub_msg(msg_list, sub, bot)
 
 
