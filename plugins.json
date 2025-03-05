@@ -75,11 +75,11 @@
         "description": "跨越空间与时间跟管理员对话",
         "usage": "滴滴滴- ?[文本] ?[图片]\n        示例：滴滴滴- 我喜欢你",
         "author": "HibiKier",
-        "version": "0.1-89d294e",
+        "version": "0.2",
         "plugin_type": "NORMAL",
         "is_dir": true
     },
-    "刷屏禁言": {
+    "刷屏禁言检测": {
         "module": "mute",
         "module_path": "plugins.mute",
         "description": "刷屏禁言相关操作",
@@ -105,7 +105,7 @@
         "description": "群友的本质是什么？是复读机哒！",
         "usage": "usage：\n        重复3次相同的消息时会复读",
         "author": "HibiKier",
-        "version": "0.1-89d294e",
+        "version": "0.2",
         "plugin_type": "DEPENDANT",
         "is_dir": false
     },
@@ -169,7 +169,7 @@
         "plugin_type": "NORMAL",
         "is_dir": true
     },
-    "敏感词检测": {
+    "敏感词警察": {
         "module": "black_word",
         "module_path": "plugins.black_word",
         "description": "请注意你的发言！",
@@ -275,7 +275,7 @@
         "description": "刚买完瓜，在吃瓜现场",
         "usage": "指令：\n        微博热搜：发送实时热搜\n        微博热搜 [id]：截图该热搜页面\n        示例：微博热搜 5",
         "author": "HibiKier & yajiwa",
-        "version": "0.1-89d294e",
+        "version": "0.2",
         "plugin_type": "NORMAL",
         "is_dir": true
     },
@@ -375,7 +375,7 @@
         "description": "戳一戳发送语音美图萝莉图不美哉？",
         "usage": "戳一戳随机掉落语音或美图萝莉图",
         "author": "HibiKier",
-        "version": "0.1-5fbfdd5",
+        "version": "0.2",
         "plugin_type": "DEPENDANT",
         "is_dir": true
     },
@@ -425,7 +425,7 @@
         "description": "简易网易云点歌",
         "usage": "点歌 [歌名]",
         "author": "HibiKier",
-        "version": "0.1",
+        "version": "0.2",
         "plugin_type": "NORMAL",
         "is_dir": true
     },
