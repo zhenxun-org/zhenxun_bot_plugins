@@ -43,26 +43,36 @@
             </div>
             <div class="two-border">
                 <div class="moyu-title" style="left: -3px;"><img src="./res/icon/bgm.png" class="title-img">今日新番</div>
-                {% for s in data.data_anime %}
-                <div class="anime-border">
-                    <img src="{{s[1]}}" class="anime-img">
-                    <p class="anime-text">{{s[0]}}</p>
+                <div class="two-border-border">
+                    {% for s in data.data_anime %}
+                    <div class="anime-border">
+                        <img src="{{s[1]}}" class="anime-img">
+                        <p class="anime-text">{{s[0]}}</p>
+                    </div>
+                    {% endfor %}
                 </div>
-                {% endfor %}
             </div>
             <div class="three-border">
                 <div class="moyu-title" style="left: -3px;"><img src="./res/icon/60.png" class="title-img">60S读世界</div>
-                <ul style="line-height: 30px; line-height: 25px;">
+                <ul style="line-height: 30px; line-height: 25px; margin-left: -25px;">
                     {% for s in data.data_six %}
+                    {% if data.full_show %}
+                    <li class="full-show-text">{{s}}</li>
+                    {% else %}
                     <li class="normal-text">{{s}}</li>
+                    {% endif %}
                     {% endfor %}
                 </ul>
             </div>
             <div class="four-border">
                 <div class="moyu-title" style="left: -3px;"><img src="./res/icon/it.png" class="title-img">IT资讯</div>
-                <ul style="line-height: 30px; line-height: 25px;">
+                <ul style="line-height: 30px; line-height: 25px; margin-left: -25px;">
                     {% for s in data.data_it %}
+                    {% if data.full_show %}
+                    <li class="full-show-text">{{s}}</li>
+                    {% else %}
                     <li class="normal-text">{{s}}</li>
+                    {% endif %}
                     {% endfor %}
                 </ul>
             </div>

@@ -83,6 +83,14 @@ __plugin_meta__ = PluginMetadata(
                 help="获取调用token",
                 default_value="",
             ),
+            RegisterConfig(
+                module="pix",
+                key="FORCE_NSFW",
+                value=None,
+                help="强制设置nsfw等级(0, 1, 2)，例如: [0, 1]",
+                default_value="",
+                type=list[str],
+            ),
         ],
     ).to_dict(),
 )

@@ -1,7 +1,6 @@
 from nonebot.plugin import PluginMetadata
 from nonebot_plugin_alconna import Alconna, Args, Arparma, Match, on_alconna
 from nonebot_plugin_session import EventSession
-
 from zhenxun.configs.path_config import IMAGE_PATH
 from zhenxun.configs.utils import BaseBlock, Command, PluginExtraData
 from zhenxun.services.log import logger
@@ -23,16 +22,9 @@ __plugin_meta__ = PluginMetadata(
 )
 
 _matcher = on_alconna(
-    Alconna("luxun", Args["content", str]),
+    Alconna("鲁迅说", Args["content?", str] / "\n"),
     priority=5,
     block=True,
-)
-
-_matcher.shortcut(
-    "鲁迅说",
-    command="luxun",
-    arguments=["{%0}"],
-    prefix=True,
 )
 
 
@@ -57,7 +49,7 @@ async def _(content: str, session: EventSession, arparma: Arparma):
     if len(content) > 40:
         await MessageUtils.build_message("太长了，鲁迅说不完...").finish()
     while A.getsize(content)[0] > A.width - 50:
-        n = int(len(content) / 2)
+        n = len(content) // 2
         text += content[:n] + "\n"
         content = content[n:]
     text += content

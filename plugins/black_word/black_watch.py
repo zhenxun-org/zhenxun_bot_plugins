@@ -5,7 +5,6 @@ from nonebot.message import run_preprocessor
 from nonebot.plugin import PluginMetadata
 from nonebot_plugin_alconna import UniMsg
 from nonebot_plugin_uninfo import Uninfo
-
 from zhenxun.configs.config import Config
 from zhenxun.configs.utils import PluginExtraData
 from zhenxun.models.ban_console import BanConsole
@@ -23,6 +22,7 @@ __plugin_meta__ = PluginMetadata(
         author="HibiKier",
         version="0.1",
         menu_type="其他",
+        ignore_prompt=True,
         plugin_type=PluginType.DEPENDANT,
     ).to_dict(),
 )

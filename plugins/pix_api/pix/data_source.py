@@ -25,6 +25,7 @@ class PixManage:
         ai: bool | None,
         nsfw: tuple[int, ...],
         ratio_tuple: list[float] | None,
+        retry_count: int = 0,
     ) -> PixResult[list[PixModel]]:
         """获取图片
 
@@ -35,10 +36,12 @@ class PixManage:
             ai: 是否ai
             nsfw: nsfw标签
             ratio_tuple: 图片比例范围
+            retry_count: 重新调用
 
         返回:
             list[PixGallery]: 图片数据列表
         """
+        force_nsfw = base_config.get("FORCE_NSFW")
         size = base_config.get("PIX_IMAGE_SIZE")
         api = base_config.get("pix_api") + "/pix/get_pix"
         json_data = {
@@ -47,7 +50,7 @@ class PixManage:
             "r18": is_r18,
             "ai": ai,
             "size": size,
-            "nsfw_tag": nsfw or None,
+            "nsfw_tag": force_nsfw or nsfw or None,
             "ratio": ratio_tuple,
         }
         logger.debug(f"尝试调用pix api: {api}, 参数: {json_data}")
@@ -55,6 +58,11 @@ class PixManage:
         if token := base_config.get("token"):
             headers = {"Authorization": token}
         res = await AsyncHttpx.post(api, json=json_data, headers=headers)
+        if res.status_code == 502 and retry_count < 3:
+            logger.warning("pix api 502错误，请检查pix api是否正常")
+            return await cls.get_pix(
+                tags, num, is_r18, ai, nsfw, ratio_tuple, retry_count + 1
+            )
         res.raise_for_status()
         res_data = res.json()
         res_data["data"] = [PixModel(**item) for item in res_data["data"]]

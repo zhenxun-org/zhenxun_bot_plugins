@@ -1,1 +1,3 @@
 zhdate==0.1
+chinese_calendar==1.10.0
+lunardate==0.2.2

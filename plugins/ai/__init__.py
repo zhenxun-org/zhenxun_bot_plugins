@@ -3,7 +3,6 @@ from nonebot.plugin import PluginMetadata
 from nonebot.rule import to_me
 from nonebot_plugin_alconna import UniMsg
 from nonebot_plugin_session import EventSession
-
 from zhenxun.configs.config import BotConfig, Config
 from zhenxun.configs.utils import PluginExtraData, RegisterConfig
 from zhenxun.models.friend_user import FriendUser
@@ -22,7 +21,8 @@ __plugin_meta__ = PluginMetadata(
     """.strip(),
     extra=PluginExtraData(
         author="HibiKier",
-        version="0.1",
+        version="0.2",
+        ignore_prompt=True,
         configs=[
             RegisterConfig(
                 module="alapi",
