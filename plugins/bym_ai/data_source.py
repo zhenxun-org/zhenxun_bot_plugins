@@ -1,10 +1,10 @@
 import asyncio
-from collections.abc import Sequence
-from datetime import datetime
 import os
 import random
 import re
 import time
+from collections.abc import Sequence
+from datetime import datetime
 from typing import ClassVar, Literal
 
 from nonebot import require
@@ -12,7 +12,6 @@ from nonebot.adapters import Bot
 from nonebot.compat import model_dump
 from nonebot_plugin_alconna import Text, UniMessage, UniMsg
 from nonebot_plugin_uninfo import Uninfo
-
 from zhenxun.configs.config import BotConfig, Config
 from zhenxun.configs.path_config import IMAGE_PATH
 from zhenxun.configs.utils import AICallableTag
@@ -274,7 +273,7 @@ class Conversation:
             conversation = await cls.get_db_data(user_id, group_id)
         # 必须带有人设
         conversation = [c for c in conversation if c.role != "system"]
-        conversation.append(cls.add_system())
+        conversation.insert(0, cls.add_system())
         return conversation
 
     @classmethod
