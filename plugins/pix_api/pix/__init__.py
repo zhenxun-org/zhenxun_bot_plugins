@@ -18,7 +18,6 @@ from nonebot_plugin_alconna import (
 from nonebot_plugin_alconna.uniseg import Receipt
 from nonebot_plugin_alconna.uniseg.tools import reply_fetch
 from nonebot_plugin_uninfo import Uninfo
-
 from zhenxun.configs.config import BotConfig
 from zhenxun.configs.utils import BaseBlock, Command, PluginExtraData
 from zhenxun.services.log import logger
@@ -164,14 +163,15 @@ async def _(
         await MessageUtils.build_message("给我滚出克私聊啊变态！").finish()
     is_ai = False if arparma.find("noai") else None
     ratio_tuple = None
+    ratio_tuple_split = []
     if "," in ratio.result:
-        ratio_tuple = ratio.result.split(",")
+        ratio_tuple_split = ratio.result.split(",")
     elif "，" in ratio.result:
-        ratio_tuple = ratio.result.split("，")
-    if ratio_tuple and len(ratio_tuple) < 2:
+        ratio_tuple_split = ratio.result.split("，")
+    if ratio_tuple_split and len(ratio_tuple_split) < 2:
         return await MessageUtils.build_message("比例格式错误，请输入x,y").finish()
-    if ratio_tuple:
-        ratio_tuple = [float(ratio_tuple[0]), float(ratio_tuple[1])]
+    if ratio_tuple_split:
+        ratio_tuple = [float(ratio_tuple_split[0]), float(ratio_tuple_split[1])]
     if nsfw.result:
         for n in nsfw.result:
             if n not in [0, 1, 2]:

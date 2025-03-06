@@ -1,5 +1,5 @@
-import random
 from pathlib import Path
+import random
 
 from zhenxun.configs.config import Config
 from zhenxun.configs.path_config import TEMP_PATH
