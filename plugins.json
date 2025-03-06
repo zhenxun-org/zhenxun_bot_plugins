@@ -444,7 +444,27 @@
         "module_path": "plugins.bym_ai",
         "description": "小真寻想成为人类...",
         "usage": "你问小真寻的愿望？小真寻说她想成为人类！",
-        "author": "Chtholly",
+        "author": "Chtholly & HibiKier",
+        "version": "0.3",
+        "plugin_type": "NORMAL",
+        "is_dir": true
+    },
+    "三千API": {
+        "module": "qian_api",
+        "module_path": "plugins.qian_api",
+        "description": "包含超分/上色/漫画上色/抠图功能",
+        "usage": "超分/上色/漫画上色/抠图",
+        "author": "HibiKier",
+        "version": "0.1",
+        "plugin_type": "NORMAL",
+        "is_dir": true
+    },
+    "点赞": {
+        "module": "send_like",
+        "module_path": "plugins.send_like",
+        "description": "点赞小助手",
+        "usage": "点赞，点赞信息",
+        "author": "HibiKier",
         "version": "0.1",
         "plugin_type": "NORMAL",
         "is_dir": true
