@@ -385,7 +385,7 @@
         "description": "非常便利的B站订阅通知",
         "usage": "B站直播，番剧，UP动态开播等提醒",
         "author": "HibiKier",
-        "version": "0.4",
+        "version": "0.5",
         "plugin_type": "NORMAL",
         "is_dir": true
     },
