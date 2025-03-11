@@ -15,7 +15,7 @@
         "description": "以图搜图，看破本源",
         "usage": "识别图片 [二次元图片]\n    指令：\n        识图 [图片]",
         "author": "HibiKier",
-        "version": "0.1-89d294e",
+        "version": "0.2",
         "plugin_type": "NORMAL",
         "is_dir": true
     },
@@ -365,7 +365,7 @@
         "description": "运气项目又来了",
         "usage": "塞红包 [金币数] ?[红包数=5] ?[at指定人]: 塞入红包\n    开/抢: 打开红包\n    退回红包: 退回未开完的红包，必须在一分钟后使用\n\n    * 不同群组同一个节日红包用户只能开一次\n\n    示例:\n        塞红包 1000\n        塞红包 1000 10",
         "author": "HibiKier",
-        "version": "0.1-89d294e",
+        "version": "0.2",
         "plugin_type": "NORMAL",
         "is_dir": true
     },

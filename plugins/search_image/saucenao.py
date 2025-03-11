@@ -1,5 +1,5 @@
-import random
 from pathlib import Path
+import random
 
 from zhenxun.configs.config import Config
 from zhenxun.configs.path_config import TEMP_PATH
@@ -21,8 +21,6 @@ async def get_saucenao_image(url: str) -> str | list[str | Path]:
         str | list[Image | Text]: 识图数据
     """
     api_key = Config.get_config("search_image", "API_KEY")
-    if not api_key:
-        return "Saucenao 缺失API_KEY！"
     params = {
         "output_type": 2,
         "api_key": api_key,
@@ -31,7 +29,9 @@ async def get_saucenao_image(url: str) -> str | list[str | Path]:
         "db": 999,
         "url": url,
     }
-    data = (await AsyncHttpx.post(API_URL_SAUCENAO, params=params)).json()
+    response = await AsyncHttpx.post(API_URL_SAUCENAO, params=params)
+    response.raise_for_status()
+    data = response.json()
     if data["header"]["status"] != 0:
         return f"Saucenao识图失败..status：{data['header']['status']}"
     data = data["results"]
@@ -53,10 +53,10 @@ async def get_saucenao_image(url: str) -> str | list[str | Path]:
                     tmp += f"{x}：{info['data'][x]}\n"
             try:
                 if "source" not in info["data"].keys():
-                    tmp += f'source：{info["data"]["ext_urls"][0]}\n'
+                    tmp += f"source：{info['data']['ext_urls'][0]}\n"
             except KeyError:
-                tmp += f'source：{info["header"]["thumbnail"]}\n'
+                tmp += f"source：{info['header']['thumbnail']}\n"
             msg_list.append(tmp[:-1])
         except Exception as e:
-            logger.warning(f"识图获取图片信息发生错误", e=e)
+            logger.warning("识图获取图片信息发生错误", e=e)
     return msg_list

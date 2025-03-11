@@ -4,7 +4,6 @@ from zhenxun.services.db_context import Model
 
 
 class RedbagUser(Model):
-
     id = fields.IntField(pk=True, generated=True, auto_increment=True)
     """自增id"""
     user_id = fields.CharField(255)
@@ -20,7 +19,7 @@ class RedbagUser(Model):
     get_gold = fields.IntField(default=0)
     """开启红包获取金额"""
 
-    class Meta:
+    class Meta:  # type: ignore
         table = "redbag_users"
         table_description = "红包统计数据表"
         unique_together = ("user_id", "group_id")
@@ -57,7 +56,8 @@ class RedbagUser(Model):
     @classmethod
     async def _run_script(cls):
         return [
-            "ALTER TABLE redbag_users RENAME COLUMN user_qq TO user_id;",  # 将user_qq改为user_id
-            "ALTER TABLE redbag_users ALTER COLUMN user_id TYPE character varying(255);",
-            "ALTER TABLE redbag_users ALTER COLUMN group_id TYPE character varying(255);",
+            "ALTER TABLE redbag_users RENAME COLUMN user_qq TO user_id;",
+            "ALTER TABLE redbag_users ALTER COLUMN user_id TYPE character varying(255)",
+            "ALTER TABLE redbag_users ALTER COLUMN "
+            "group_id TYPE character varying(255)",
         ]
