@@ -1,7 +1,8 @@
+import asyncio
 import time
-from io import BytesIO
-
 import nonebot
+from datetime import datetime
+from io import BytesIO
 from arclet.alconna.typing import CommandMeta
 from bilireq.login import Login
 from nonebot.adapters.onebot.v11 import Bot
@@ -58,7 +59,7 @@ __plugin_meta__ = PluginMetadata(
         """.strip(),
     extra=PluginExtraData(
         author="HibiKier",
-        version="0.4",
+        version="0.5",
         superuser_help="""
     登录b站获取cookie防止风控：
             bil_check/检测b站
@@ -93,6 +94,38 @@ __plugin_meta__ = PluginMetadata(
                 help="b站检测时间间隔(秒)",
                 default_value=60,
                 type=int,
+            ),
+            RegisterConfig(
+                module="bilibili_sub",
+                key="ENABLE_SLEEP_MODE",
+                value=True,
+                help="是否开启固定时间段内休眠",
+                default_value=True,
+                type=bool,
+            ),
+            RegisterConfig(
+                module="bilibili_sub",
+                key="SLEEP_START_TIME",
+                value="01:00",
+                help="开启休眠时间",
+                default_value="01:00",
+                type=str,
+            ),
+            RegisterConfig(
+                module="bilibili_sub",
+                key="SLEEP_END_TIME",
+                value="07:30",
+                help="关闭休眠时间",
+                default_value="07:30",
+                type=str,
+            ),
+            RegisterConfig(
+                module="bilibili_sub",
+                key="ENABLE_AD_FILTER",
+                value=True,
+                help="是否开启广告过滤",
+                default_value=True,
+                type=bool,
             ),
         ],
         admin_level=base_config.get("GROUP_BILIBILI_SUB_LEVEL"),
@@ -333,27 +366,72 @@ async def _(uid: int):
         await MessageUtils.build_message(msg).finish()
     await MessageUtils.build_message(f"账号 {uid} 已退出登录").finish()
 
+def should_run():
+    """判断当前时间是否在运行时间段内（7点30到次日1点）"""
+    now = datetime.now().time()
+    # 如果当前时间在 7:30 到 23:59:59 之间，或者 0:00 到 1:00 之间，则运行
+    return (now >= datetime.strptime(base_config.get("SLEEP_END_TIME"), "%H:%M").time()) or (now < datetime.strptime(base_config.get("SLEEP_START_TIME"), "%H:%M").time())
+
+
+# 信号量，限制并发任务数
+semaphore = asyncio.Semaphore(200)
 
 # 推送
 @scheduler.scheduled_job(
     "interval",
-    seconds=base_config.get("CHECK_TIME") if base_config.get("CHECK_TIME") else 30,
-    max_instances=100,
+    seconds=base_config.get("CHECK_TIME") if base_config.get("CHECK_TIME") else 30,  
+    max_instances=500,
+    misfire_grace_time=40,
 )
-async def _():
-    bots = nonebot.get_bots()
-    for bot in bots.values():
-        if bot:
-            sub = await sub_manager.random_sub_data()
-            if sub:
-                logger.debug(
-                    f"Bilibili订阅开始检测：{sub.sub_id}， 类型：{sub.sub_type}"
+async def check_subscriptions():
+    """
+    定时任务：检查订阅并发送消息
+    """
+    async with semaphore:  # 限制并发任务数
+        if base_config.get("ENABLE_SLEEP_MODE"):
+            if not should_run():
+                return
+
+        bots = nonebot.get_bots()
+        if not bots:
+            logger.warning("No available bots found.")
+            return
+
+        for bot in bots.values():
+            if not bot:
+                continue
+
+            try:
+                # 获取随机订阅数据
+                sub = await sub_manager.random_sub_data()
+                if not sub:
+                    logger.info("No subscription data available.")
+                    continue
+
+                logger.info(
+                    f"Bilibili订阅开始检测：{sub.sub_id}，类型：{sub.sub_type}"
                 )
-                msg_list = await get_sub_status(sub.sub_id, sub.sub_type)
+
+                # 获取订阅状态，设置超时时间为30秒
+                msg_list = await asyncio.wait_for(
+                    get_sub_status(sub.sub_id, sub.sub_type), timeout=30
+                )
+
                 if msg_list:
                     await send_sub_msg(msg_list, sub, bot)
+
+                    # 如果是直播订阅，额外检测UP主动态
                     if sub.sub_type == "live":
-                        await send_sub_msg(msg_list, sub, bot)
+                        msg_list = await asyncio.wait_for(
+                            get_sub_status(sub.sub_id, "up"), timeout=30
+                        )
+                        if msg_list:
+                            await send_sub_msg(msg_list, sub, bot)
+
+            except asyncio.TimeoutError:
+                logger.error(f"任务超时：检测订阅 {sub.sub_id} 时超时")
+            except Exception as e:
+                logger.error(f"任务异常：检测订阅 {sub.sub_id} 时出错：{e}")
 
 
 async def send_sub_msg(msg_list: list, sub: BilibiliSub, bot: Bot):
