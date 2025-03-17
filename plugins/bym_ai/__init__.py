@@ -40,7 +40,7 @@ __plugin_meta__ = PluginMetadata(
     """.strip(),
     extra=PluginExtraData(
         author="Chtholly & HibiKier",
-        version="0.3",
+        version="0.4",
         ignore_prompt=True,
         configs=[
             RegisterConfig(
@@ -245,9 +245,10 @@ async def _(
         ).finish(reply_to=True)
     except Exception as e:
         logger.error("BYM AI 其他错误", "BYM_AI", session=session, e=e)
-        await MessageUtils.build_message("发生了一些异常，想要休息一下...").finish(
-            reply_to=True
-        )
+        if not is_bym:
+            await MessageUtils.build_message("发生了一些异常，想要休息一下...").finish(
+                reply_to=True
+            )
 
 
 RESOURCE_FILES = [

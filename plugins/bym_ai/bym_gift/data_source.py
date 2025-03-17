@@ -4,6 +4,7 @@ from datetime import datetime
 import inspect
 import random
 from types import MappingProxyType
+from typing import ClassVar
 
 from nonebot.adapters import Bot, Event
 from nonebot.utils import is_coroutine_callable
@@ -24,7 +25,21 @@ from .gift_register import gift_register
 ICON_PATH = IMAGE_PATH / "gift_icon"
 ICON_PATH.mkdir(parents=True, exist_ok=True)
 
-gift_list = []
+
+class GiftCache:
+    gifts: ClassVar[dict[str, GiftStore]] = {}
+
+    @classmethod
+    async def get_gift(cls, name: str | None = None) -> GiftStore | None:
+        if not cls.gifts:
+            cls.gifts = {g.name: g for g in await GiftStore.all()}
+        return cls.gifts.get(name) if name else random.choice(list(cls.gifts.values()))
+
+    @classmethod
+    async def get_gifts_name(cls) -> list[str]:
+        if not cls.gifts:
+            cls.gifts = {g.name: g for g in await GiftStore.all()}
+        return list(cls.gifts.keys())
 
 
 async def send_gift(user_id: str, session: Uninfo) -> str:
@@ -36,9 +51,10 @@ async def send_gift(user_id: str, session: Uninfo) -> str:
         > 2
     ):
         raise GiftRepeatSendException
-    if not gift_list:
-        gift_list = await GiftStore.all()
-    gift = random.choice(gift_list)
+
+    gift = await GiftCache.get_gift()
+    if not gift:
+        return "礼物库空空如也，请联系管理员添加礼物。"
     user = await BymUser.get_user(user_id, PlatformUtils.get_platform(session))
     if gift.uuid not in user.props:
         user.props[gift.uuid] = 0

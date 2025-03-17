@@ -1,10 +1,10 @@
 import asyncio
+from collections.abc import Sequence
+from datetime import datetime
 import os
 import random
 import re
 import time
-from collections.abc import Sequence
-from datetime import datetime
 from typing import ClassVar, Literal
 
 from nonebot import require
@@ -12,6 +12,7 @@ from nonebot.adapters import Bot
 from nonebot.compat import model_dump
 from nonebot_plugin_alconna import Text, UniMessage, UniMsg
 from nonebot_plugin_uninfo import Uninfo
+
 from zhenxun.configs.config import BotConfig, Config
 from zhenxun.configs.path_config import IMAGE_PATH
 from zhenxun.configs.utils import AICallableTag
@@ -21,6 +22,7 @@ from zhenxun.utils.decorator.retry import Retry
 from zhenxun.utils.http_utils import AsyncHttpx
 from zhenxun.utils.message import MessageUtils
 
+from .bym_gift.data_source import GiftCache
 from .call_tool import AiCallTool
 from .exception import CallApiParamException, NotResultException
 from .models.bym_chat import BymChat
@@ -67,7 +69,7 @@ def split_text(text: str) -> list[tuple[str, float]]:
     ]
     for r in split_list:
         next_char_index = text.find(r) + len(r)
-        if next_char_index < len(text) and text[next_char_index] == "？":
+        if next_char_index and len(text) and text[next_char_index] == "？":
             r += "？"
         results.append((r, min(len(r) * 0.2, 3.0)))
     return results
@@ -120,6 +122,8 @@ def remove_deep_seek(text: str, is_tool: bool) -> str:
         match_text = re.split("回复用户.{0,1}", text)[-1]
     elif "最终回复" in text:
         match_text = re.split("最终回复.{0,1}", text)[-1]
+    elif "回复:" in text or "回复：" in text:
+        match_text = re.split("回复.{0,1}", text)[-1]
     elif "Response text:" in text:
         match_text = re.split("Response text[:,：]", text)[-1]
     if match_text:
@@ -131,7 +135,11 @@ def remove_deep_seek(text: str, is_tool: bool) -> str:
         match_text = re.sub(
             r"\[\/?instruction\]([\s\S]*?)\[\/?instruction\]", "", match_text
         ).strip()
+        match_text = re.sub(r"</?zx-text>", "", match_text).strip()
         match_text = re.sub(r"</?thought>([\s\S]*?)</?thought>", "", match_text).strip()
+        match_text = re.sub(
+            r"</?tool_code>([\s\S]*?)</?tool_code>", "", match_text
+        ).strip()
         return re.sub(r"<\/?content>", "", match_text)
     else:
         text = re.sub(r"```tool_code([\s\S]*?)```", "", text).strip()
@@ -456,7 +464,9 @@ class ChatManager:
             list[dict[str, str]]: 文本列表
         """
         return [
-            cls.format("text", seg.text) for seg in message if isinstance(seg, Text)
+            cls.format("text", f"<zx-text>{seg.text}</zx-text>")
+            for seg in message
+            if isinstance(seg, Text)
         ]
 
     @classmethod
@@ -480,6 +490,7 @@ class ChatManager:
         gift_count = await GiftLog.filter(
             user_id=user_id, create_time__gte=datetime.now().date()
         ).count()
+        gifts = await GiftCache.get_gifts_name()
         level, _, _ = get_level_and_next_impression(cls.user_impression[user_id])
         level = "1" if level in ["0"] else level
         content_result = (
@@ -489,6 +500,7 @@ class ChatManager:
                 impression=cls.user_impression[user_id],
                 attitude=level2attitude[level],
                 gift_count=gift_count,
+                gifts=gifts,
             )
             if base_config.get("ENABLE_IMPRESSION")
             else NORMAL_CONTENT.format(
