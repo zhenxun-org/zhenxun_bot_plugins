@@ -1,10 +1,11 @@
 import asyncio
-from pathlib import Path
 import random
+from pathlib import Path
 
 from zhenxun.configs.config import Config
 from zhenxun.configs.path_config import TEMP_PATH
 from zhenxun.services.log import logger
+from zhenxun.utils.decorator.retry import Retry
 from zhenxun.utils.http_utils import AsyncHttpx
 
 from .._config import PixModel, PixResult, base_config
@@ -92,10 +93,10 @@ class StarManage:
         message_list = []
         for i in range(len(data_list)):
             pix = data_list[i]
-            img = result[i] or "这张图片下载失败了..."
+            img = result[i] or "\n这张图片下载失败了..."
             message_list.append(
                 [
-                    f"rank: {i + 1}\ntitle: {pix.title}",
+                    f"rank: {i + 1}\ntitle: {pix.title}\n",
                     f"pid: {pix.pid}\nuid: {pix.uid}\nstar: {pix.star}",
                     img,
                 ]
@@ -103,6 +104,7 @@ class StarManage:
         return message_list
 
     @classmethod
+    @Retry.api()
     async def get_image(cls, pix: PixModel) -> Path | None:
         """获取图片
 
