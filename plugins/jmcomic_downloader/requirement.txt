@@ -1,0 +1,3 @@
+img2pdf
+pyminizip
+jmcomic
