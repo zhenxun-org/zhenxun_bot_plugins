@@ -1,24 +1,20 @@
 import asyncio
-from dataclasses import dataclass
 import os
+from dataclasses import dataclass
 from pathlib import Path
 from typing import ClassVar
 
 import jmcomic
+import pyminizip
 from jmcomic import JmAlbumDetail
 from nonebot.adapters.onebot.v11 import Bot
 from pikepdf import Encryption, Pdf
-import pyminizip
-from ruamel.yaml import YAML
 
 from zhenxun.configs.path_config import DATA_PATH, TEMP_PATH
 from zhenxun.services.log import logger
 from zhenxun.utils.platform import PlatformUtils
 from zhenxun.utils.utils import ResourceDirManager
 
-_yaml = YAML(pure=True)
-_yaml.allow_unicode = True
-_yaml.indent = 2
 
 IMAGE_OUTPUT_PATH = TEMP_PATH / "jmcomic"
 IMAGE_OUTPUT_PATH.mkdir(parents=True, exist_ok=True)
@@ -128,10 +124,13 @@ class JmDownload:
         data_list = cls._data.get(album.id)
         if not data_list:
             return
-        loop = asyncio.get_running_loop()
+        try:
+            loop = asyncio.get_running_loop()
+        except Exception:
+            loop = None
         for data in data_list:
             if loop:
-                loop.create_task(cls.upload_file(data))  # noqa: RUF006
+                loop.create_task(cls.upload_file(data))
             else:
                 asyncio.run(cls.upload_file(data))
         del cls._data[album.id]
