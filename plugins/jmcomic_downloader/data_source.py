@@ -9,10 +9,12 @@ import pyminizip
 from jmcomic import JmAlbumDetail
 from nonebot.adapters.onebot.v11 import Bot
 from pikepdf import Encryption, Pdf
+
 from zhenxun.configs.path_config import DATA_PATH, TEMP_PATH
 from zhenxun.services.log import logger
 from zhenxun.utils.platform import PlatformUtils
 from zhenxun.utils.utils import ResourceDirManager
+
 
 IMAGE_OUTPUT_PATH = TEMP_PATH / "jmcomic"
 IMAGE_OUTPUT_PATH.mkdir(parents=True, exist_ok=True)

@@ -468,5 +468,15 @@
         "version": "0.1",
         "plugin_type": "NORMAL",
         "is_dir": true
+    },
+    "Jm下载器": {
+        "module": "jmcomic_downloader",
+        "module_path": "plugins.jmcomic_downloader",
+        "description": "懂得都懂，密码是本子id",
+        "usage": "jm [id]",
+        "author": "HibiKier",
+        "version": "0.1",
+        "plugin_type": "NORMAL",
+        "is_dir": true
     }
 }
