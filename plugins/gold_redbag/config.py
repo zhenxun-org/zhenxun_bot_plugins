@@ -1,8 +1,10 @@
+from io import BytesIO
 import random
 import time
-from io import BytesIO
 
+from nonebot_plugin_uninfo import Uninfo
 from pydantic import BaseModel
+
 from zhenxun.models.group_member_info import GroupInfoUser
 from zhenxun.models.user_console import UserConsole
 from zhenxun.utils.image_utils import BuildImage
@@ -68,7 +70,7 @@ class RedBag(BaseModel):
     uuid: str | None
     """uuid"""
 
-    async def build_amount_rank(self, num: int, platform: str) -> BuildImage:
+    async def build_amount_rank(self, session: Uninfo, num: int) -> BuildImage:
         """生成结算红包图片
 
         参数:
@@ -88,10 +90,13 @@ class RedBag(BaseModel):
             group_user_list = await GroupInfoUser.filter(
                 group_id=self.group_id, user_id__in=user_id_list
             ).all()
+            platform = PlatformUtils.get_platform(session)
             for i in range(num):
                 user_background = BuildImage(600, 100, font_size=30)
                 user_id, amount = sort_data[i]
-                user_ava_bytes = await PlatformUtils.get_user_avatar(user_id, platform)
+                user_ava_bytes = await PlatformUtils.get_user_avatar(
+                    user_id, platform, session.self_id
+                )
                 user_ava = None
                 if user_ava_bytes:
                     user_ava = BuildImage(80, 80, background=BytesIO(user_ava_bytes))
@@ -100,7 +105,7 @@ class RedBag(BaseModel):
                 await user_ava.circle_corner(10)
                 await user_background.paste(user_ava, (130, 10))
                 no_image = BuildImage(100, 100, font_size=65, font="CJGaoDeGuo.otf")
-                await no_image.text((0, 0), f"{i+1}", center_type="center")
+                await no_image.text((0, 0), f"{i + 1}", center_type="center")
                 await no_image.line((99, 10, 99, 90), "#b9b9b9")
                 await user_background.paste(no_image)
                 name = [
@@ -120,7 +125,7 @@ class RedBag(BaseModel):
         background = BuildImage(600, 150 + len(user_image_list) * 100)
         top = BuildImage(600, 100, color="#f55545", font_size=30)
         promoter_ava_bytes = await PlatformUtils.get_user_avatar(
-            self.promoter_id, platform
+            self.promoter_id, PlatformUtils.get_platform(session), session.self_id
         )
         promoter_ava = None
         if promoter_ava_bytes:
@@ -191,10 +196,8 @@ class GroupRedBag:
             bool: 是否有可开启的红包
         """
         return any(
-            red_bag.assigner
-            and red_bag.assigner == user_id
-            or not red_bag.assigner
-            and user_id not in red_bag.open_user
+            (red_bag.assigner and red_bag.assigner == user_id)
+            or (not red_bag.assigner and user_id not in red_bag.open_user)
             for _, red_bag in self._data.items()
         )
 
@@ -352,10 +355,17 @@ class GroupRedBag:
         返回:
             list[int]: 红包列表
         """
+        rand_list = [random.random() for _ in range(num)]
+        rand_sum = sum(rand_list)
+        amount_sum = 0
         red_bag_list = []
-        for _ in range(num - 1):
-            tmp = int(amount / random.choice(range(3, num + 3)))
-            red_bag_list.append(tmp)
-            amount -= tmp
-        red_bag_list.append(amount)
+        for i in range(num - 1):
+            if amount_sum >= amount:
+                red_bag_list.append(0)
+            else:
+                rand_amount = int(rand_list[i] / rand_sum * amount)
+                red_bag_list.append(rand_amount)
+                amount_sum += rand_amount
+        red_bag_list.append(amount - sum(red_bag_list))
+        random.shuffle(red_bag_list)
         return red_bag_list
