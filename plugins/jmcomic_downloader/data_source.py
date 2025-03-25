@@ -150,9 +150,14 @@ class JmDownload:
                 zip_path=zip_path
             )
         else:
-            await cls.upload_file(
+            if album_id not in cls._data:
+                cls._data[album_id] = []
+            cls._data[album_id].append(
                 DetailInfo(
                     bot=bot, user_id=user_id, group_id=group_id, album_id=album_id
                 ),
                 zip_path=None
+            )
+            await asyncio.to_thread(
+                jmcomic.download_album, album_id, option, callback=cls.call_send
             )
