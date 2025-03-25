@@ -155,8 +155,7 @@ class JmDownload:
             cls._data[album_id].append(
                 DetailInfo(
                     bot=bot, user_id=user_id, group_id=group_id, album_id=album_id
-                ),
-                zip_path=None
+                )
             )
             await asyncio.to_thread(
                 jmcomic.download_album, album_id, option, callback=cls.call_send
