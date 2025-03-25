@@ -139,7 +139,10 @@ class JmDownload:
     async def download_album(
         cls, bot: Bot, user_id: str, group_id: str | None, album_id: str
     ):
-        if f"{album_id}.zip" in os.listdir(ZIP_OUTPUT_PATH):
+        pdf_path = PDF_OUTPUT_PATH / f"{album_id}.pdf"
+        zip_path = ZIP_OUTPUT_PATH / f"{album_id}.zip"
+        
+        if zip_path.exists() and pdf_path.exists():
             await cls.upload_file(
                 DetailInfo(
                     bot=bot, user_id=user_id, group_id=group_id, album_id=album_id
