@@ -327,11 +327,21 @@ class Conversation:
 
 class CallApi:
     def __init__(self):
-        self.chat_url = base_config.get("BYM_AI_CHAT_URL")
+        url = {
+            "gemini": "https://generativelanguage.googleapis.com/v1beta/chat/completions",
+            "DeepSeek": "https://api.deepseek.com",
+            "硅基流动": "https://api.siliconflow.cn/v1",
+            "阿里云百炼": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+            "百度智能云": "https://qianfan.baidubce.com/v2",
+            "字节火山引擎": "https://ark.cn-beijing.volces.com/api/v3"
+        }
+        # 对话
+        chat_url = base_config.get("BYM_AI_CHAT_URL")
+        self.chat_url = url[chat_url] if chat_url in url else chat_url
         self.chat_model = base_config.get("BYM_AI_CHAT_MODEL")
         self.tool_model = base_config.get("BYM_AI_TOOL_MODEL")
         self.chat_token = token_counter.get_token()
-
+        # tts语音
         self.tts_url = Config.get_config("bym_ai", "BYM_AI_TTS_URL")
         self.tts_token = Config.get_config("bym_ai", "BYM_AI_TTS_TOKEN")
         self.tts_voice = Config.get_config("bym_ai", "BYM_AI_TTS_VOICE")
