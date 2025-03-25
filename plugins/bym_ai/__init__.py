@@ -46,7 +46,7 @@ __plugin_meta__ = PluginMetadata(
             RegisterConfig(
                 key="BYM_AI_CHAT_URL",
                 value=None,
-                help="ai聊天接口地址",
+                help="help="ai聊天接口地址，可以填入url和平台名称，当你使用平台名称时，默认使用平台官方api, 目前有[gemini, DeepSeek, 硅基流动, 阿里云百炼, 百度智能云, 字节火山引擎], 填入对应名称即可, 如 gemini",
             ),
             RegisterConfig(
                 key="BYM_AI_CHAT_TOKEN",
