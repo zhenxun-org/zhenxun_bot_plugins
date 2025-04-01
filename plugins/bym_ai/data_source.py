@@ -1,10 +1,10 @@
 import asyncio
+from collections.abc import Sequence
+from datetime import datetime
 import os
 import random
 import re
 import time
-from collections.abc import Sequence
-from datetime import datetime
 from typing import ClassVar, Literal
 
 from nonebot import require
@@ -12,6 +12,7 @@ from nonebot.adapters import Bot
 from nonebot.compat import model_dump
 from nonebot_plugin_alconna import Text, UniMessage, UniMsg
 from nonebot_plugin_uninfo import Uninfo
+
 from zhenxun.configs.config import BotConfig, Config
 from zhenxun.configs.path_config import IMAGE_PATH
 from zhenxun.configs.utils import AICallableTag
@@ -176,7 +177,7 @@ class TokenCounter:
         if tokens := base_config.get("BYM_AI_CHAT_TOKEN"):
             if isinstance(tokens, str):
                 tokens = [tokens]
-            self.tokens = {t: 0 for t in tokens}
+            self.tokens = dict.fromkeys(tokens, 0)
 
     def get_token(self) -> str:
         """获取token，将时间最小的token返回"""
@@ -287,8 +288,10 @@ class Conversation:
             conversation: 消息记录
         """
         cache_size = base_config.get("CACHE_SIZE")
-        if len(conversation) > cache_size:
-            conversation = conversation[-cache_size:]
+        group_cache_size = base_config.get("GROUP_CACHE_SIZE")
+        size = group_cache_size if group_id else cache_size
+        if len(conversation) > size:
+            conversation = conversation[-size:]
         if base_config.get("ENABLE_GROUP_CHAT") and group_id:
             cls.history_data[group_id] = conversation
         else:
@@ -333,11 +336,11 @@ class CallApi:
             "硅基流动": "https://api.siliconflow.cn/v1",
             "阿里云百炼": "https://dashscope.aliyuncs.com/compatible-mode/v1",
             "百度智能云": "https://qianfan.baidubce.com/v2",
-            "字节火山引擎": "https://ark.cn-beijing.volces.com/api/v3"
+            "字节火山引擎": "https://ark.cn-beijing.volces.com/api/v3",
         }
         # 对话
         chat_url = base_config.get("BYM_AI_CHAT_URL")
-        self.chat_url = url[chat_url] if chat_url in url else chat_url
+        self.chat_url = url.get(chat_url, chat_url)
         self.chat_model = base_config.get("BYM_AI_CHAT_MODEL")
         self.tool_model = base_config.get("BYM_AI_TOOL_MODEL")
         self.chat_token = token_counter.get_token()
@@ -494,6 +497,7 @@ class ChatManager:
         level = "1" if level in ["0"] else level
         content_result = (
             NORMAL_IMPRESSION_CONTENT.format(
+                time=datetime.now(),
                 nickname=nickname,
                 user_id=user_id,
                 impression=cls.user_impression[user_id],

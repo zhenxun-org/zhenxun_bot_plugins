@@ -1,6 +1,6 @@
 import asyncio
-import random
 from pathlib import Path
+import random
 
 from httpx import HTTPStatusError
 from nonebot import on_message
@@ -8,6 +8,7 @@ from nonebot.adapters import Bot, Event
 from nonebot.plugin import PluginMetadata
 from nonebot_plugin_alconna import UniMsg, Voice
 from nonebot_plugin_uninfo import Uninfo
+
 from zhenxun.configs.config import BotConfig
 from zhenxun.configs.path_config import IMAGE_PATH
 from zhenxun.configs.utils import (
@@ -108,9 +109,16 @@ __plugin_meta__ = PluginMetadata(
                 type=bool,
             ),
             RegisterConfig(
+                key="GROUP_CACHE_SIZE",
+                value=40,
+                help="群组内聊天记录数据大小",
+                default_value=40,
+                type=int,
+            ),
+            RegisterConfig(
                 key="CACHE_SIZE",
                 value=40,
-                help="缓存聊天记录数据大小（每位用户）",
+                help="私聊下缓存聊天记录数据大小（每位用户）",
                 default_value=40,
                 type=int,
             ),
