@@ -80,8 +80,9 @@ class JmDownload:
     _data: ClassVar[dict[str, list[DetailInfo]]] = {}
 
     @classmethod
-    async def upload_file(cls, data: DetailInfo):
-        zip_path = CreateZip(data).create()
+    async def upload_file(cls, data: DetailInfo, zip_path: Path | None = None):
+        if not zip_path:
+            zip_path = CreateZip(data).create()
         try:
             if not zip_path.exists():
                 await PlatformUtils.send_message(
@@ -139,11 +140,14 @@ class JmDownload:
     async def download_album(
         cls, bot: Bot, user_id: str, group_id: str | None, album_id: str
     ):
-        if f"{album_id}.zip" in os.listdir(ZIP_OUTPUT_PATH):
+        zip_path = ZIP_OUTPUT_PATH / f"{album_id}.zip"
+
+        if zip_path.exists():
             await cls.upload_file(
                 DetailInfo(
                     bot=bot, user_id=user_id, group_id=group_id, album_id=album_id
-                )
+                ),
+                zip_path=zip_path
             )
         else:
             if album_id not in cls._data:
