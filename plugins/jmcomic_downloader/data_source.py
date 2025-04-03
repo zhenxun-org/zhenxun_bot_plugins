@@ -81,7 +81,7 @@ class JmDownload:
 
     @classmethod
     async def upload_file(cls, data: DetailInfo, zip_path: Path | None = None):
-        if zip_path is None:
+        if not zip_path:
             zip_path = CreateZip(data).create()
         try:
             if not zip_path.exists():
