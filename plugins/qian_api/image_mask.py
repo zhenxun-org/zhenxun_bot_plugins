@@ -82,7 +82,7 @@ async def _(
         if not image_url and result:
             await MessageUtils.build_message(result).send(reply_to=True)
         elif image_url:
-            await MessageUtils.build_message(image_url).send(reply_to=True)
+            await MessageUtils.build_message(Image(url=image_url)).send(reply_to=True)
         else:
             await MessageUtils.build_message("抠图失败...").send(reply_to=True)
     except HTTPStatusError as e:
