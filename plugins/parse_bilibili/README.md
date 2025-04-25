@@ -87,7 +87,7 @@ bs4
 
 | 配置项 | 默认值 | 说明 |
 |-------|-------|------|
-| DEFAULT_BILIBILI_PARSE | True | 被动B站转发解析进群默认开关状态 |
+| DEFAULT_BILIBILI_PARSE | True | 被动b站解析进群默认开关状态 |
 | CACHE_TTL | 300 | 被动解析缓存时间（秒），同一链接在此时间内同一会话不重复解析 |
 | CACHE_ENABLED | True | 是否启用被动解析缓存 |
 | ENABLE_MINIAPP_PARSE | True | 是否在被动解析中解析QQ小程序/JSON卡片中的B站链接 |

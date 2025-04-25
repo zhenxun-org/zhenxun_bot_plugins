@@ -71,12 +71,15 @@ __plugin_meta__ = PluginMetadata(
        - 支持视频(av/BV)、直播、专栏(cv)、动态(t.bili/opus)、番剧/影视(ss/ep)、用户空间(space)。
        - 支持短链(b23.tv)、小程序/卡片（需开启）。
        - 默认配置下，5分钟内同一链接在同一会话不重复解析。
+       - 开启方式：
+         方式一：使用命令「开启群被动b站解析」或「关闭群被动b站解析」
+         方式二：在bot的Webui页面的「群组」中修改群被动状态「b站解析」
 
     2. 手动视频下载命令：
        bili/b站下载 [链接/ID]  # 专门用于下载 B 站视频
 
        - 支持视频链接、av/BV号、引用包含链接的消息或卡片。
-       - 此命令不会发送预览和处理过程消息，只会发送最终视频（如果成功）。失败时不提示。
+       - 命令执行过程中会发送提示信息，并在下载完成后发送视频文件。
 
     3. 自动下载控制命令 (需要管理员权限):
        bili/b站自动下载 on    # 为当前群聊开启视频自动下载
@@ -99,7 +102,7 @@ __plugin_meta__ = PluginMetadata(
                 key="DEFAULT_BILIBILI_PARSE",
                 value=True,
                 default_value=True,
-                help="被动 B站转发解析 进群默认开关状态",
+                help="被动 b站解析 进群默认开关状态",
                 type=bool,
             ),
             RegisterConfig(
@@ -175,7 +178,7 @@ __plugin_meta__ = PluginMetadata(
                 type=int,
             ),
         ],
-        tasks=[Task(module="parse_bilibili", name="b站转发解析")],
+        tasks=[Task(module="parse_bilibili", name="b站解析")],
     ).dict(),
 )
 
