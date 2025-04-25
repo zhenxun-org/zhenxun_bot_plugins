@@ -52,7 +52,7 @@ argparse>=1.4.0
 qrcode>=7.3.1
 pillow>=9.0.0
 pretty-errors>=1.2.25
-bilibili-api-python
+bilibili-api-python (注意：必须安装此包，而不是bilibili-api)
 aiofiles
 jinja2
 bs4
