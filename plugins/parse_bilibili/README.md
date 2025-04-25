@@ -92,13 +92,9 @@ bs4
 | CACHE_ENABLED | True | 是否启用被动解析缓存 |
 | ENABLE_MINIAPP_PARSE | True | 是否在被动解析中解析QQ小程序/JSON卡片中的B站链接 |
 | RENDER_AS_IMAGE | False | 是否将解析结果渲染为图片 |
-| ENABLE_VIDEO_PARSE | True | 是否启用视频解析 |
-| ENABLE_LIVE_PARSE | True | 是否启用直播解析 |
-| ENABLE_ARTICLE_PARSE | True | 是否启用专栏/动态解析 |
 | AUTO_DOWNLOAD_DURATION_LIMIT_ENABLED | True | 是否启用自动下载时长限制 |
 | AUTO_DOWNLOAD_MAX_DURATION | 10 | 自动下载最大视频时长（分钟） |
 | VIDEO_FILE_EXPIRY_DAYS | 1 | 视频文件过期时间(天)，超过此时间自动清理 |
-| VIP_DOWNLOAD_SERVERS | [] | 用于下载B站会员番剧的第三方解析服务器列表（已禁用，仅使用官方下载） |
 
 ## 使用示例
 
