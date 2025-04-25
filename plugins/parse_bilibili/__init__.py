@@ -129,8 +129,8 @@ __plugin_meta__ = PluginMetadata(
             RegisterConfig(
                 module=MODULE_NAME,
                 key="RENDER_AS_IMAGE",
-                value=False,
-                default_value=False,
+                value=True,
+                default_value=True,
                 help="是否将被动解析结果渲染成图片发送",
                 type=bool,
             ),

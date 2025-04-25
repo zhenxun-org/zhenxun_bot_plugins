@@ -91,7 +91,7 @@ bs4
 | CACHE_TTL | 300 | 被动解析缓存时间（秒），同一链接在此时间内同一会话不重复解析 |
 | CACHE_ENABLED | True | 是否启用被动解析缓存 |
 | ENABLE_MINIAPP_PARSE | True | 是否在被动解析中解析QQ小程序/JSON卡片中的B站链接 |
-| RENDER_AS_IMAGE | False | 是否将解析结果渲染为图片 |
+| RENDER_AS_IMAGE | True | 是否将解析结果渲染为图片 |
 | AUTO_DOWNLOAD_DURATION_LIMIT_ENABLED | True | 是否启用自动下载时长限制 |
 | AUTO_DOWNLOAD_MAX_DURATION | 10 | 自动下载最大视频时长（分钟） |
 | VIDEO_FILE_EXPIRY_DAYS | 1 | 视频文件过期时间(天)，超过此时间自动清理 |
