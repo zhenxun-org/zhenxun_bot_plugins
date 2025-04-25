@@ -220,7 +220,9 @@ async def send_video_final(bot: Bot, event: Event, video_path: Path):
     """仅发送最终视频，失败时只记录日志"""
     try:
         if video_path.exists():
-            file_uri = f"file:///{str(video_path.resolve()).replace('\\', '/')}"
+            path_str = str(video_path.resolve())
+            path_str = path_str.replace("\\", "/")
+            file_uri = "file:///" + path_str
             video_segment = V11MessageSegment.video(file_uri)
             await bot.send(event=event, message=video_segment)
             logger.info(f"视频文件发送成功: {video_path}")
@@ -322,16 +324,12 @@ def get_play_url_sync(
         return None
 
 
-# 已移除第三方代理服务器支持，只使用官方API
-
-
 async def get_bangumi_play_url_with_fallback(
     ep_id: int, cid: int
 ) -> Optional[Dict[str, Any]]:
     """获取番剧播放链接 (异步封装同步请求)"""
     loop = asyncio.get_running_loop()
 
-    # 只使用官方API获取播放链接
     play_info = await loop.run_in_executor(None, get_play_url_sync, ep_id, cid)
 
     if not play_info:
@@ -586,7 +584,9 @@ async def _perform_video_download(bot: Bot, event: Event, video_info: VideoInfo)
             logger.debug(f"准备发送最终视频文件: {downloaded_file_path}")
             if downloaded_file_path.exists():
                 try:
-                    file_uri = f"file:///{str(downloaded_file_path.resolve()).replace('\\', '/')}"
+                    path_str = str(downloaded_file_path.resolve())
+                    path_str = path_str.replace("\\", "/")
+                    file_uri = "file:///" + path_str
                     video_segment = V11MessageSegment.video(file_uri)
                     logger.debug(
                         f"自动下载：准备发送的消息段类型: {type(video_segment)}, 内容: {video_segment}"
