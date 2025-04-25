@@ -6,6 +6,7 @@ ujson>=5.4.0
 aiofiles>=0.8.0
 
 # B站API相关
+# 注意：必须安装 bilibili-api-python，而不是 bilibili-api
 bilibili-api-python>=16.0.0
 tenacity>=8.0.0
 

@@ -220,7 +220,9 @@ async def send_video_final(bot: Bot, event: Event, video_path: Path):
     """仅发送最终视频，失败时只记录日志"""
     try:
         if video_path.exists():
-            file_uri = f"file:///{str(video_path.resolve()).replace('\\', '/')}"
+            path_str = str(video_path.resolve())
+            path_str = path_str.replace("\\", "/")
+            file_uri = "file:///" + path_str
             video_segment = V11MessageSegment.video(file_uri)
             await bot.send(event=event, message=video_segment)
             logger.info(f"视频文件发送成功: {video_path}")
@@ -322,16 +324,12 @@ def get_play_url_sync(
         return None
 
 
-# 已移除第三方代理服务器支持，只使用官方API
-
-
 async def get_bangumi_play_url_with_fallback(
     ep_id: int, cid: int
 ) -> Optional[Dict[str, Any]]:
     """获取番剧播放链接 (异步封装同步请求)"""
     loop = asyncio.get_running_loop()
 
-    # 只使用官方API获取播放链接
     play_info = await loop.run_in_executor(None, get_play_url_sync, ep_id, cid)
 
     if not play_info:
@@ -347,7 +345,10 @@ async def get_bangumi_play_url_with_fallback(
 
 
 async def _perform_bangumi_download(
-    bot: Bot, event: Event, url_info_dict: Dict[str, Any]
+    bot: Bot,
+    event: Event,
+    url_info_dict: Dict[str, Any],
+    matcher: Optional[AlconnaMatcher] = None,
 ):
     """执行番剧下载的核心逻辑"""
     loop = asyncio.get_running_loop()
@@ -358,10 +359,14 @@ async def _perform_bangumi_download(
     )
     if not bangumi_info:
         logger.error("无法获取番剧信息")
+        if matcher:
+            await matcher.finish("无法获取番剧信息，请稍后重试。")
         return
     episodes = bangumi_info.get("episodes", [])
     if not episodes:
         logger.error("番剧没有剧集信息")
+        if matcher:
+            await matcher.finish("番剧没有剧集信息，请检查链接是否正确。")
         return
 
     target_episode = None
@@ -376,6 +381,8 @@ async def _perform_bangumi_download(
 
     if not target_episode:
         logger.error("未找到目标剧集")
+        if matcher:
+            await matcher.finish("未找到目标剧集，请检查链接是否正确。")
         return
     ep_id = target_episode.get("id")
     cid = target_episode.get("cid")
@@ -384,6 +391,8 @@ async def _perform_bangumi_download(
     play_info = await get_bangumi_play_url_with_fallback(ep_id, cid)
     if not play_info:
         logger.error(f"获取播放链接失败 for ep {ep_id}")
+        if matcher:
+            await matcher.finish("获取番剧播放链接失败，请稍后重试。")
         return
 
     downloaded_file_path: Optional[Path] = None
@@ -458,9 +467,17 @@ async def _perform_bangumi_download(
             v_stream_path.unlink(missing_ok=True)
         if a_stream_path and a_stream_path.exists():
             a_stream_path.unlink(missing_ok=True)
+        if matcher:
+            await matcher.finish(f"番剧下载处理失败: {str(e)[:100]}")
+        raise
 
 
-async def _perform_video_download(bot: Bot, event: Event, video_info: VideoInfo):
+async def _perform_video_download(
+    bot: Bot,
+    event: Event,
+    video_info: VideoInfo,
+    matcher: Optional[AlconnaMatcher] = None,
+):
     """
     执行视频下载、合并和发送的核心逻辑。
     此函数不发送任何中间提示或错误消息给用户，只发送最终视频（如果成功）。
@@ -586,7 +603,9 @@ async def _perform_video_download(bot: Bot, event: Event, video_info: VideoInfo)
             logger.debug(f"准备发送最终视频文件: {downloaded_file_path}")
             if downloaded_file_path.exists():
                 try:
-                    file_uri = f"file:///{str(downloaded_file_path.resolve()).replace('\\', '/')}"
+                    path_str = str(downloaded_file_path.resolve())
+                    path_str = path_str.replace("\\", "/")
+                    file_uri = "file:///" + path_str
                     video_segment = V11MessageSegment.video(file_uri)
                     logger.debug(
                         f"自动下载：准备发送的消息段类型: {type(video_segment)}, 内容: {video_segment}"
@@ -614,6 +633,9 @@ async def _perform_video_download(bot: Bot, event: Event, video_info: VideoInfo)
             v_stream_path.unlink(missing_ok=True)
         if a_stream_path and a_stream_path.exists():
             a_stream_path.unlink(missing_ok=True)
+        if matcher:
+            await matcher.finish(f"视频下载处理失败: {str(e)[:100]}")
+        raise
 
 
 bili_download_cmd = Alconna("bili下载", Args["link?", str])
@@ -773,7 +795,12 @@ async def handle_bili_download(
 
     if not target_url_or_id:
         logger.debug("未找到有效链接/ID")
+        await matcher.finish(
+            "未找到有效的B站链接或视频ID，请检查输入或回复包含B站链接的消息。"
+        )
         return
+
+    await matcher.send("正在解析B站链接并准备下载，请稍候...")
 
     resource_type: Optional[ResourceType] = None
     resource_id: Optional[str] = None
@@ -797,10 +824,16 @@ async def handle_bili_download(
 
     if not url_info_dict and not resource_type:
         logger.error(f"无法识别的 URL 或 ID: {target_url_or_id}")
+        await matcher.finish(f"无法识别的B站链接或ID: {target_url_or_id}")
         return
 
     if resource_type == ResourceType.BANGUMI and url_info_dict:
-        await _perform_bangumi_download(bot, event, url_info_dict)
+        await matcher.send("正在下载番剧，视频较大请耐心等待...")
+        try:
+            await _perform_bangumi_download(bot, event, url_info_dict, matcher)
+        except Exception as e:
+            logger.error(f"番剧下载失败: {e}", e=e)
+            await matcher.finish(f"番剧下载失败: {str(e)[:100]}")
     elif resource_type == ResourceType.VIDEO and resource_id:
         video_info: Optional[VideoInfo] = None
         try:
@@ -808,17 +841,20 @@ async def handle_bili_download(
             parsed_content = await ParserService.parse(target_url_or_id)
             if isinstance(parsed_content, VideoInfo):
                 video_info = parsed_content
-                await _perform_video_download(bot, event, video_info)
+                await _perform_video_download(bot, event, video_info, matcher)
             else:
                 logger.error(
                     f"解析普通视频链接未返回 VideoInfo: {type(parsed_content)}"
                 )
+                await matcher.finish("解析视频信息失败，请稍后重试。")
         except Exception as e:
             logger.error(f"执行普通视频下载失败 for {resource_id}", e=e)
+            await matcher.finish(f"下载视频失败: {str(e)[:100]}")
     else:
         logger.warning(
             f"识别的资源类型 ({resource_type}) 不是支持的下载类型 (Video/Bangumi)"
         )
+        await matcher.finish(f"不支持下载此类型的内容: {resource_type}")
 
     logger.info("handle_bili_download 函数执行完毕")
 

@@ -11,7 +11,6 @@ from ..config import base_config, PLUGIN_TEMP_DIR
 class FileCleaner:
     """临时文件清理服务"""
 
-    # 文件过期时间（天）
     FILE_EXPIRY = {
         "bili_video_cover_": 1,
         "bili_avatar_": 7,
@@ -33,9 +32,12 @@ class FileCleaner:
         """初始化文件清理服务"""
         logger.info("正在初始化文件清理服务...", "B站解析")
 
-        auto_clean_enabled = base_config.get("AUTO_CLEAN_FILES", True)
+        video_expiry_days = base_config.get("VIDEO_FILE_EXPIRY_DAYS", 1)
+        auto_clean_enabled = video_expiry_days > 0
+        enabled_text = "启用"
+        disabled_text = "禁用"
         logger.info(
-            f"自动清理功能状态: {'\u542f用' if auto_clean_enabled else '\u7981用'}",
+            f"自动清理功能状态: {enabled_text if auto_clean_enabled else disabled_text}",
             "B站解析",
         )
 

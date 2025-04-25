@@ -50,8 +50,11 @@ class CacheService:
         if not cls._initialized:
             await cls.initialize()
 
-        if not base_config.get("CACHE_ENABLED", True):
+        cache_ttl_minutes = base_config.get("CACHE_TTL", 5)
+        if cache_ttl_minutes <= 0:
             return True
+
+        cache_ttl_seconds = cache_ttl_minutes * 60
 
         context_key = cls._get_context_key(session)
         current_time = time.time()
@@ -80,10 +83,9 @@ class CacheService:
             asyncio.create_task(cls._save_cache_to_disk())
             return True
         else:
-            cache_ttl = base_config.get("CACHE_TTL", 300)
-            if current_time - timestamp > cache_ttl:
+            if current_time - timestamp > cache_ttl_seconds:
                 logger.debug(
-                    f"URL '{url}' 在上下文 '{context_key}' 的缓存已过期 (TTL={cache_ttl}s)",
+                    f"URL '{url}' 在上下文 '{context_key}' 的缓存已过期 (TTL={cache_ttl_minutes}分钟)",
                     "B站解析",
                 )
                 context_cache[url] = current_time
@@ -106,7 +108,8 @@ class CacheService:
         if not cls._initialized:
             await cls.initialize()
 
-        if not base_config.get("CACHE_ENABLED", True):
+        cache_ttl_minutes = base_config.get("CACHE_TTL", 5)
+        if cache_ttl_minutes <= 0:
             return
 
         context_key = cls._get_context_key(session)

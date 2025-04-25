@@ -71,12 +71,15 @@ __plugin_meta__ = PluginMetadata(
        - 支持视频(av/BV)、直播、专栏(cv)、动态(t.bili/opus)、番剧/影视(ss/ep)、用户空间(space)。
        - 支持短链(b23.tv)、小程序/卡片（需开启）。
        - 默认配置下，5分钟内同一链接在同一会话不重复解析。
+       - 开启方式：
+         方式一：使用命令「开启群被动b站解析」或「关闭群被动b站解析」
+         方式二：在bot的Webui页面的「群组」中修改群被动状态「b站解析」
 
     2. 手动视频下载命令：
        bili/b站下载 [链接/ID]  # 专门用于下载 B 站视频
 
        - 支持视频链接、av/BV号、引用包含链接的消息或卡片。
-       - 此命令不会发送预览和处理过程消息，只会发送最终视频（如果成功）。失败时不提示。
+       - 命令执行过程中会发送提示信息，并在下载完成后发送视频文件。
 
     3. 自动下载控制命令 (需要管理员权限):
        bili/b站自动下载 on    # 为当前群聊开启视频自动下载
@@ -99,24 +102,16 @@ __plugin_meta__ = PluginMetadata(
                 key="DEFAULT_BILIBILI_PARSE",
                 value=True,
                 default_value=True,
-                help="被动 B站转发解析 进群默认开关状态",
+                help="被动 b站解析 进群默认开关状态",
                 type=bool,
             ),
             RegisterConfig(
                 module=MODULE_NAME,
                 key="CACHE_TTL",
-                value=300,
-                default_value=300,
-                help="被动解析缓存时间（秒），同一链接在此时间内同一会话不重复解析",
+                value=5,
+                default_value=5,
+                help="被动解析缓存时间（分钟），同一链接在此时间内同一会话不重复解析，设为0关闭缓存",
                 type=int,
-            ),
-            RegisterConfig(
-                module=MODULE_NAME,
-                key="CACHE_ENABLED",
-                value=True,
-                default_value=True,
-                help="是否启用被动解析缓存",
-                type=bool,
             ),
             RegisterConfig(
                 module=MODULE_NAME,
@@ -129,19 +124,12 @@ __plugin_meta__ = PluginMetadata(
             RegisterConfig(
                 module=MODULE_NAME,
                 key="RENDER_AS_IMAGE",
-                value=False,
-                default_value=False,
+                value=True,
+                default_value=True,
                 help="是否将被动解析结果渲染成图片发送",
                 type=bool,
             ),
-            RegisterConfig(
-                module=MODULE_NAME,
-                key="AUTO_CLEAN_FILES",
-                value=True,
-                default_value=True,
-                help="是否自动清理过期的临时文件",
-                type=bool,
-            ),
+
             RegisterConfig(
                 module=MODULE_NAME,
                 key="FILE_CLEAN_INTERVAL",
@@ -152,18 +140,10 @@ __plugin_meta__ = PluginMetadata(
             ),
             RegisterConfig(
                 module=MODULE_NAME,
-                key="AUTO_DOWNLOAD_DURATION_LIMIT_ENABLED",
-                value=True,
-                default_value=True,
-                help="是否启用自动下载时长限制",
-                type=bool,
-            ),
-            RegisterConfig(
-                module=MODULE_NAME,
                 key="AUTO_DOWNLOAD_MAX_DURATION",
                 value=10,
                 default_value=10,
-                help="自动下载最大时长(分钟), 超过此值不下载",
+                help="自动下载最大时长(分钟), 超过此值不下载，设为0关闭时长限制",
                 type=int,
             ),
             RegisterConfig(
@@ -175,7 +155,7 @@ __plugin_meta__ = PluginMetadata(
                 type=int,
             ),
         ],
-        tasks=[Task(module="parse_bilibili", name="b站转发解析")],
+        tasks=[Task(module="parse_bilibili", name="b站解析")],
     ).dict(),
 )
 
@@ -598,9 +578,6 @@ async def _(
                             f"群组 {session.id2} 开启了自动下载，检查时长限制..."
                         )
 
-                        limit_enabled = base_config.get(
-                            "AUTO_DOWNLOAD_DURATION_LIMIT_ENABLED", True
-                        )
                         max_duration_minutes = base_config.get(
                             "AUTO_DOWNLOAD_MAX_DURATION", 10
                         )
@@ -609,7 +586,7 @@ async def _(
                         video_duration_minutes = round(parsed_content.duration / 60, 1)
 
                         if (
-                            limit_enabled
+                            max_duration_minutes > 0
                             and parsed_content.duration > max_duration_seconds
                         ):
                             logger.info(

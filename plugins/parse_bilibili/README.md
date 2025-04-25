@@ -52,7 +52,7 @@ argparse>=1.4.0
 qrcode>=7.3.1
 pillow>=9.0.0
 pretty-errors>=1.2.25
-bilibili-api-python
+bilibili-api-python (注意：必须安装此包，而不是bilibili-api)
 aiofiles
 jinja2
 bs4
@@ -87,14 +87,12 @@ bs4
 
 | 配置项 | 默认值 | 说明 |
 |-------|-------|------|
-| DEFAULT_BILIBILI_PARSE | True | 被动B站转发解析进群默认开关状态 |
-| CACHE_TTL | 300 | 被动解析缓存时间（秒），同一链接在此时间内同一会话不重复解析 |
-| CACHE_ENABLED | True | 是否启用被动解析缓存 |
+| DEFAULT_BILIBILI_PARSE | True | 被动b站解析进群默认开关状态 |
+| CACHE_TTL | 5 | 被动解析缓存时间（分钟），同一链接在此时间内同一会话不重复解析，设为0关闭缓存 |
 | ENABLE_MINIAPP_PARSE | True | 是否在被动解析中解析QQ小程序/JSON卡片中的B站链接 |
-| RENDER_AS_IMAGE | False | 是否将解析结果渲染为图片 |
-| AUTO_DOWNLOAD_DURATION_LIMIT_ENABLED | True | 是否启用自动下载时长限制 |
-| AUTO_DOWNLOAD_MAX_DURATION | 10 | 自动下载最大视频时长（分钟） |
-| VIDEO_FILE_EXPIRY_DAYS | 1 | 视频文件过期时间(天)，超过此时间自动清理 |
+| RENDER_AS_IMAGE | True | 是否将解析结果渲染为图片 |
+| AUTO_DOWNLOAD_MAX_DURATION | 10 | 自动下载最大视频时长（分钟），设为0关闭时长限制 |
+| VIDEO_FILE_EXPIRY_DAYS | 1 | 视频文件过期时间(天)，超过此时间自动清理，设为0关闭自动清理 |
 
 ## 使用示例
 

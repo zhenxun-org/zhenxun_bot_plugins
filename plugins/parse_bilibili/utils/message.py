@@ -18,7 +18,7 @@ from zhenxun.configs.path_config import TEMP_PATH
 from zhenxun.services.log import logger
 from zhenxun.utils.http_utils import AsyncHttpx
 
-from ..model import ArticleInfo, LiveInfo, VideoInfo, SeasonInfo, UserInfo, UserStat
+from ..model import ArticleInfo, LiveInfo, VideoInfo, SeasonInfo, UserInfo
 from ..config import base_config, bili_credential
 
 TEMPLATE_DIR = Path(__file__).parent.parent / "templates"
@@ -337,20 +337,17 @@ class MessageBuilder:
 
         return UniMsg(segments)
 
-    # ######## 新增构建用户消息方法 ########
     @staticmethod
     async def build_user_message(info: UserInfo) -> UniMsg:
         """构建用户信息消息"""
         segments = []
 
-        # 1. 添加头像
         if info.face:
             avatar_filename = f"bili_avatar_{info.mid}.jpg"
             avatar_path = TEMP_PATH / avatar_filename
             if await ImageHelper.download_image(info.face, avatar_path):
                 segments.append(Image(path=avatar_path))
 
-        # 2. 构建文本
         live_status_text = " (直播中)" if info.live_room_status == 1 else ""
         birthday_str = f"生日: {info.birthday} | " if info.birthday else ""
 
@@ -363,18 +360,17 @@ class MessageBuilder:
         ]
         stat_str = " | ".join(stat_parts)
 
+        live_room_part = f"\n直播间: {info.live_room_url}" if info.live_room_url else ""
         text_content = (
             f"{info.name}{live_status_text} (Lv.{info.level})\n"
             f"{birthday_str}性别: {info.sex}\n"
             f"签名: {info.sign or '这个人很神秘，什么都没有写'}\n"
             f"统计: {stat_str}\n"
-            f"空间: {info.parsed_url}"
-            f"{f'\n直播间: {info.live_room_url}' if info.live_room_url else ''}"
+            f"空间: {info.parsed_url}{live_room_part}"
         )
         segments.append(Text(text_content))
 
         return UniMsg(segments)
-    # ###################################
 
 
 class RenderHelper:
@@ -628,9 +624,9 @@ async def render_unimsg_to_image(message: UniMsg) -> Optional[bytes]:
                 try:
                     img_path = Path(seg.path)
                     if img_path.is_absolute():
-                        file_uri = (
-                            f"file:///{str(img_path.resolve()).replace('\\', '/')}"
-                        )
+                        path_str = str(img_path.resolve())
+                        path_str = path_str.replace("\\", "/")
+                        file_uri = "file:///" + path_str
                         img_src = file_uri
                     else:
                         logger.warning(f"图片路径不是绝对路径: {seg.path}")
