@@ -108,18 +108,10 @@ __plugin_meta__ = PluginMetadata(
             RegisterConfig(
                 module=MODULE_NAME,
                 key="CACHE_TTL",
-                value=300,
-                default_value=300,
-                help="被动解析缓存时间（秒），同一链接在此时间内同一会话不重复解析",
+                value=5,
+                default_value=5,
+                help="被动解析缓存时间（分钟），同一链接在此时间内同一会话不重复解析，设为0关闭缓存",
                 type=int,
-            ),
-            RegisterConfig(
-                module=MODULE_NAME,
-                key="CACHE_ENABLED",
-                value=True,
-                default_value=True,
-                help="是否启用被动解析缓存",
-                type=bool,
             ),
             RegisterConfig(
                 module=MODULE_NAME,
@@ -137,14 +129,7 @@ __plugin_meta__ = PluginMetadata(
                 help="是否将被动解析结果渲染成图片发送",
                 type=bool,
             ),
-            RegisterConfig(
-                module=MODULE_NAME,
-                key="AUTO_CLEAN_FILES",
-                value=True,
-                default_value=True,
-                help="是否自动清理过期的临时文件",
-                type=bool,
-            ),
+
             RegisterConfig(
                 module=MODULE_NAME,
                 key="FILE_CLEAN_INTERVAL",
@@ -155,18 +140,10 @@ __plugin_meta__ = PluginMetadata(
             ),
             RegisterConfig(
                 module=MODULE_NAME,
-                key="AUTO_DOWNLOAD_DURATION_LIMIT_ENABLED",
-                value=True,
-                default_value=True,
-                help="是否启用自动下载时长限制",
-                type=bool,
-            ),
-            RegisterConfig(
-                module=MODULE_NAME,
                 key="AUTO_DOWNLOAD_MAX_DURATION",
                 value=10,
                 default_value=10,
-                help="自动下载最大时长(分钟), 超过此值不下载",
+                help="自动下载最大时长(分钟), 超过此值不下载，设为0关闭时长限制",
                 type=int,
             ),
             RegisterConfig(
@@ -601,9 +578,6 @@ async def _(
                             f"群组 {session.id2} 开启了自动下载，检查时长限制..."
                         )
 
-                        limit_enabled = base_config.get(
-                            "AUTO_DOWNLOAD_DURATION_LIMIT_ENABLED", True
-                        )
                         max_duration_minutes = base_config.get(
                             "AUTO_DOWNLOAD_MAX_DURATION", 10
                         )
@@ -612,7 +586,7 @@ async def _(
                         video_duration_minutes = round(parsed_content.duration / 60, 1)
 
                         if (
-                            limit_enabled
+                            max_duration_minutes > 0
                             and parsed_content.duration > max_duration_seconds
                         ):
                             logger.info(
