@@ -99,11 +99,10 @@ __plugin_meta__ = PluginMetadata(
         configs=[
             RegisterConfig(
                 module=MODULE_NAME,
-                key="DEFAULT_BILIBILI_PARSE",
-                value=True,
-                default_value=True,
-                help="被动 b站解析 进群默认开关状态",
-                type=bool,
+                key="PROXY",
+                value=None,
+                default_value=None,
+                help="下载代理",
             ),
             RegisterConfig(
                 module=MODULE_NAME,
