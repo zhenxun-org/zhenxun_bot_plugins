@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bilibili Video Info</title>
+    <!-- 移除外部 CSS 链接 -->
+    <!-- <link rel="stylesheet" href="style.css"> -->
+    <!-- 添加内联 CSS -->
+    <style>
+        {{ css_style | safe }} {# <--- 使用 Jinja2 插入 CSS 内容 #}
+    </style>
+    <!-- 可选: 引入外部字体 -->
+    <!-- <style>
+        @font-face {
+            font-family: 'MyCustomFont';
+            src: url('file:///path/to/your/font.ttf');
+        }
+        body {
+            font-family: 'MyCustomFont', sans-serif;
+        }
+    </style> -->
+</head>
+<body>
+    <div class="card">
+        {% if cover_image_src %}
+        <div class="cover">
+            <img src="{{ cover_image_src }}" alt="Video Cover">
+        </div>
+        {% endif %}
+        <div class="info">
+            <div class="title">{{ title }}</div>
+            <div class="uploader">UP: {{ up_name }}</div>
+            <div class="details">
+                <span>发布于: {{ pub_date }}</span>
+            </div>
+            <div class="ids">
+                <span>AV: {{ aid }}</span> | <span>BV: {{ bvid }}</span>
+            </div>
+             <hr class="divider">
+            <div class="stats">
+                <span>播放: {{ stats.view }}</span>
+                <span>弹幕: {{ stats.danmaku }}</span>
+                <span>评论: {{ stats.reply }}</span>
+                <br>
+                <span>点赞: {{ stats.like }}</span>
+                <span>投币: {{ stats.coin }}</span>
+                <span>收藏: {{ stats.favorite }}</span>
+            </div>
+             <hr class="divider">
+            <div class="link">
+               <a href="{{ parsed_url }}" target="_blank">{{ parsed_url }}</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

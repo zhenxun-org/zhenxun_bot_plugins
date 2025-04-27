@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Message Render</title>
+    <style>
+        body {
+            margin: 15px; /* 增加边距 */
+            padding: 10px;
+            font-family: sans-serif; /* 使用通用无衬线字体 */
+            background-color: #f8f9fa; /* 浅灰色背景 */
+            border-radius: 8px; /* 轻微圆角 */
+            width: fit-content; /* 宽度适应内容 */
+            min-width: 300px; /* 最小宽度 */
+            max-width: 600px; /* 最大宽度，防止过宽 */
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* 轻微阴影 */
+        }
+        p {
+            white-space: pre-wrap; /* 保留换行和空格 */
+            margin-top: 0.5em;
+            margin-bottom: 0.5em;
+            line-height: 1.6; /* 增加行高 */
+            word-wrap: break-word; /* 长单词换行 */
+        }
+        img {
+            max-width: 100%; /* 图片宽度不超过容器 */
+            height: auto;
+            display: block; /* 独占一行 */
+            margin-top: 8px; /* 图片上方边距 */
+            margin-bottom: 8px; /* 图片下方边距 */
+            border-radius: 4px; /* 图片轻微圆角 */
+        }
+    </style>
+</head>
+<body>
+    {{ content | safe }}
+</body>
+</html>
