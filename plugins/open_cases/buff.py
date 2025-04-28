@@ -141,8 +141,8 @@ class BuffUpdateManager:
         if update_list:
             update_list = await cls.__handle_update(name, update_list)
             logger.debug(
-                f"更新武器箱/皮肤: [<u><c>{name}</c></u>],"
-                f" 更新 {len(create_list)} 个皮肤!"
+                f"更新武器箱/皮肤: [<u><e>{name}</e></u>],"
+                f" 更新 {len(update_list)} 个皮肤!"
             )
             await BuffSkin.bulk_update(
                 update_list,
