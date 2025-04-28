@@ -253,13 +253,13 @@ async def _(session: Uninfo, arparma: Arparma, name: Match[str]):
         for i, case_name in enumerate(case_list):
             try:
                 info = await BuffUpdateManager.update_skin(case_name)
-                rand = random.randint(300, 500)
+                rand = random.randint(200, 300)
                 result = f"更新全部{type_}完成"
                 if i < len(case_list) - 1:
                     next_case = case_list[i + 1]
                     result = f"将在 {rand} 秒后更新下一{type_}: {next_case}"
-                await MessageUtils.build_message(f"{info}, {result}").send()
-                logger.info(f"info, {result}", "更新武器箱", session=session)
+                await MessageUtils.build_message(f"{info} {result}").send()
+                logger.info(f"{info} {result}", "更新武器箱", session=session)
                 await asyncio.sleep(rand)
             except NotLoginRequired:
                 await MessageUtils.build_message(
