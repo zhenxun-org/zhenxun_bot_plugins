@@ -1,11 +1,12 @@
 import asyncio
+from datetime import datetime
 import random
 import re
 import time
-from datetime import datetime
 
 from httpx import Response
 from retrying import retry
+
 from zhenxun.configs.config import Config
 from zhenxun.services.log import logger
 from zhenxun.utils.http_utils import AsyncHttpx
@@ -432,5 +433,4 @@ class BuffUpdateManager:
             raise NotLoginRequired()
         if response_data["code"] != "OK":
             raise CallApiError(f"访问发生异常: {response_data['code']} ...")
-        return BuffResponse(**response_data["data"])
         return BuffResponse(**response_data["data"])

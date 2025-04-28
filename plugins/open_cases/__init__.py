@@ -1,13 +1,12 @@
 import asyncio
-from datetime import datetime, timedelta
 import random
+from datetime import datetime, timedelta
 
 import nonebot
 from nonebot.plugin import PluginMetadata
 from nonebot_plugin_alconna import Arparma, Match
 from nonebot_plugin_apscheduler import scheduler
-from nonebot_plugin_session import EventSession
-
+from nonebot_plugin_uninfo import Uninfo
 from zhenxun.configs.utils import (
     Command,
     PluginCdBlock,
@@ -38,6 +37,7 @@ from .command import (
 from .config import CASE2ID, KNIFE2ID
 from .data_source import OpenCaseManager, auto_update, reset_count_daily
 from .exception import NotLoginRequired
+from .utils import GetGroupId
 
 __plugin_meta__ = PluginMetadata(
     name="CSGO开箱",
@@ -56,13 +56,12 @@ __plugin_meta__ = PluginMetadata(
     """.strip(),
     extra=PluginExtraData(
         author="HibiKier",
-        version="0.1-eb2b7db",
+        version="0.2",
         superuser_help="""
         更新皮肤指令
         重置开箱： 重置今日开箱所有次数
         指令：
             更新武器箱 ?[武器箱/ALL]
-            更新皮肤 ?[名称/ALL1]
             更新皮肤 ?[名称/ALL1]
             更新武器箱图片
         * 不指定武器箱时则全部更新 *
@@ -122,7 +121,7 @@ __plugin_meta__ = PluginMetadata(
 
 @_price_matcher.handle()
 async def _(
-    session: EventSession,
+    session: Uninfo,
     arparma: Arparma,
     name: str,
     skin: str,
@@ -145,38 +144,41 @@ async def _(
 
 
 @_open_matcher.handle()
-async def _(session: EventSession, arparma: Arparma, name: Match[str]):
-    gid = session.id3 or session.id2
-    if not session.id1:
-        await MessageUtils.build_message("用户id为空...").finish()
-    if not gid:
-        await MessageUtils.build_message("群组id为空...").finish()
+async def _(
+    session: Uninfo, arparma: Arparma, name: Match[str], group_id: str = GetGroupId()
+):
     case_name = name.result.replace("武器箱", "").strip() if name.available else None
-    result = await OpenCaseManager.open_case(session.id1, gid, case_name, 1, session)
-    await result.finish(reply_to=True)
+    result = await OpenCaseManager.open_case(
+        session.user.id, group_id, case_name, 1, session
+    )
+    await result.send(reply_to=True)
+    logger.info("开箱1次成功", arparma.header_result, session=session)
 
 
 @_multiple_matcher.handle()
-async def _(session: EventSession, arparma: Arparma, num: int, name: Match[str]):
-    gid = session.id3 or session.id2
-    if not session.id1:
-        await MessageUtils.build_message("用户id为空...").finish()
-    if not gid:
-        await MessageUtils.build_message("群组id为空...").finish()
+async def _(
+    session: Uninfo,
+    arparma: Arparma,
+    num: int,
+    name: Match[str],
+    group_id: str = GetGroupId(),
+):
     if num > 30:
         await MessageUtils.build_message("开箱次数不要超过30啊笨蛋！").finish()
     if num < 0:
         await MessageUtils.build_message("再负开箱就扣你明天开箱数了！").finish()
     case_name = name.result.replace("武器箱", "").strip() if name.available else None
-    result = await OpenCaseManager.open_case(session.id1, gid, case_name, num, session)
+    result = await OpenCaseManager.open_case(
+        session.user.id, group_id, case_name, num, session
+    )
     await result.send(reply_to=True)
     logger.info(f"{num}连开箱", arparma.header_result, session=session)
 
 
 @_reload_matcher.handle()
-async def _(session: EventSession, arparma: Arparma):
+async def _(session: Uninfo, arparma: Arparma, group_id: str = GetGroupId()):
     try:
-        await reset_count_daily(session.id3 or session.id2)
+        await reset_count_daily(group_id)
         logger.info("重置开箱次数", arparma.header_result, session=session)
         await MessageUtils.build_message("重置开箱次数成功!").send()
     except Exception:
@@ -185,43 +187,34 @@ async def _(session: EventSession, arparma: Arparma):
 
 
 @_my_open_matcher.handle()
-async def _(session: EventSession, arparma: Arparma, uname: str = UserName()):
-    gid = session.id3 or session.id2
-    user_id = session.id1
-    if not user_id:
-        await MessageUtils.build_message("用户id为空...").finish()
-    if not gid:
-        await MessageUtils.build_message("群组id为空...").finish()
+async def _(
+    session: Uninfo,
+    arparma: Arparma,
+    uname: str = UserName(),
+    group_id: str = GetGroupId(),
+):
     await MessageUtils.build_message(
-        await OpenCaseManager.get_user_data(uname, user_id, gid),
+        await OpenCaseManager.get_user_data(uname, session.user.id, group_id),
     ).send(reply_to=True)
     logger.info("查询我的开箱", arparma.header_result, session=session)
 
 
 @_knifes_matcher.handle()
-async def _(session: EventSession, arparma: Arparma):
-    gid = session.id3 or session.id2
-    if not session.id1:
-        await MessageUtils.build_message("用户id为空...").finish()
-    if not gid:
-        await MessageUtils.build_message("群组id为空...").finish()
-    result = await OpenCaseManager.get_my_knifes(session.id1, gid)
+async def _(session: Uninfo, arparma: Arparma, group_id: str = GetGroupId()):
+    result = await OpenCaseManager.get_my_knifes(session.user.id, group_id)
     await result.send(reply_to=True)
     logger.info("查询我的金色", arparma.header_result, session=session)
 
 
 @_group_open_matcher.handle()
-async def _(session: EventSession, arparma: Arparma):
-    gid = session.id3 or session.id2
-    if not gid:
-        await MessageUtils.build_message("群组id为空...").finish()
-    result = await OpenCaseManager.get_group_data(gid)
+async def _(session: Uninfo, arparma: Arparma, group_id: str = GetGroupId()):
+    result = await OpenCaseManager.get_group_data(group_id)
     await MessageUtils.build_message(result).send(reply_to=True)
     logger.info("查询群开箱统计", arparma.header_result, session=session)
 
 
 @_show_case_matcher.handle()
-async def _(session: EventSession, arparma: Arparma, name: Match[str]):
+async def _(session: Uninfo, arparma: Arparma, name: Match[str]):
     case_name = name.result.strip() if name.available else None
     await MessageUtils.build_message("正在构建武器箱图片，请稍等...").send()
     result = await build_case_image(case_name)
@@ -233,22 +226,18 @@ async def _(session: EventSession, arparma: Arparma, name: Match[str]):
 
 
 @_update_matcher.handle()
-async def _(session: EventSession, arparma: Arparma, name: Match[str]):
+async def _(session: Uninfo, arparma: Arparma, name: Match[str]):
     # sourcery skip: low-code-quality
-    case_name = None
-    if name.available:
-        case_name = name.result.strip()
+    case_name = name.result.strip() if name.available else None
     if not case_name:
         case_list = []
-        skin_list = []
         for i, case_name in enumerate(CASE2ID):
             if case_name in CaseManager.CURRENT_CASES:
-                case_list.append(f"{i+1}.{case_name} [已更新]")
+                case_list.append(f"{i + 1}.{case_name} [已更新]")
             else:
-                case_list.append(f"{i+1}.{case_name}")
-        for skin_name in KNIFE2ID:
-            skin_list.append(f"{skin_name}")
-        text = "武器箱:\n" + "\n".join(case_list) + "\n皮肤:\n" + ", ".join(skin_list)
+                case_list.append(f"{i + 1}.{case_name}")
+        skin_list = [f"{i + 1}.{skin_name}\n" for i, skin_name in enumerate(KNIFE2ID)]
+        text = "武器箱:\n" + "\n".join(case_list) + "\n皮肤:\n" + "".join(skin_list)
         img = await text2image(text, padding=20, color="#f9f6f2")
         await MessageUtils.build_message(
             ["未指定武器箱, 当前已包含武器箱/皮肤\n", img]

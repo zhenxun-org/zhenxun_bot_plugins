@@ -4,7 +4,6 @@ from zhenxun.services.db_context import Model
 
 
 class OpenCasesLog(Model):
-
     id = fields.IntField(pk=True, generated=True, auto_increment=True)
     """自增id"""
     user_id = fields.CharField(255)
@@ -30,7 +29,7 @@ class OpenCasesLog(Model):
     create_time = fields.DatetimeField(auto_add_now=True)
     """创建日期"""
 
-    class Meta:  # type: ignore
+    class Meta:  # pyright: ignore [reportIncompatibleVariableOverride]
         table = "open_cases_log"
         table_description = "开箱日志表"
 

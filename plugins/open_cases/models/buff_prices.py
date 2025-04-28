@@ -6,7 +6,6 @@ from zhenxun.services.db_context import Model
 
 
 class BuffPrice(Model):
-
     id = fields.IntField(pk=True, generated=True, auto_increment=True)
     """自增id"""
     case_id = fields.IntField()
@@ -17,6 +16,6 @@ class BuffPrice(Model):
     """皮肤价格"""
     update_date = fields.DatetimeField()
 
-    class Meta:
+    class Meta:  # pyright: ignore [reportIncompatibleVariableOverride]
         table = "buff_prices"
         table_description = "Buff价格数据表"
