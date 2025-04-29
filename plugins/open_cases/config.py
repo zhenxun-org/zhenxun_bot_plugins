@@ -198,7 +198,7 @@ class Tag(BaseModel):
 
     category: str
     """分类"""
-    id: int | None
+    id: int | None = None
     """标签id"""
     internal_name: str
     """内部名称"""
