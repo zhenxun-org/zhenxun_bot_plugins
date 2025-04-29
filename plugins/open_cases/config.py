@@ -120,7 +120,7 @@ WEAPON2ID = {}
 
 # 武器箱
 CASE2ID = {
-    "热潮": "set_community_34",
+    "热潮": "set_community_35",
     "画廊": "set_community_34",
     "千瓦": "set_community_33",
     "变革": "set_community_32",
