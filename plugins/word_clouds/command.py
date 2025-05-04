@@ -48,10 +48,16 @@ _matcher = on_alconna(
 
 
 _matcher.shortcut(
-    r"^我的(?P<date>今日|昨日|本周|本月|年度)词云(?:\s+-g\s+(?P<group_id>\d+))?$",
+    r"^我的(?P<date>今日|昨日|本周|本月|年度)词云$",
     command="wordcloud",
-    arguments=lambda match: [match.group("date"), "--my"]
-    + (["-g", match.group("group_id")] if match.group("group_id") else []),
+    arguments=["{date}", "--my"],
+    prefix=True,
+)
+
+_matcher.shortcut(
+    r"^我的(?P<date>今日|昨日|本周|本月|年度)词云\s+-g\s+(?P<group_id>\d+)$",
+    command="wordcloud",
+    arguments=["{date}", "--my", "-g", "{group_id}"],
     prefix=True,
 )
 
@@ -67,7 +73,7 @@ _matcher.shortcut(
 _matcher.shortcut(
     r"历史词云\S?(?P<date>.*?)(?:\s+-g\s+(?P<group_id>\d+))?$",
     command="wordcloud",
-    arguments=lambda match: ["--a_date", match.group("date")]
+    arguments=lambda match: ["--a_date", match.group("date").strip()]
     + (["-g", match.group("group_id")] if match.group("group_id") else []),
     prefix=True,
 )
