@@ -1,27 +1,31 @@
-import random
-from datetime import datetime
-from asyncio.exceptions import TimeoutError
-
+import asyncio
 import httpx
 import nonebot
-from bilireq.exceptions import ResponseCodeError  # type: ignore
-
+import random
+from typing import List
+from asyncio.exceptions import TimeoutError
+from bilireq.exceptions import ResponseCodeError
+from datetime import datetime, timedelta
+from zhenxun.configs.config import Config
+from zhenxun.configs.path_config import IMAGE_PATH
 from zhenxun.services.log import logger
+from zhenxun.utils._build_image import BuildImage
 from zhenxun.utils.http_utils import AsyncHttpx
 from zhenxun.utils.platform import PlatformUtils
-from zhenxun.utils._build_image import BuildImage
-from zhenxun.configs.path_config import IMAGE_PATH
 from zhenxun.utils.utils import ResourceDirManager
 
+from .filter import check_page_elements
 from .model import BilibiliSub
 from .utils import (
+    get_dynamic_screenshot,
     get_meta,
-    get_videos,
+    get_room_info_by_id,
     get_user_card,
     get_user_dynamics,
-    get_room_info_by_id,
-    get_dynamic_screenshot,
+    get_videos,
 )
+
+base_config = Config.get("bilibili_sub")
 
 SEARCH_URL = "https://api.bilibili.com/x/web-interface/search/all/v2"
 
@@ -146,7 +150,7 @@ async def add_up_sub(uid: int, sub_user: str) -> str:
             dynamic_upload_time=dynamic_upload_time,
             latest_video_created=latest_video_created,
         ):
-            return "订阅成功！🎉\n" f"UP主名称：{uname}\n" f"用户UID：{uid}"
+            return f"订阅成功！🎉\nUP主名称：{uname}\n用户UID：{uid}"
         else:
             return "添加订阅失败..."
     except Exception as e:
@@ -251,10 +255,6 @@ async def get_sub_status(id_: int, sub_type: str) -> list | None:
     except ResponseCodeError as msg:
         logger.error(f"Id：{id_} 获取信息失败...{msg}")
         return None
-        # return f"Id：{id_} 获取信息失败...请检查订阅Id是否存在或稍后再试..."
-    # except Exception as e:
-    #     logger.error(f"获取订阅状态发生预料之外的错误 id_：{id_} {type(e)}：{e}")
-    #     return "发生了预料之外的错误..请稍后再试或联系管理员....."
 
 
 async def _get_live_status(id_: int) -> list:
@@ -275,9 +275,9 @@ async def _get_live_status(id_: int) -> list:
         image = None
         try:
             image_bytes = await fetch_image_bytes(cover)
-            image = BuildImage(background = image_bytes)
+            image = BuildImage(background=image_bytes)
         except Exception as e:
-                logger.error(f"图片构造失败，错误信息：{e}")
+            logger.error(f"图片构造失败，错误信息：{e}")
     if sub.live_status in [0, 2] and live_status == 1 and image:
         msg_list = [
             image,
@@ -289,65 +289,119 @@ async def _get_live_status(id_: int) -> list:
     return msg_list
 
 
+async def fetch_image_with_retry(url, retries=3, delay=2):
+    """带重试的图片获取函数"""
+    for i in range(retries):
+        try:
+            return await fetch_image_bytes(url)
+        except Exception as e:
+            if i < retries - 1:
+                await asyncio.sleep(delay)
+            else:
+                raise e
+    return None
+
+
 async def _get_up_status(id_: int) -> list:
-    """
-    获取用户投稿状态
-    :param id_: 订阅 id
-    :return:
-    """
+    # 获取当前时间戳
+    current_time = datetime.now()
+
     _user = await BilibiliSub.get_or_none(sub_id=id_)
-    """bilibili_api.user库中User类的get_user_info改为bilireq.user库的get_user_info方法"""
     user_info = await get_user_card(_user.uid)
     uname = user_info["name"]
-    """bilibili_api.user库中User类的get_videos改为bilireq.user库的get_videos方法"""
+
+    # 获取用户视频信息
     video_info = await get_videos(_user.uid)
     if not video_info.get("data"):
         await handle_video_info_error(video_info)
         return []
-    else:
-        video_info = video_info["data"]
-    video = None
+    video_info = video_info["data"]
+
+    # 初始化消息列表和时间阈值（30分钟）
+    msg_list = []
+    time_threshold = current_time - timedelta(minutes=30)
     dividing_line = "\n-------------\n"
+
+    # 处理用户名更新
     if _user.uname != uname:
         await BilibiliSub.sub_handle(id_, uname=uname)
+
+    # 处理动态信息
     dynamic_img = None
     try:
         dynamic_img, dynamic_upload_time, link = await get_user_dynamic(
             _user.uid, _user
         )
     except ResponseCodeError as msg:
-        logger.warning(f"Id：{id_} 获取信息失败...{msg}")
-    latest_video_created = ""
+        logger.error(f"Id：{id_} 动态获取失败...{msg}")
+
+    # 动态时效性检查
+    if dynamic_img and _user.dynamic_upload_time < dynamic_upload_time:
+        dynamic_time = datetime.fromtimestamp(dynamic_upload_time)
+        logger.info(link)
+        if dynamic_time > time_threshold:  # 30分钟内动态
+            # 检查动态是否含广告
+            if base_config.get("SLEEP_END_TIME"):
+                if await check_page_elements(link):
+                    await BilibiliSub.sub_handle(
+                        id_, dynamic_upload_time=dynamic_upload_time
+                    )
+                    return msg_list  # 停止执行
+            
+            await BilibiliSub.sub_handle(id_, dynamic_upload_time=dynamic_upload_time)
+            msg_list = [f"{uname} 发布了动态！📢\n", dynamic_img, f"\n查看详情：{link}"]
+        else:  # 超过30分钟仍更新时间戳避免重复处理
+            await BilibiliSub.sub_handle(id_, dynamic_upload_time=dynamic_upload_time)
+
+    # 处理视频信息
+    video = None
     if video_info["list"].get("vlist"):
         video = video_info["list"]["vlist"][0]
         latest_video_created = video.get("created", "")
-    msg_list = []
-    if dynamic_img and _user.dynamic_upload_time < dynamic_upload_time:
-        await BilibiliSub.sub_handle(id_, dynamic_upload_time=dynamic_upload_time)
-        msg_list = [f"{uname} 发布了动态！📢\n", dynamic_img, f"\n查看详情：{link}"]
-    if (
-        latest_video_created
-        and _user.latest_video_created
-        and video
-        and _user.latest_video_created < latest_video_created
-    ):
-        image = None
-        try:
-            image_bytes = await fetch_image_bytes(video["pic"])
-            image = BuildImage(background = image_bytes)
-        except Exception as e:
-            logger.error(f"图片构造失败，错误信息：{e}")
-        if msg_list and image:
-            msg_list.append(dividing_line)
-            msg_list.append(image)
-            msg_list.append(
-                "\n"
-                f"{uname} 投稿了新视频啦！🎉\n"
-                f"标题：{video['title']}\n"
-                f"Bvid：{video['bvid']}\n"
-                f"视频链接：https://www.bilibili.com/video/{video['bvid']}"
-            )
+
+        # 视频时效性检查
+        if (
+            latest_video_created
+            and _user.latest_video_created < latest_video_created
+            and datetime.fromtimestamp(latest_video_created) > time_threshold
+        ):
+            # 检查视频链接是否被拦截
+            video_url = f"https://www.bilibili.com/video/{video['bvid']}"
+
+            # 带重试的封面获取
+            image = None
+            try:
+                image_bytes = await fetch_image_with_retry(
+                    video["pic"], retries=3, delay=2
+                )
+                image = BuildImage(background=image_bytes)
+            except Exception as e:
+                logger.error(f"封面获取失败（已重试3次）: {e}")
+
+            # 构建消息内容
+            video_msg = [
+                f"{uname} 投稿了新视频啦！🎉\n",
+                f"标题：{video['title']}\n",
+                f"Bvid：{video['bvid']}\n",
+                f"链接：{video_url}",
+            ]
+
+            # 合并动态和视频消息
+            if msg_list and image:
+                msg_list += [dividing_line, image] + video_msg
+            elif image:  # 仅有视频更新
+                msg_list = [image] + video_msg
+            elif msg_list:  # 有动态但无封面
+                msg_list += [dividing_line] + video_msg
+            else:  # 仅有无封面视频
+                msg_list = ["⚠️ 封面获取失败，但仍需通知："] + video_msg
+
+            # 强制更新视频时间戳
             await BilibiliSub.sub_handle(id_, latest_video_created=latest_video_created)
+
+        elif latest_video_created > _user.latest_video_created:  # 超时视频仍更新时间戳
+            await BilibiliSub.sub_handle(id_, latest_video_created=latest_video_created)
+
     return msg_list
 
 
@@ -366,9 +420,9 @@ async def _get_season_status(id_) -> list:
         image = None
         try:
             image_bytes = await fetch_image_bytes(season_info["media"]["cover"])
-            image = BuildImage(background = image_bytes)
+            image = BuildImage(background=image_bytes)
         except Exception as e:
-                logger.error(f"图片构造失败，错误信息：{e}")
+            logger.error(f"图片构造失败，错误信息：{e}")
         if image:
             await BilibiliSub.sub_handle(
                 id_, season_current_episode=new_ep, season_update_time=datetime.now()

@@ -40,14 +40,14 @@ __plugin_meta__ = PluginMetadata(
     {BotConfig.self_nickname}说她想成为人类！
     """.strip(),
     extra=PluginExtraData(
-        author="Chtholly",
-        version="0.1",
+        author="Chtholly & HibiKier",
+        version="0.3",
         ignore_prompt=True,
         configs=[
             RegisterConfig(
                 key="BYM_AI_CHAT_URL",
                 value=None,
-                help="ai聊天接口地址",
+                help="ai聊天接口地址，可以填入url和平台名称，当你使用平台名称时，默认使用平台官方api, 目前有[gemini, DeepSeek, 硅基流动, 阿里云百炼, 百度智能云, 字节火山引擎], 填入对应名称即可, 如 gemini",
             ),
             RegisterConfig(
                 key="BYM_AI_CHAT_TOKEN",
@@ -109,9 +109,16 @@ __plugin_meta__ = PluginMetadata(
                 type=bool,
             ),
             RegisterConfig(
+                key="GROUP_CACHE_SIZE",
+                value=40,
+                help="群组内聊天记录数据大小",
+                default_value=40,
+                type=int,
+            ),
+            RegisterConfig(
                 key="CACHE_SIZE",
                 value=40,
-                help="缓存聊天记录数据大小（每位用户）",
+                help="私聊下缓存聊天记录数据大小（每位用户）",
                 default_value=40,
                 type=int,
             ),

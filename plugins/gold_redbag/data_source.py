@@ -1,12 +1,13 @@
 import asyncio
+from io import BytesIO
 import os
 import random
-from io import BytesIO
 
 from nonebot.adapters import Bot
 from nonebot.exception import ActionFailed
 from nonebot_plugin_alconna import UniMessage
 from nonebot_plugin_uninfo import Uninfo
+
 from zhenxun.configs.config import BotConfig, Config
 from zhenxun.configs.path_config import IMAGE_PATH
 from zhenxun.models.user_console import UserConsole
@@ -36,7 +37,7 @@ class RedBagManager:
         return cls._data[group_id]
 
     @classmethod
-    async def _auto_end_festive_red_bag(cls, bot: Bot, group_id: str, platform: str):
+    async def _auto_end_festive_red_bag(cls, bot: Bot, session: Uninfo, group_id: str):
         """自动结算节日红包
 
         参数:
@@ -50,7 +51,7 @@ class RedBagManager:
             red_bag = group_red_bag.get_festive_red_bag()
             if not red_bag:
                 return
-            rank_image = await red_bag.build_amount_rank(rank_num, platform)
+            rank_image = await red_bag.build_amount_rank(session, rank_num)
             if red_bag.is_festival and red_bag.uuid:
                 FestiveRedBagManage.remove(red_bag.uuid)
             await asyncio.sleep(random.randint(1, 5))
@@ -69,6 +70,7 @@ class RedBagManager:
     @classmethod
     async def end_red_bag(
         cls,
+        session: Uninfo,
         group_id: str,
         user_id: str | None = None,
         is_festive: bool = False,
@@ -88,7 +90,7 @@ class RedBagManager:
             return None
         if is_festive:
             if festive_red_bag := group_red_bag.festive_red_bag_expire():
-                rank_image = await festive_red_bag.build_amount_rank(rank_num, platform)
+                rank_image = await festive_red_bag.build_amount_rank(session, rank_num)
                 return MessageUtils.build_message(
                     [
                         f"{BotConfig.self_nickname}的节日红包过时了，一共开启了 "
@@ -102,10 +104,10 @@ class RedBagManager:
                 return None
             return_gold, red_bag = await group_red_bag.settlement(user_id, platform)
             if red_bag:
-                rank_image = await red_bag.build_amount_rank(rank_num, platform)
+                rank_image = await red_bag.build_amount_rank(session, rank_num)
                 return MessageUtils.build_message(
                     [
-                        f"已成功退还了 " f"{return_gold} 金币\n",
+                        f"已成功退还了 {return_gold} 金币\n",
                         rank_image.pic2bytes(),
                     ]
                 )
@@ -128,8 +130,10 @@ class RedBagManager:
         user = await UserConsole.get_user(user_id, platform)
         if amount < 1:
             return "小气鬼，要别人倒贴金币给你嘛！"
-        if num < 0:
+        if num <= 0:
             return "数量不能小于0哦！"
+        if amount < num:
+            return "数量不能小于金额！小气鬼！"
         return "没有金币的话请不要发红包..." if user.gold < amount else None
 
     @classmethod

@@ -50,7 +50,7 @@ __plugin_meta__ = PluginMetadata(
     """.strip(),
     extra=PluginExtraData(
         author="HibiKier",
-        version="0.2",
+        version="0.3",
         menu_type="一些工具",
         commands=[
             Command(command="角色识别 ?[-t [1, 2, 3, 4](识别类型，默认1)] [图片]")

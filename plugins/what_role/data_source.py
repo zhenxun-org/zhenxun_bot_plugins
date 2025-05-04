@@ -1,8 +1,7 @@
-from pathlib import Path
 import random
+from pathlib import Path
 
 from strenum import StrEnum
-
 from zhenxun.configs.path_config import TEMP_PATH
 from zhenxun.services.log import logger
 from zhenxun.utils._build_image import BuildImage
@@ -21,7 +20,7 @@ class SearchType(StrEnum):
     """高级动画识别模型②"""
     ANIME = "anime"
     """普通动画识别模型"""
-    FULL_GAME_MODEL_KIRA = "full_game_model_kira "
+    FULL_GAME_MODEL_KIRA = "full_game_model_kira"
     """高级Gal识别模型"""
 
 
