@@ -93,9 +93,8 @@ async def _generate_and_send_wordcloud(group_id: str):
             processed_messages = await text_processor.preprocess(
                 message_data.get_plain_text(), command_start
             )
-            top_k = min(len(message_data.messages), 100000)
             word_frequencies = await text_processor.extract_keywords(
-                processed_messages, top_k
+                processed_messages
             )
 
             if word_frequencies:

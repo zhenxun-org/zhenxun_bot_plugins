@@ -38,7 +38,7 @@ class TextProcessor:
 
         return processed_messages
 
-    async def extract_keywords(self, messages: List[str]) -> Dict[str, float]:
+    async def extract_keywords(self, messages: List[str], top_k: int = None) -> Dict[str, float]:
         """分词并统计词频，每条消息中的重复词只统计一次"""
         if not messages:
             return {}
