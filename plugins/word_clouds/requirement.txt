@@ -1,2 +1,0 @@
-wordcloud==1.9.3
-jieba==0.42.1
