@@ -9,10 +9,10 @@ from ..utils.segmenter_pool import segmenter_pool
 
 
 class TextProcessor:
-    """文本处理服务，使用资源池管理分词器实例"""
+    """文本处理服务"""
 
     def __init__(self):
-        """初始化文本处理器"""
+        pass
 
     async def preprocess(self, messages: List[str], command_start: tuple) -> List[str]:
         """预处理消息文本，移除命令、链接和表情等"""
@@ -20,7 +20,7 @@ class TextProcessor:
 
     @run_sync
     def _preprocess_sync(self, messages: List[str], command_start: tuple) -> List[str]:
-        """同步预处理消息文本（实际处理逻辑）"""
+        """同步预处理消息文本"""
         processed_messages = []
         for message in messages:
             if message.startswith(command_start):
@@ -34,12 +34,16 @@ class TextProcessor:
             processed = replace_emoji(processed)
 
             if processed.strip():
-                processed_messages.append(processed)
+                symbols_pattern = r"^[^\u4e00-\u9fa5a-zA-Z0-9]+$"
+                if not re.match(symbols_pattern, processed.strip()):
+                    processed_messages.append(processed)
 
         return processed_messages
 
-    async def extract_keywords(self, messages: List[str], top_k: int = None) -> Dict[str, float]:
-        """分词并统计词频，每条消息中的重复词只统计一次"""
+    async def extract_keywords(
+        self, messages: List[str], top_k: int = None
+    ) -> Dict[str, float]:
+        """分词并统计词频"""
         if not messages:
             return {}
 
@@ -70,6 +74,9 @@ class TextProcessor:
                         continue
                     if len(word.strip()) <= 1:
                         total_length_filtered += 1
+                        continue
+                    if re.match(r"^[^\u4e00-\u9fa5a-zA-Z0-9]+$", word.strip()):
+                        total_stopword_filtered += 1
                         continue
                     filtered_words.append(word)
 

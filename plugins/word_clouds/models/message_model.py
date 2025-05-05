@@ -20,10 +20,10 @@ class MessageData:
         self.end_time = end_time
 
     def get_plain_text(self) -> List[str]:
-        """获取纯文本消息列表"""
+        """获取消息列表"""
         return self.messages
 
     @property
     def time_range_str(self) -> str:
-        """获取时间范围字符串"""
+        """时间范围字符串"""
         return f"{self.start_time.strftime('%Y-%m-%d')} ~ {self.end_time.strftime('%Y-%m-%d')}"

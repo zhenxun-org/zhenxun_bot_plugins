@@ -13,6 +13,7 @@ from ..utils.colormap_utils import (
     get_dark_bg_colormaps,
     get_white_bg_colormaps,
 )
+from ..utils.brightness_utils import optimize_wordcloud_image
 from zhenxun.services.log import logger
 
 
@@ -20,11 +21,7 @@ class ImageWordCloudGenerator(BaseGenerator):
     """图片词云生成器"""
 
     async def generate(self, word_frequencies: Dict[str, float]) -> Optional[bytes]:
-        """生成词云图片
-
-        template_type=1使用蒙版图片，否则使用纯色背景
-        背景颜色只能是'white'或'black'，默认蒙版用白色，纯色用黑色
-        """
+        """生成词云图片"""
         if not await ensure_resources():
             return None
 
@@ -44,7 +41,7 @@ class ImageWordCloudGenerator(BaseGenerator):
     async def _get_background_and_colormap(
         self, bg_color: Optional[str], is_mask_mode: bool
     ) -> tuple[str, str, list]:
-        """获取背景颜色和颜色映射，返回(背景颜色,日志前缀,颜色映射列表)"""
+        """获取背景颜色和颜色映射"""
         log_prefix = "使用蒙版图片生成词云" if is_mask_mode else "生成纯色背景词云"
 
         if bg_color and bg_color in ["white", "black"]:
@@ -72,23 +69,36 @@ class ImageWordCloudGenerator(BaseGenerator):
     async def _get_wordcloud_options(
         self, user_bg: str, colormap: str, mask=None
     ) -> dict:
-        """获取WordCloud选项配置"""
+        """获取WordCloud选项"""
         wordcloud_options = {}
         options = base_config.get("WORD_CLOUDS_ADDITIONAL_OPTIONS", {})
         wordcloud_options.update(options if isinstance(options, dict) else {})
 
+        resolution_factor = WordCloudConfig.RESOLUTION_FACTOR
+
+        base_width = base_config.get("WORD_CLOUDS_WIDTH", 1920)
+        base_height = base_config.get("WORD_CLOUDS_HEIGHT", 1080)
+        high_res_width = int(base_width * resolution_factor)
+        high_res_height = int(base_height * resolution_factor)
+
+        logger.debug(
+            f"使用高分辨率生成词云: {high_res_width}x{high_res_height} (倍数: {resolution_factor})"
+        )
+
         base_options = {
             "font_path": str(WordCloudConfig.get_font_path()),
             "background_color": user_bg,
-            "width": base_config.get("WORD_CLOUDS_WIDTH", 1920),
-            "height": base_config.get("WORD_CLOUDS_HEIGHT", 1080),
+            "width": high_res_width,
+            "height": high_res_height,
             "colormap": colormap,
             "max_words": base_config.get("WORD_CLOUDS_MAX_WORDS", 2000),
-            "min_font_size": base_config.get("WORD_CLOUDS_MIN_FONT_SIZE", 4),
-            "max_font_size": 300,
+            "min_font_size": base_config.get("WORD_CLOUDS_MIN_FONT_SIZE", 4)
+            * resolution_factor,
+            "max_font_size": 300 * resolution_factor,
             "relative_scaling": base_config.get("WORD_CLOUDS_RELATIVE_SCALING", 0.3),
             "prefer_horizontal": base_config.get("WORD_CLOUDS_PREFER_HORIZONTAL", 0.7),
             "collocations": base_config.get("WORD_CLOUDS_COLLOCATIONS", True),
+            "mode": "RGBA",
         }
 
         if mask is not None:
@@ -100,15 +110,85 @@ class ImageWordCloudGenerator(BaseGenerator):
     async def _generate_wordcloud_image(
         self, word_frequencies: Dict[str, float], wordcloud_options: dict
     ) -> Optional[bytes]:
-        """生成词云图片并返回二进制数据"""
+        """生成词云图片"""
         try:
+            bg_color = wordcloud_options.get("background_color", "black")
+            is_white_bg = bg_color == "white"
+
+            white_bg_max_brightness = base_config.get(
+                "WORD_CLOUDS_WHITE_BG_MAX_BRIGHTNESS", 0.7
+            )
+            black_bg_min_brightness = base_config.get(
+                "WORD_CLOUDS_BLACK_BG_MIN_BRIGHTNESS", 0.3
+            )
+            logger.debug(
+                f"亮度阈值配置: 白底最高亮度={white_bg_max_brightness}, 黑底最低亮度={black_bg_min_brightness}"
+            )
+
+            resolution_factor = WordCloudConfig.RESOLUTION_FACTOR
+            base_width = base_config.get("WORD_CLOUDS_WIDTH", 1920)
+            base_height = base_config.get("WORD_CLOUDS_HEIGHT", 1080)
+            target_width = base_width
+            target_height = base_height
+
+            logger.debug("生成高分辨率词云...")
             wc = WordCloud(**wordcloud_options)
             wc.generate_from_frequencies(word_frequencies)
 
-            bytes_io = BytesIO()
             img = wc.to_image()
-            img.save(bytes_io, format="PNG")
-            return bytes_io.getvalue()
+
+            image_dpi = WordCloudConfig.IMAGE_DPI
+            image_quality = WordCloudConfig.IMAGE_QUALITY
+
+            if img.mode != "RGBA":
+                logger.debug("转换图像为RGBA模式以支持亮度优化")
+                img = img.convert("RGBA")
+
+            bytes_io = BytesIO()
+            img.save(
+                bytes_io,
+                format="PNG",
+                dpi=(image_dpi, image_dpi),
+                quality=image_quality,
+                optimize=True,
+            )
+            high_res_image_bytes = bytes_io.getvalue()
+
+            logger.debug(f"优化词云图像亮度，背景: {'白色' if is_white_bg else '黑色'}")
+            brightness_optimized_bytes = optimize_wordcloud_image(
+                high_res_image_bytes,
+                is_white_bg,
+                white_bg_max_brightness,
+                black_bg_min_brightness,
+            )
+
+            if resolution_factor != 1.0:
+                logger.debug(f"调整图像尺寸至目标大小: {target_width}x{target_height}")
+                from PIL import Image
+
+                img = Image.open(BytesIO(brightness_optimized_bytes))
+                img = img.resize((target_width, target_height), Image.LANCZOS)
+
+                if img.mode != "RGBA":
+                    logger.debug("调整大小后转换图像为RGBA模式")
+                    img = img.convert("RGBA")
+
+                bytes_io = BytesIO()
+                img.save(
+                    bytes_io,
+                    format="PNG",
+                    dpi=(image_dpi, image_dpi),
+                    quality=image_quality,
+                    optimize=True,
+                )
+                final_bytes = bytes_io.getvalue()
+            else:
+                final_bytes = brightness_optimized_bytes
+
+            logger.debug(
+                f"词云生成完成，最终图像质量: DPI={image_dpi}, 质量={image_quality}"
+            )
+            return final_bytes
         except Exception as e:
             logger.error(f"生成词云图片失败: {e}")
             return None
@@ -116,7 +196,7 @@ class ImageWordCloudGenerator(BaseGenerator):
     async def _generate_with_mask(
         self, word_frequencies: Dict[str, float], bg_color: Optional[str] = None
     ) -> Optional[bytes]:
-        """使用蒙版图片生成词云"""
+        """使用蒙版生成词云"""
         template_path = self._get_random_template()
         mask = np.array(IMG.open(template_path))
 
@@ -138,7 +218,7 @@ class ImageWordCloudGenerator(BaseGenerator):
     async def _generate_plain(
         self, word_frequencies: Dict[str, float], bg_color: Optional[str] = None
     ) -> Optional[bytes]:
-        """生成纯色背景词云"""
+        """生成纯色词云"""
         user_bg, log_prefix, colormaps = await self._get_background_and_colormap(
             bg_color, is_mask_mode=False
         )
@@ -155,7 +235,7 @@ class ImageWordCloudGenerator(BaseGenerator):
         return await self._generate_wordcloud_image(word_frequencies, wordcloud_options)
 
     def _get_random_template(self) -> str:
-        """随机获取一个模板图片路径"""
+        """获取随机模板路径"""
         template_dir = str(WordCloudConfig.get_template_dir())
         if not os.path.exists(template_dir) or not os.listdir(template_dir):
             logger.warning(f"词云模板目录 '{template_dir}' 为空或不存在，使用默认模板")

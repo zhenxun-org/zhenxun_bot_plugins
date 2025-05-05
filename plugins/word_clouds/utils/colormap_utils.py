@@ -1,8 +1,3 @@
-"""
-颜色映射工具函数
-提供获取和管理 colormap 的工具函数
-"""
-
 from typing import Dict, List, Optional, Union
 import random
 import matplotlib as mpl

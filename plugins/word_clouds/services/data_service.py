@@ -5,13 +5,13 @@ from ..models.message_model import MessageData
 
 
 class DataService:
-    """数据获取服务"""
+    """数据服务"""
 
     @staticmethod
     async def get_messages(
         user_id: Optional[int], group_id: int, time_range: Tuple[datetime, datetime]
     ) -> Optional[MessageData]:
-        """获取指定时间范围内的消息"""
+        """获取消息数据"""
         start, stop = time_range
 
         messages_list = await ChatHistory().get_message(

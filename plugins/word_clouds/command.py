@@ -24,15 +24,15 @@ from zhenxun.utils.rules import ensure_group, admin_check
 
 from .handlers.cloud_handler import CloudHandler
 from . import schedule_manage
-from .task_manager import task_manager
-from .utils.segmenter_pool import segmenter_pool
 
 cloud_handler = CloudHandler()
 
 _matcher = on_alconna(
     Alconna(
         "wordcloud",
-        Args["date?", ["今日", "昨日", "本周", "本月", "年度", "历史"]]["at_user?", At],
+        Args["date?", ["今日", "昨日", "本周", "本月", "上月", "本季", "年度", "历史"]][
+            "at_user?", At
+        ],
         Option("-m|--my", action=store_true, help_text="个人词云"),
         Option("-d|--a_date", Args["z_date", str]),
         Option(
@@ -48,14 +48,14 @@ _matcher = on_alconna(
 
 
 _matcher.shortcut(
-    r"^我的(?P<date>今日|昨日|本周|本月|年度)词云$",
+    r"^我的(?P<date>今日|昨日|本周|本月|上月|本季|年度)词云$",
     command="wordcloud",
     arguments=["{date}", "--my"],
     prefix=True,
 )
 
 _matcher.shortcut(
-    r"^我的(?P<date>今日|昨日|本周|本月|年度)词云\s+-g\s+(?P<group_id>\d+)$",
+    r"^我的(?P<date>今日|昨日|本周|本月|上月|本季|年度)词云\s+-g\s+(?P<group_id>\d+)$",
     command="wordcloud",
     arguments=["{date}", "--my", "-g", "{group_id}"],
     prefix=True,
@@ -79,14 +79,14 @@ _matcher.shortcut(
 )
 
 _matcher.shortcut(
-    r"(?P<date>今日|昨日|本周|本月|年度)词云$",
+    r"(?P<date>今日|昨日|本周|本月|上月|本季|年度)词云$",
     command="wordcloud",
     arguments=["{date}"],
     prefix=True,
 )
 
 _matcher.shortcut(
-    r"(?P<date>今日|昨日|本周|本月|年度)词云\s+-g\s+(?P<group_id>\d+)",
+    r"(?P<date>今日|昨日|本周|本月|上月|本季|年度)词云\s+-g\s+(?P<group_id>\d+)",
     command="wordcloud",
     arguments=["{date}", "-g", "{group_id}"],
     prefix=True,
@@ -164,14 +164,6 @@ schedule_alconna = Alconna(
             help_text="指定群聊",
         ),
         Option("-all", help_text="所有群聊 (SUPERUSER)"),
-    ),
-    Subcommand(
-        "队列",
-        help_text="查看任务队列状态 (SUPERUSER)",
-    ),
-    Subcommand(
-        "资源",
-        help_text="查看资源池状态 (SUPERUSER)",
     ),
 )
 
@@ -308,62 +300,3 @@ async def handle_schedule_status(
         )
     else:
         await schedule_matcher.finish(f"群 {gid_to_check} 未设置定时词云。")
-
-
-@schedule_matcher.assign("队列")
-async def handle_queue_status(
-    bot: Bot,
-    event: GroupMessageEvent,
-    state: T_State,
-):
-    is_superuser = await SUPERUSER(bot, event)
-    if not is_superuser:
-        await schedule_matcher.finish("需要超级用户权限才能查看任务队列状态。")
-        return
-
-    queue_info = await task_manager.get_queue_info()
-
-    status_lines = [
-        "词云任务队列状态：",
-        f"待处理任务数: {queue_info['pending']}",
-        f"正在执行任务数: {queue_info['running']}",
-        f"已完成任务数: {queue_info['completed']}",
-        f"总任务数: {queue_info['total']}",
-    ]
-
-    if queue_info["running"] > 0:
-        status_lines.append("\n正在执行的任务:")
-        for task_id, task in task_manager.running_tasks.items():
-            status_lines.append(f"- {task_id}")
-
-    status_message = "\n".join(status_lines)
-    await schedule_matcher.finish(status_message)
-
-
-@schedule_matcher.assign("资源")
-async def handle_resource_status(
-    bot: Bot,
-    event: GroupMessageEvent,
-    state: T_State,
-):
-    is_superuser = await SUPERUSER(bot, event)
-    if not is_superuser:
-        await schedule_matcher.finish("需要超级用户权限才能查看资源池状态。")
-        return
-
-    segmenter_stats = await segmenter_pool.get_stats()
-
-    status_lines = [
-        "词云资源池状态：",
-        "\n分词器资源池：",
-        f"总资源数: {segmenter_stats.get('total', 0)}",
-        f"空闲资源数: {segmenter_stats.get('free', 0)}",
-        f"使用中资源数: {segmenter_stats.get('in_use', 0)}",
-        f"最大资源数: {segmenter_stats.get('max_size', 0)}",
-        f"最小资源数: {segmenter_stats.get('min_size', 0)}",
-        f"平均使用次数: {segmenter_stats.get('avg_use_count', 0):.1f}",
-        f"停用词数量: {segmenter_stats.get('stopwords_count', 0)}",
-    ]
-
-    status_message = "\n".join(status_lines)
-    await schedule_matcher.finish(status_message)
