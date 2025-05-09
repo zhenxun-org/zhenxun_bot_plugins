@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from nonebot.adapters.onebot.v11 import ActionFailed, Bot
 from nonebot.plugin import PluginMetadata
@@ -27,9 +27,11 @@ _info_matcher = on_alconna(Alconna("点赞信息"), priority=5, block=True)
 
 @_matcher.handle()
 async def send_like(bot: Bot, session: Uninfo):
-    if await LikeLog.exists(
-        user_id=session.user.id, create_time__gte=datetime.now().date()
-    ):
+    now = datetime.now()
+    filter_time: datetime = now - timedelta(
+        hours=now.hour, minutes=now.minute, seconds=now.second
+    )
+    if await LikeLog.exists(user_id=session.user.id, create_time__gte=filter_time):
         await MessageUtils.build_message("请不要这么贪心，今天已经点过赞了哦！").finish(
             at_sender=True
         )
@@ -81,7 +83,7 @@ __plugin_meta__ = PluginMetadata(
     """.strip(),
     extra=PluginExtraData(
         author="HibiKier",
-        version="0.1",
+        version="0.2",
         setting=PluginSetting(impression=10),
         smart_tools=[
             AICallableTag(
