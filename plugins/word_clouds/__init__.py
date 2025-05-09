@@ -6,9 +6,7 @@ from nonebot.plugin import PluginMetadata
 
 from zhenxun.configs.utils import Command, PluginExtraData, RegisterConfig
 from zhenxun.utils.enum import PluginType
-from pathlib import Path
-from typing import List, Union
-
+from typing import List
 from . import command
 
 __plugin_meta__ = PluginMetadata(
@@ -18,8 +16,8 @@ __plugin_meta__ = PluginMetadata(
     词云插件
 
     【获取词云】
-    - 今日/昨日/本周/本月/年度词云
-    - 我的今日/昨日/本周/本月/年度词云 - 获取自己的发言词云
+    - 今日/昨日/本周/本月/上月/本季/年度词云
+    - 我的今日/昨日/本周/本月/上月/本季/年度词云 - 获取自己的发言词云
     - 历史词云 [日期] - 获取某日词云 (例: 历史词云 2023-01-15)
     - 历史词云 [开始日期]~[结束日期] - 获取时间段词云 (例: 历史词云 2023-01-01~2023-01-31)
     - 历史词云 [开始时间]~[结束时间] - 精确时间段 (例: 历史词云 2023-01-15T10:00:00~2023-01-15T18:30:00)
@@ -33,8 +31,6 @@ __plugin_meta__ = PluginMetadata(
     - 定时词云 状态 - 查看当前群定时状态
     - 定时词云 [开启/关闭/状态] -g <群号> - 操作指定群聊
     - 定时词云 [开启/关闭/状态] -all - 操作所有群聊
-    - 定时词云 队列 - 查看任务队列状态 (仅超级用户)
-    - 定时词云 资源 - 查看资源池状态 (仅超级用户)
 
     【提示】
     - 时间格式为 HH:MM 或 HHMM
@@ -42,7 +38,7 @@ __plugin_meta__ = PluginMetadata(
     """.strip(),
     extra=PluginExtraData(
         author="yajiwa",
-        version="1.3.0",
+        version="1.3.5",
         plugin_type=PluginType.NORMAL,
         commands=[
             Command(command="今日词云"),
@@ -54,8 +50,6 @@ __plugin_meta__ = PluginMetadata(
             Command(command="定时词云 开启"),
             Command(command="定时词云 关闭"),
             Command(command="定时词云 状态"),
-            Command(command="定时词云 队列"),
-            Command(command="定时词云 资源"),
         ],
         configs=[
             RegisterConfig(
@@ -148,13 +142,6 @@ __plugin_meta__ = PluginMetadata(
             ),
             RegisterConfig(
                 module="word_clouds",
-                key="WORD_CLOUDS_ADDITIONAL_OPTIONS",
-                value={},
-                help="额外的WordCloud选项，以字典形式提供",
-                type=dict,
-            ),
-            RegisterConfig(
-                module="word_clouds",
                 key="WORD_CLOUDS_RELATIVE_SCALING",
                 value=0.3,
                 help="相对缩放值，降低相对缩放使词云更均匀",
@@ -173,6 +160,20 @@ __plugin_meta__ = PluginMetadata(
                 value=True,
                 help="是否检测词组",
                 type=bool,
+            ),
+            RegisterConfig(
+                module="word_clouds",
+                key="WORD_CLOUDS_WHITE_BG_MAX_BRIGHTNESS",
+                value=0.7,
+                help="白底文字最高亮度阈值，超过这个值的字体颜色会被调暗以确保清晰可见",
+                type=float,
+            ),
+            RegisterConfig(
+                module="word_clouds",
+                key="WORD_CLOUDS_BLACK_BG_MIN_BRIGHTNESS",
+                value=0.3,
+                help="黑底文字最低亮度阈值，低于这个值的字体颜色会被调亮以确保清晰可见",
+                type=float,
             ),
         ],
     ).to_dict(),

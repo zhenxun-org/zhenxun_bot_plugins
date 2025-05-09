@@ -1,6 +1,7 @@
 import json
 import re
 import uuid
+import random
 import asyncio
 from typing import Dict, Optional, Tuple
 
@@ -70,73 +71,143 @@ def _parse_time(time_str: str) -> Tuple[int, int]:
 
 async def _generate_and_send_wordcloud(group_id: str):
     """生成并发送词云的实际执行函数"""
-    logger.debug(f"开始为群 {group_id} 生成定时词云...")
-    start, stop = time_service.get_time_range("今日")
-    start_tz = time_service.convert_to_timezone(start, "Asia/Shanghai")
-    stop_tz = time_service.convert_to_timezone(stop, "Asia/Shanghai")
+    try:
+        logger.debug(f"开始为群 {group_id} 生成定时词云...")
+        start, stop = time_service.get_time_range("今日")
+        start_tz = time_service.convert_to_timezone(start, "Asia/Shanghai")
+        stop_tz = time_service.convert_to_timezone(stop, "Asia/Shanghai")
 
-    message_data = await DataService.get_messages(
-        user_id=None,
-        group_id=int(group_id),
-        time_range=(start_tz, stop_tz),
-    )
-
-    msg_to_send = None
-    if message_data and message_data.messages:
-        bot = next(iter(get_bots().values()), None)
-        if bot and isinstance(bot, V11Bot):
-            from nonebot import get_driver
-
-            config = get_driver().config
-            command_start = tuple(i for i in config.command_start if i)
-
-            processed_messages = await text_processor.preprocess(
-                message_data.get_plain_text(), command_start
+        try:
+            message_data = await DataService.get_messages(
+                user_id=None,
+                group_id=int(group_id),
+                time_range=(start_tz, stop_tz),
             )
-            word_frequencies = await text_processor.extract_keywords(
-                processed_messages
-            )
-
-            if word_frequencies:
-                image_bytes = await generator.generate(word_frequencies)
-                if image_bytes:
-                    msg_to_send = MessageUtils.build_message(image_bytes)
-                else:
-                    msg_to_send = MessageUtils.build_message("生成今日词云图片失败。")
-            else:
-                msg_to_send = MessageUtils.build_message("今天没有足够的数据生成词云。")
-        else:
-            logger.warning(f"无法找到合适的 Bot 实例为群 {group_id} 发送定时词云")
+        except Exception as e:
+            logger.error(f"获取群 {group_id} 的消息数据失败", e=e)
             return
-    else:
-        msg_to_send = MessageUtils.build_message("今天没有足够的数据生成词云。")
 
-    if msg_to_send:
-        bot = next(iter(get_bots().values()), None)
-        if bot and isinstance(bot, V11Bot):
-            target = PlatformUtils.get_target(group_id=group_id)
-            if target:
-                await msg_to_send.send(target=target, bot=bot)
-                logger.info(f"已成功向群 {group_id} 发送定时词云。")
-            else:
-                logger.error(f"无法为群 {group_id} 创建发送目标 Target。")
+        msg_to_send = None
+        if message_data and message_data.messages:
+            try:
+                bot = next(iter(get_bots().values()), None)
+                if not bot or not isinstance(bot, V11Bot):
+                    logger.warning(
+                        f"无法找到合适的 Bot 实例为群 {group_id} 发送定时词云"
+                    )
+                    return
+            except Exception as e:
+                logger.error("获取Bot实例失败", e=e)
+                return
+
+            try:
+                from nonebot import get_driver
+
+                config = get_driver().config
+                command_start = tuple(i for i in config.command_start if i)
+
+                processed_messages = await text_processor.preprocess(
+                    message_data.get_plain_text(), command_start
+                )
+                word_frequencies = await text_processor.extract_keywords(
+                    processed_messages
+                )
+
+                if word_frequencies:
+                    image_bytes = await generator.generate(word_frequencies)
+                    if image_bytes:
+                        msg_to_send = MessageUtils.build_message(image_bytes)
+                    else:
+                        msg_to_send = MessageUtils.build_message(
+                            "生成今日词云图片失败。"
+                        )
+                else:
+                    msg_to_send = MessageUtils.build_message(
+                        "今天没有足够的数据生成词云。"
+                    )
+            except Exception as e:
+                logger.error(f"处理群 {group_id} 的词云数据失败", e=e)
+                msg_to_send = MessageUtils.build_message(
+                    "生成词云时发生错误，请查看日志。"
+                )
         else:
-            logger.warning(f"无法找到合适的 Bot 实例为群 {group_id} 发送定时词云")
+            msg_to_send = MessageUtils.build_message("今天没有足够的数据生成词云。")
+
+        if msg_to_send:
+            max_retries = 3
+            retry_delay = 1
+
+            for retry in range(max_retries):
+                try:
+                    bot = next(iter(get_bots().values()), None)
+                    if bot and isinstance(bot, V11Bot):
+                        target = PlatformUtils.get_target(group_id=group_id)
+                        if target:
+                            await msg_to_send.send(target=target, bot=bot)
+                            logger.info(f"已成功向群 {group_id} 发送定时词云。")
+                            return
+                        else:
+                            logger.error(f"无法为群 {group_id} 创建发送目标 Target。")
+                            return
+                    else:
+                        logger.warning(
+                            f"无法找到合适的 Bot 实例为群 {group_id} 发送定时词云"
+                        )
+                        return
+                except RuntimeError as e:
+                    if 'Cannot call "send" once a close message has been sent' in str(
+                        e
+                    ):
+                        if retry < max_retries - 1:
+                            logger.warning(
+                                f"发送词云到群 {group_id} 失败 (WebSocket已关闭)，将在 {retry_delay} 秒后重试 ({retry + 1}/{max_retries})"
+                            )
+                            await asyncio.sleep(retry_delay)
+                            retry_delay *= 2
+                            continue
+                        else:
+                            logger.error(
+                                f"发送词云到群 {group_id} 失败，已达到最大重试次数", e=e
+                            )
+                    else:
+                        logger.error(f"发送词云到群 {group_id} 时发生运行时错误", e=e)
+                    return
+                except Exception as e:
+                    logger.error(f"发送词云到群 {group_id} 失败", e=e)
+                    return
+    except Exception as e:
+        logger.error(f"生成并发送词云到群 {group_id} 的过程中发生未处理异常", e=e)
 
 
 async def _run_scheduled_wordcloud(group_id: str):
     """执行单个群的定时词云任务，通过任务管理器调度"""
+    group_hash = hash(group_id) % 60
+    random_delay = group_hash + random.uniform(0, 60)
+    logger.debug(f"群 {group_id} 的词云任务将在 {random_delay:.1f} 秒后开始执行")
+    await asyncio.sleep(random_delay)
+
     task_id = f"wordcloud_{group_id}_{uuid.uuid4().hex[:8]}"
 
     try:
+        priority = random.choice(
+            [
+                TaskPriority.HIGH,
+                TaskPriority.NORMAL,
+                TaskPriority.NORMAL,
+                TaskPriority.LOW,
+            ]
+        )
+
         await task_manager.add_task(
             task_id=task_id,
             func=_generate_and_send_wordcloud,
             args=(group_id,),
-            priority=TaskPriority.NORMAL,
+            priority=priority,
             timeout=600,
         )
-        logger.debug(f"已将群 {group_id} 的词云任务添加到队列，任务ID: {task_id}")
+        logger.debug(
+            f"已将群 {group_id} 的词云任务添加到队列，任务ID: {task_id}，优先级: {priority}，延迟: {random_delay:.1f}秒"
+        )
     except Exception as e:
         logger.error(f"为群 {group_id} 添加词云任务到队列失败", e=e)
 
@@ -278,7 +349,7 @@ async def add_schedule_for_all(time_str: str) -> Tuple[int, int, str]:
                 _save_schedules()
 
             if i + batch_size < total_groups:
-                await asyncio.sleep(0.5)
+                await asyncio.sleep(2.0)
 
         return (
             added_count,
@@ -324,7 +395,7 @@ async def remove_schedule_for_all() -> Tuple[int, str]:
             _save_schedules()
 
         if i + batch_size < total_groups:
-            await asyncio.sleep(0.5)
+            await asyncio.sleep(2.0)
 
     if removed_count > 0:
         return removed_count, f"已取消 {removed_count} 个群组的定时词云。"
@@ -364,7 +435,7 @@ async def load_and_schedule_on_startup():
                 logger.error(f"启动时添加群 {group_id} 定时任务失败", e=e)
 
         if i + batch_size < total_groups:
-            await asyncio.sleep(0.5)
+            await asyncio.sleep(2.0)
 
     logger.info(f"定时词云任务加载完成，共 {total_groups} 个群组")
 
