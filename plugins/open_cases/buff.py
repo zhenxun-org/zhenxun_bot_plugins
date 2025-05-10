@@ -1,11 +1,12 @@
 import asyncio
+from datetime import datetime
 import random
 import re
 import time
-from datetime import datetime
 
 from httpx import Response
 from retrying import retry
+
 from zhenxun.configs.config import Config
 from zhenxun.services.log import logger
 from zhenxun.utils.http_utils import AsyncHttpx
@@ -109,7 +110,7 @@ class BuffUpdateManager:
                     .replace(" ", "")
                 )
             key = skin.name + skin.skin_name
-            name = skin.name + skin.skin_name + skin.abrasion
+            # name = skin.name + skin.skin_name + skin.abrasion
             if update_type == UpdateType.WEAPON_TYPE and not skin.case_name:
                 case_name = weapon2case.get(key)
                 if not case_name:
@@ -141,8 +142,8 @@ class BuffUpdateManager:
         if update_list:
             update_list = await cls.__handle_update(name, update_list)
             logger.debug(
-                f"更新武器箱/皮肤: [<u><c>{name}</c></u>],"
-                f" 更新 {len(create_list)} 个皮肤!"
+                f"更新武器箱/皮肤: [<u><e>{name}</e></u>],"
+                f" 更新 {len(update_list)} 个皮肤!"
             )
             await BuffSkin.bulk_update(
                 update_list,
@@ -432,5 +433,4 @@ class BuffUpdateManager:
             raise NotLoginRequired()
         if response_data["code"] != "OK":
             raise CallApiError(f"访问发生异常: {response_data['code']} ...")
-        return BuffResponse(**response_data["data"])
         return BuffResponse(**response_data["data"])

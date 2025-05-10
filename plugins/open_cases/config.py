@@ -48,6 +48,7 @@ class UpdateType(Enum):
 
 
 NAME2COLOR = {
+    "普通级": "NORMAL",
     "消费级": "WHITE",
     "工业级": "LIGHTBLUE",
     "军规级": "BLUE",
@@ -85,6 +86,7 @@ CASE_BACKGROUND = IMAGE_PATH / "csgo_cases" / "_background" / "shu"
 
 # 刀
 KNIFE2ID = {
+    "廓尔喀刀": "weapon_knife_kke",
     "鲍伊猎刀": "weapon_knife_survival_bowie",
     "蝴蝶刀": "weapon_knife_butterfly",
     "弯刀": "weapon_knife_falchion",
@@ -118,6 +120,9 @@ WEAPON2ID = {}
 
 # 武器箱
 CASE2ID = {
+    "热潮": "set_community_35",
+    "画廊": "set_community_34",
+    "千瓦": "set_community_33",
     "变革": "set_community_32",
     "反冲": "set_community_31",
     "梦魇": "set_community_30",
@@ -146,17 +151,17 @@ CASE2ID = {
     "幻彩2号": "set_community_7",
     "幻彩": "set_community_6",
     "先锋": "set_community_5",
-    "电竞2014夏季": "set_esports_iii",
     "突围大行动": "set_community_4",
     "猎杀者": "set_community_3",
     "凤凰": "set_community_2",
-    "电竞2013冬季": "set_esports_ii",
     "冬季攻势": "set_community_1",
-    "军火交易3号": "set_weapons_iii",
-    "英勇": "set_bravo_i",
-    "电竞2013": "set_esports",
+    "电竞2014夏季": "set_esports_iii",
+    "电竞2013冬季": "set_esports_ii",
     "军火交易2号": "set_weapons_ii",
+    "军火交易3号": "set_weapons_iii",
     "军火交易": "set_weapons_i",
+    "电竞2013": "set_esports",
+    "英勇": "set_bravo_i",
 }
 
 
@@ -193,7 +198,7 @@ class Tag(BaseModel):
 
     category: str
     """分类"""
-    id: int
+    id: int | None = None
     """标签id"""
     internal_name: str
     """内部名称"""
