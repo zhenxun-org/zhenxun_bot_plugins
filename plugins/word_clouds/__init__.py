@@ -16,8 +16,8 @@ __plugin_meta__ = PluginMetadata(
     词云插件
 
     【获取词云】
-    - 今日/昨日/本周/本月/上月/本季/年度词云
-    - 我的今日/昨日/本周/本月/上月/本季/年度词云 - 获取自己的发言词云
+    - 今日/昨日/本周/上周/本月/上月/本季/年度词云
+    - 我的今日/昨日/本周/上周/本月/上月/本季/年度词云 - 获取自己的发言词云
     - 历史词云 [日期] - 获取某日词云 (例: 历史词云 2023-01-15)
     - 历史词云 [开始日期]~[结束日期] - 获取时间段词云 (例: 历史词云 2023-01-01~2023-01-31)
     - 历史词云 [开始时间]~[结束时间] - 精确时间段 (例: 历史词云 2023-01-15T10:00:00~2023-01-15T18:30:00)
@@ -38,13 +38,16 @@ __plugin_meta__ = PluginMetadata(
     """.strip(),
     extra=PluginExtraData(
         author="yajiwa",
-        version="1.3.5",
+        version="1.3.8",
         plugin_type=PluginType.NORMAL,
         commands=[
             Command(command="今日词云"),
             Command(command="昨日词云"),
             Command(command="本周词云"),
+            Command(command="上周词云"),
             Command(command="本月词云"),
+            Command(command="上月词云"),
+            Command(command="本季词云"),
             Command(command="年度词云"),
             Command(command="历史词云"),
             Command(command="定时词云 开启"),

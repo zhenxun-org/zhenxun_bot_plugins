@@ -16,6 +16,12 @@ class WordCloudConfig:
     IMAGE_QUALITY = 100
     RESOLUTION_FACTOR = 1.5
 
+    DEFAULT_CACHE_TTL = 1
+    YEARLY_CACHE_TTL = 336
+    QUARTERLY_CACHE_TTL = 168
+    MONTHLY_CACHE_TTL = 72
+    WEEKLY_CACHE_TTL = 12
+
     @classmethod
     def get_font_path(cls) -> Path:
         """获取字体路径"""
