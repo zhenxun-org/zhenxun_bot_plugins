@@ -503,6 +503,8 @@ class ChatManager:
                 impression=cls.user_impression[user_id],
                 attitude=level2attitude[level],
                 gift_count=gift_count,
+                now_time=time.strftime(
+                    "%Y-%m-%d %H:%M:%S", time.localtime(time.time()),
             )
             if base_config.get("ENABLE_IMPRESSION")
             else NORMAL_CONTENT.format(
@@ -550,6 +552,8 @@ class ChatManager:
                     group_id=group_id,
                     nickname=nickname,
                     self_id=bot.self_id,
+                    now_time=time.strftime(
+                        "%Y-%m-%d %H:%M:%S", time.localtime(time.time()),
                 ),
             )
         ]
