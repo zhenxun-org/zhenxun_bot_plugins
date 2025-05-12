@@ -30,7 +30,7 @@ cloud_handler = CloudHandler()
 _matcher = on_alconna(
     Alconna(
         "wordcloud",
-        Args["date?", ["今日", "昨日", "本周", "本月", "上月", "本季", "年度", "历史"]][
+        Args["date?", ["今日", "昨日", "本周", "上周", "本月", "上月", "本季", "年度", "历史"]][
             "at_user?", At
         ],
         Option("-m|--my", action=store_true, help_text="个人词云"),
@@ -48,14 +48,14 @@ _matcher = on_alconna(
 
 
 _matcher.shortcut(
-    r"^我的(?P<date>今日|昨日|本周|本月|上月|本季|年度)词云$",
+    r"^我的(?P<date>今日|昨日|本周|上周|本月|上月|本季|年度)词云$",
     command="wordcloud",
     arguments=["{date}", "--my"],
     prefix=True,
 )
 
 _matcher.shortcut(
-    r"^我的(?P<date>今日|昨日|本周|本月|上月|本季|年度)词云\s+-g\s+(?P<group_id>\d+)$",
+    r"^我的(?P<date>今日|昨日|本周|上周|本月|上月|本季|年度)词云\s+-g\s+(?P<group_id>\d+)$",
     command="wordcloud",
     arguments=["{date}", "--my", "-g", "{group_id}"],
     prefix=True,
@@ -79,14 +79,14 @@ _matcher.shortcut(
 )
 
 _matcher.shortcut(
-    r"(?P<date>今日|昨日|本周|本月|上月|本季|年度)词云$",
+    r"(?P<date>今日|昨日|本周|上周|本月|上月|本季|年度)词云$",
     command="wordcloud",
     arguments=["{date}"],
     prefix=True,
 )
 
 _matcher.shortcut(
-    r"(?P<date>今日|昨日|本周|本月|上月|本季|年度)词云\s+-g\s+(?P<group_id>\d+)",
+    r"(?P<date>今日|昨日|本周|上周|本月|上月|本季|年度)词云\s+-g\s+(?P<group_id>\d+)",
     command="wordcloud",
     arguments=["{date}", "-g", "{group_id}"],
     prefix=True,
@@ -132,7 +132,7 @@ async def handle_message(
 ):
     target_group_id = state.get("target_group_id")
 
-    await cloud_handler.handle_message(event, start, stop, my, target_group_id)
+    await cloud_handler.handle_message(event, state, start, stop, my, target_group_id)
 
 
 schedule_alconna = Alconna(

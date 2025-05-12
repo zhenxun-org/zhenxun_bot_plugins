@@ -14,19 +14,7 @@ def adjust_color_brightness(
     white_bg_max_brightness: float = 0.7,
     black_bg_min_brightness: float = 0.3,
 ) -> Tuple[int, int, int]:
-    """
-    根据背景颜色调整RGB颜色的亮度
-    使用更准确的亮度计算和平滑过渡
-
-    Args:
-        r, g, b: RGB颜色值
-        is_white_bg: 是否为白色背景
-        white_bg_max_brightness: 白底最高亮度阈值
-        black_bg_min_brightness: 黑底最低亮度阈值
-
-    Returns:
-        调整后的RGB颜色值
-    """
+    """根据背景颜色调整RGB亮度，确保文字清晰可见"""
     r_float, g_float, b_float = r / 255.0, g / 255.0, b / 255.0
 
     luminance = 0.2126 * r_float + 0.7152 * g_float + 0.0722 * b_float
@@ -62,10 +50,7 @@ def adjust_color_brightness(
 
 
 class BrightnessAdjustedWordCloud(WordCloud):
-    """
-    亮度调整的词云类，继承自WordCloud
-    在生成图像时对颜色进行亮度调整，确保在不同背景下文字清晰可见
-    """
+    """亮度自适应词云类，确保在不同背景下文字清晰可见"""
 
     def __init__(
         self,
@@ -80,10 +65,7 @@ class BrightnessAdjustedWordCloud(WordCloud):
         self.is_white_bg = self.background_color == "white"
 
     def to_image(self) -> Image.Image:
-        """
-        重写to_image方法，在生成图像前调整颜色亮度
-        使用向量化操作提高性能
-        """
+        """生成亮度优化的词云图像"""
         original_image = super().to_image()
 
         if original_image.mode != "RGBA":
@@ -197,19 +179,7 @@ def optimize_wordcloud_image(
     white_bg_max_brightness: float = 0.7,
     black_bg_min_brightness: float = 0.3,
 ) -> bytes:
-    """
-    优化词云图像的亮度 - 使用NumPy向量化操作提高性能
-    针对中等分辨率图像进行了优化
-
-    Args:
-        image_bytes: 原始词云图像的二进制数据
-        is_white_bg: 是否为白色背景
-        white_bg_max_brightness: 白底最高亮度阈值
-        black_bg_min_brightness: 黑底最低亮度阈值
-
-    Returns:
-        优化后的词云图像的二进制数据
-    """
+    """优化词云图像亮度，确保文字清晰可见"""
     try:
         img = Image.open(BytesIO(image_bytes))
 

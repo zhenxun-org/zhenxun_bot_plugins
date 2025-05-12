@@ -5,6 +5,7 @@ from typing import Dict, Optional
 import numpy as np
 from PIL import Image as IMG
 from wordcloud import WordCloud
+from nonebot.utils import run_sync
 from ..utils.file_utils import ensure_resources
 from ..config import WordCloudConfig, base_config
 from .base_generator import BaseGenerator
@@ -131,6 +132,35 @@ class ImageWordCloudGenerator(BaseGenerator):
             target_width = base_width
             target_height = base_height
 
+            return await self._generate_wordcloud_image_sync(
+                word_frequencies,
+                wordcloud_options,
+                is_white_bg,
+                white_bg_max_brightness,
+                black_bg_min_brightness,
+                resolution_factor,
+                target_width,
+                target_height,
+            )
+
+        except Exception as e:
+            logger.error(f"生成词云图片失败: {e}")
+            return None
+
+    @run_sync
+    def _generate_wordcloud_image_sync(
+        self,
+        word_frequencies: Dict[str, float],
+        wordcloud_options: dict,
+        is_white_bg: bool,
+        white_bg_max_brightness: float,
+        black_bg_min_brightness: float,
+        resolution_factor: float,
+        target_width: int,
+        target_height: int,
+    ) -> Optional[bytes]:
+        """在线程池中同步生成词云图片"""
+        try:
             logger.debug("生成高分辨率词云...")
             wc = WordCloud(**wordcloud_options)
             wc.generate_from_frequencies(word_frequencies)

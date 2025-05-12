@@ -52,63 +52,9 @@ class TextProcessor:
             segmenter = await segmenter_pool.get_segmenter()
             stopwords = await segmenter_pool.get_stopwords()
 
-            message_word_sets = []
-            total_words_count = 0
-            total_stopword_filtered = 0
-            total_length_filtered = 0
-            total_remaining_words = 0
-
-            for message in messages:
-                if not message.strip():
-                    continue
-
-                words = segmenter.cut(message)
-                words_count = len(words)
-                total_words_count += words_count
-
-                filtered_words = []
-
-                for word in words:
-                    if word in stopwords:
-                        total_stopword_filtered += 1
-                        continue
-                    if len(word.strip()) <= 1:
-                        total_length_filtered += 1
-                        continue
-                    if re.match(r"^[^\u4e00-\u9fa5a-zA-Z0-9]+$", word.strip()):
-                        total_stopword_filtered += 1
-                        continue
-                    filtered_words.append(word)
-
-                total_remaining_words += len(filtered_words)
-                unique_words = set(filtered_words)
-
-                if unique_words:
-                    message_word_sets.append(unique_words)
-
-            if message_word_sets:
-                logger.debug(
-                    f"[过滤统计] 总词数: {total_words_count}个, 停用词过滤: {total_stopword_filtered}个, "
-                    f"单字词过滤: {total_length_filtered}个, 剩余: {total_remaining_words}个, "
-                    f"停用词表大小: {len(stopwords)}个"
-                )
-            else:
-                logger.warning("[过滤] pkuseg 分词结果为空")
-                return {}
-
-            word_counts = Counter()
-            for word_set in message_word_sets:
-                word_counts.update(word_set)
-
-            if not word_counts:
-                logger.warning("[过滤] 没有找到有效的词汇进行统计")
-                return {}
-
-            word_frequencies = {
-                word: float(count) for word, count in word_counts.items()
-            }
-
-            return word_frequencies
+            return await self._extract_keywords_sync(
+                messages, segmenter, stopwords, top_k
+            )
 
         except Exception as e:
             logger.error("使用 pkuseg 提取关键词时出错", e=e)
@@ -117,3 +63,64 @@ class TextProcessor:
         finally:
             if segmenter:
                 await segmenter_pool.release_segmenter(segmenter)
+
+    @run_sync
+    def _extract_keywords_sync(
+        self, messages: List[str], segmenter, stopwords, top_k: int = None
+    ) -> Dict[str, float]:
+        """同步执行分词和关键词提取（在线程池中执行）"""
+        message_word_sets = []
+        total_words_count = 0
+        total_stopword_filtered = 0
+        total_length_filtered = 0
+        total_remaining_words = 0
+
+        for message in messages:
+            if not message.strip():
+                continue
+
+            words = segmenter.cut(message)
+            words_count = len(words)
+            total_words_count += words_count
+
+            filtered_words = []
+
+            for word in words:
+                if word in stopwords:
+                    total_stopword_filtered += 1
+                    continue
+                if len(word.strip()) <= 1:
+                    total_length_filtered += 1
+                    continue
+                if re.match(r"^[^\u4e00-\u9fa5a-zA-Z0-9]+$", word.strip()):
+                    total_stopword_filtered += 1
+                    continue
+                filtered_words.append(word)
+
+            total_remaining_words += len(filtered_words)
+            unique_words = set(filtered_words)
+
+            if unique_words:
+                message_word_sets.append(unique_words)
+
+        if message_word_sets:
+            logger.debug(
+                f"[过滤统计] 总词数: {total_words_count}个, 停用词过滤: {total_stopword_filtered}个, "
+                f"单字词过滤: {total_length_filtered}个, 剩余: {total_remaining_words}个, "
+                f"停用词表大小: {len(stopwords)}个"
+            )
+        else:
+            logger.warning("[过滤] pkuseg 分词结果为空")
+            return {}
+
+        word_counts = Counter()
+        for word_set in message_word_sets:
+            word_counts.update(word_set)
+
+        if not word_counts:
+            logger.warning("[过滤] 没有找到有效的词汇进行统计")
+            return {}
+
+        word_frequencies = {word: float(count) for word, count in word_counts.items()}
+
+        return word_frequencies

@@ -78,11 +78,17 @@ async def _generate_and_send_wordcloud(group_id: str):
         stop_tz = time_service.convert_to_timezone(stop, "Asia/Shanghai")
 
         try:
-            message_data = await DataService.get_messages(
-                user_id=None,
-                group_id=int(group_id),
-                time_range=(start_tz, stop_tz),
+            message_data = await asyncio.wait_for(
+                DataService.get_messages(
+                    user_id=None,
+                    group_id=int(group_id),
+                    time_range=(start_tz, stop_tz),
+                ),
+                timeout=30.0,
             )
+        except asyncio.TimeoutError:
+            logger.warning(f"获取群 {group_id} 的消息数据超时")
+            return
         except Exception as e:
             logger.error(f"获取群 {group_id} 的消息数据失败", e=e)
             return
@@ -106,17 +112,48 @@ async def _generate_and_send_wordcloud(group_id: str):
                 config = get_driver().config
                 command_start = tuple(i for i in config.command_start if i)
 
-                processed_messages = await text_processor.preprocess(
-                    message_data.get_plain_text(), command_start
-                )
-                word_frequencies = await text_processor.extract_keywords(
-                    processed_messages
-                )
+                try:
+                    processed_messages = await asyncio.wait_for(
+                        text_processor.preprocess(
+                            message_data.get_plain_text(), command_start
+                        ),
+                        timeout=30.0,
+                    )
+                except asyncio.TimeoutError:
+                    logger.warning(f"处理群 {group_id} 的消息文本超时")
+                    msg_to_send = MessageUtils.build_message(
+                        "处理词云数据超时，请稍后再试。"
+                    )
+                    return
+
+                try:
+                    word_frequencies = await asyncio.wait_for(
+                        text_processor.extract_keywords(processed_messages),
+                        timeout=60.0,
+                    )
+                except asyncio.TimeoutError:
+                    logger.warning(f"提取群 {group_id} 的关键词超时")
+                    msg_to_send = MessageUtils.build_message(
+                        "提取词云关键词超时，请稍后再试。"
+                    )
+                    return
 
                 if word_frequencies:
-                    image_bytes = await generator.generate(word_frequencies)
+                    try:
+                        image_bytes = await asyncio.wait_for(
+                            generator.generate(word_frequencies), timeout=60.0
+                        )
+                    except asyncio.TimeoutError:
+                        logger.warning(f"生成群 {group_id} 的词云图片超时")
+                        msg_to_send = MessageUtils.build_message(
+                            "生成词云图片超时，请稍后再试。"
+                        )
+                        return
+
                     if image_bytes:
-                        msg_to_send = MessageUtils.build_message(image_bytes)
+                        msg_to_send = MessageUtils.build_message(
+                            ["今日词云：", image_bytes]
+                        )
                     else:
                         msg_to_send = MessageUtils.build_message(
                             "生成今日词云图片失败。"
@@ -143,8 +180,28 @@ async def _generate_and_send_wordcloud(group_id: str):
                     if bot and isinstance(bot, V11Bot):
                         target = PlatformUtils.get_target(group_id=group_id)
                         if target:
-                            await msg_to_send.send(target=target, bot=bot)
-                            logger.info(f"已成功向群 {group_id} 发送定时词云。")
+                            logger.info(
+                                f"准备向群 {group_id} 发送定时词云，消息类型: {type(msg_to_send)}"
+                            )
+                            try:
+                                await msg_to_send.send(target=target, bot=bot)
+                                logger.info(f"已成功向群 {group_id} 发送定时词云。")
+                            except Exception as send_err:
+                                logger.error(
+                                    f"发送定时词云消息失败: {send_err}", e=send_err
+                                )
+                                try:
+                                    logger.info(f"尝试直接发送消息到群 {group_id}")
+                                    await bot.send_group_msg(
+                                        group_id=int(group_id),
+                                        message="今日词云生成完成，但发送失败，请手动触发词云命令查看。",
+                                    )
+                                    logger.info(f"已发送备用消息到群 {group_id}")
+                                except Exception as direct_err:
+                                    logger.error(
+                                        f"直接发送消息也失败: {direct_err}",
+                                        e=direct_err,
+                                    )
                             return
                         else:
                             logger.error(f"无法为群 {group_id} 创建发送目标 Target。")

@@ -7,10 +7,10 @@ import heapq
 from nonebot import get_driver
 from zhenxun.services.log import logger
 
-MAX_CONCURRENT_TASKS = 3
-TASK_QUEUE_SIZE = 100
-DEFAULT_TIMEOUT = 300
-EXECUTOR_MAX_WORKERS = 10
+MAX_CONCURRENT_TASKS = 5  # 增加并发任务数
+TASK_QUEUE_SIZE = 200  # 增加队列大小
+DEFAULT_TIMEOUT = 1200  # 增加超时时间到20分钟
+EXECUTOR_MAX_WORKERS = 20  # 增加线程池大小
 
 
 class TaskPriority:
