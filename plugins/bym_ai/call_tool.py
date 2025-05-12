@@ -50,7 +50,6 @@ class AiCallTool:
         返回:
             list[ChatMessage]: 聊天列表
         """
-        temp_conversation = []
         # 去重，避免函数多次调用
         tool_calls = list({tool.function.name: tool for tool in tool_calls}.values())
         tool_call = tool_calls[-1]

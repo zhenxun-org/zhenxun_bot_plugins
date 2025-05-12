@@ -1,5 +1,5 @@
-import time
 from hashlib import md5
+import time
 
 from zhenxun.configs.config import Config
 from zhenxun.utils.http_utils import AsyncHttpx
