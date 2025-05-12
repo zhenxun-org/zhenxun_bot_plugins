@@ -6,7 +6,6 @@ from ._config import ImageHandleType
 
 
 class ImageManagementLog(Model):
-
     id = fields.IntField(pk=True, generated=True, auto_increment=True)
     """自增id"""
     user_id = fields.CharField(255, description="用户id")

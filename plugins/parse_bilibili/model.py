@@ -87,28 +87,30 @@ class ArticleInfo(BaseModel):
 
 class UserStat(BaseModel):
     """用户统计信息"""
-    following: int = 0     # 关注数 (来自 relation_info)
-    follower: int = 0      # 粉丝数 (来自 relation_info)
+
+    following: int = 0  # 关注数 (来自 relation_info)
+    follower: int = 0  # 粉丝数 (来自 relation_info)
     archive_view: int = 0  # 视频播放数 (来自 up_stat)
     article_view: int = 0  # 文章阅读数 (来自 up_stat)
-    likes: int = 0         # 获赞数 (来自 up_stat)
+    likes: int = 0  # 获赞数 (来自 up_stat)
 
 
 class UserInfo(BaseModel):
     """用户信息"""
-    mid: int               # UID
-    name: str              # 昵称
-    face: str              # 头像 URL
-    sign: str = ""         # 签名
-    level: int = 0         # 等级
-    sex: str = "保密"     # 性别
-    birthday: str = ""     # 生日 (YYYY-MM-DD)
-    top_photo: str = ""    # 空间头图 URL
-    live_room_status: int = 0 # 直播间状态 (来自 get_user_info)
-    live_room_url: str = ""   # 直播间 URL (来自 get_user_info)
-    live_room_title: str = "" # 直播间标题 (来自 get_user_info)
-    stat: UserStat         # 统计信息
-    parsed_url: str        # 解析时使用的URL
+
+    mid: int  # UID
+    name: str  # 昵称
+    face: str  # 头像 URL
+    sign: str = ""  # 签名
+    level: int = 0  # 等级
+    sex: str = "保密"  # 性别
+    birthday: str = ""  # 生日 (YYYY-MM-DD)
+    top_photo: str = ""  # 空间头图 URL
+    live_room_status: int = 0  # 直播间状态 (来自 get_user_info)
+    live_room_url: str = ""  # 直播间 URL (来自 get_user_info)
+    live_room_title: str = ""  # 直播间标题 (来自 get_user_info)
+    stat: UserStat  # 统计信息
+    parsed_url: str  # 解析时使用的URL
 
 
 class SeasonStat(BaseModel):

@@ -128,7 +128,6 @@ __plugin_meta__ = PluginMetadata(
                 help="是否将被动解析结果渲染成图片发送",
                 type=bool,
             ),
-
             RegisterConfig(
                 module=MODULE_NAME,
                 key="FILE_CLEAN_INTERVAL",
