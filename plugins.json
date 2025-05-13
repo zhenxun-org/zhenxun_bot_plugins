@@ -465,7 +465,7 @@
         "description": "点赞小助手",
         "usage": "点赞，点赞信息",
         "author": "HibiKier",
-        "version": "0.1",
+        "version": "0.2",
         "plugin_type": "NORMAL",
         "is_dir": true
     },
