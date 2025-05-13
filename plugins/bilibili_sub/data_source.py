@@ -1,19 +1,18 @@
-import asyncio
-import httpx
-import nonebot
-import random
-from typing import List
-from asyncio.exceptions import TimeoutError
-from bilireq.exceptions import ResponseCodeError
 from datetime import datetime, timedelta
+import random
+
+from bilireq.exceptions import ResponseCodeError
+import nonebot
+from nonebot_plugin_uninfo import Uninfo
+
 from zhenxun.configs.config import Config
-from zhenxun.configs.path_config import IMAGE_PATH
 from zhenxun.services.log import logger
 from zhenxun.utils._build_image import BuildImage
+from zhenxun.utils.decorator.retry import Retry
 from zhenxun.utils.http_utils import AsyncHttpx
 from zhenxun.utils.platform import PlatformUtils
-from zhenxun.utils.utils import ResourceDirManager
 
+from .config import LOG_COMMAND, SEARCH_URL
 from .filter import check_page_elements
 from .model import BilibiliSub
 from .utils import (
@@ -27,28 +26,16 @@ from .utils import (
 
 base_config = Config.get("bilibili_sub")
 
-SEARCH_URL = "https://api.bilibili.com/x/web-interface/search/all/v2"
 
-DYNAMIC_PATH = IMAGE_PATH / "bilibili_sub" / "dynamic"
-DYNAMIC_PATH.mkdir(exist_ok=True, parents=True)
+async def handle_video_info_error(video_info: dict) -> str:
+    """处理B站视频信息获取错误并发送通知给超级用户
 
-ResourceDirManager.add_temp_dir(DYNAMIC_PATH)
+    参数:
+        video_info: 包含错误信息的字典
+        platform_utils: 用于发送消息的工具类
 
-
-# 获取图片bytes
-async def fetch_image_bytes(url: str) -> bytes:
-    async with httpx.AsyncClient() as client:
-        response = await client.get(url)
-        response.raise_for_status()  # 检查响应状态码是否为200
-        return response.content
-
-
-async def handle_video_info_error(video_info: dict):
-    """
-
-    处理B站视频信息获取错误并发送通知给超级用户
-    :param video_info: 包含错误信息的字典
-    :param platform_utils: 用于发送消息的工具类
+    返回:
+        str: 返回信息
     """
     str_msg = "b站订阅检测失败："
     if video_info["code"] == -352:
@@ -66,13 +53,15 @@ async def handle_video_info_error(video_info: dict):
     return str_msg
 
 
-async def add_live_sub(live_id: int, sub_user: str) -> str:
-    """
+async def add_live_sub(session: Uninfo, live_id: int, sub_user: str) -> str:
+    """添加直播订阅
 
-    添加直播订阅
-    :param live_id: 直播房间号
-    :param sub_user: 订阅用户 id # 7384933:private or 7384933:2342344(group)
-    :return:
+    参数:
+        live_id: 直播房间号
+        sub_user: 订阅用户 id # 7384933:private or 7384933:2342344(group)
+
+    返回:
+        str: 订阅结果
     """
     try:
         try:
@@ -94,26 +83,37 @@ async def add_live_sub(live_id: int, sub_user: str) -> str:
             live_status=live_status,
         ):
             await _get_up_status(room_id)
-            uname = (await BilibiliSub.get_or_none(sub_id=room_id)).uname
+            sub_data = await BilibiliSub.get_or_none(sub_id=room_id)
+            if not sub_data:
+                logger.debug(
+                    f"未找到sub_id为{room_id}的数据", LOG_COMMAND, session=session
+                )
+                return "添加订阅失败..."
             return (
                 "订阅成功！🎉\n"
-                f"主播名称：{uname}\n"
+                f"主播名称：{sub_data.uname}\n"
                 f"直播标题：{title}\n"
                 f"直播间ID：{room_id}\n"
                 f"用户UID：{uid}"
             )
         else:
-            return "添加订阅失败..."
+            return "数据添加失败，添加订阅失败..."
     except Exception as e:
-        logger.error(f"订阅主播live_id：{live_id} 发生了错误 {type(e)}：{e}")
+        logger.error(
+            f"订阅主播live_id：{live_id} 发生了错误", LOG_COMMAND, session=session, e=e
+        )
     return "添加订阅失败..."
 
 
-async def add_up_sub(uid: int, sub_user: str) -> str:
-    """
-    添加订阅 UP
-    :param uid: UP uid
-    :param sub_user: 订阅用户
+async def add_up_sub(session: Uninfo, uid: int, sub_user: str) -> str:
+    """添加订阅 UP
+
+    参数:
+        uid: UP uid
+        sub_user: 订阅用户
+
+    返回:
+        str: 订阅结果
     """
     try:
         try:
@@ -154,15 +154,19 @@ async def add_up_sub(uid: int, sub_user: str) -> str:
         else:
             return "添加订阅失败..."
     except Exception as e:
-        logger.error(f"订阅Up uid：{uid} 发生了错误 {type(e)}：{e}")
+        logger.error(f"订阅Up uid：{uid} 发生了错误", LOG_COMMAND, session=session, e=e)
     return "添加订阅失败..."
 
 
-async def add_season_sub(media_id: int, sub_user: str) -> str:
-    """
-    添加订阅 UP
-    :param media_id: 番剧 media_id
-    :param sub_user: 订阅用户
+async def add_season_sub(session: Uninfo, media_id: int, sub_user: str) -> str:
+    """添加订阅 UP
+
+    参数:
+        media_id: 番剧 media_id
+        sub_user: 订阅用户
+
+    返回:
+        str: 订阅结果
     """
     try:
         try:
@@ -189,15 +193,24 @@ async def add_season_sub(media_id: int, sub_user: str) -> str:
         else:
             return "添加订阅失败..."
     except Exception as e:
-        logger.error(f"订阅番剧 media_id：{media_id} 发生了错误 {type(e)}：{e}")
+        logger.error(
+            f"订阅番剧 media_id：{media_id} 发生了错误",
+            LOG_COMMAND,
+            session=session,
+            e=e,
+        )
     return "添加订阅失败..."
 
 
 async def delete_sub(sub_id: str, sub_user: str) -> str:
-    """
-    删除订阅
-    :param sub_id: 订阅 id
-    :param sub_user: 订阅用户 id # 7384933:private or 7384933:2342344(group)
+    """删除订阅
+
+    参数:
+        sub_id: 订阅 id
+        sub_user: 订阅用户 id # 7384933:private or 7384933:2342344(group)
+
+    返回:
+        str: 删除结果
     """
     if await BilibiliSub.delete_bilibili_sub(int(sub_id), sub_user):
         return f"已成功取消订阅：{sub_id}"
@@ -205,113 +218,118 @@ async def delete_sub(sub_id: str, sub_user: str) -> str:
         return f"取消订阅：{sub_id} 失败，请检查是否订阅过该Id...."
 
 
-async def get_media_id(keyword: str) -> dict:
-    """
-    获取番剧的 media_id
-    :param keyword: 番剧名称
+@Retry.api()
+async def get_media_id(keyword: str) -> dict | None:
+    """获取番剧的 media_id
+
+    参数:
+        keyword: 番剧名称
+
+    返回:
+        dict: 番剧信息
     """
     from .auth import AuthManager
 
     params = {"keyword": keyword}
-    for _ in range(3):
-        try:
-            _season_data = {}
-            response = await AsyncHttpx.get(
-                SEARCH_URL, params=params, cookies=AuthManager.get_cookies(), timeout=5
-            )
-            if response.status_code == 200:
-                data = response.json()
-                if data.get("data"):
-                    for item in data["data"]["result"]:
-                        if item["result_type"] == "media_bangumi":
-                            idx = 0
-                            for x in item["data"]:
-                                _season_data[idx] = {
-                                    "media_id": x["media_id"],
-                                    "title": x["title"]
-                                    .replace('<em class="keyword">', "")
-                                    .replace("</em>", ""),
-                                }
-                                idx += 1
-                            return _season_data
-        except TimeoutError:
-            pass
-        return {}
+    _season_data = {}
+    response = await AsyncHttpx.get(
+        SEARCH_URL, params=params, cookies=AuthManager.get_cookies(), timeout=5
+    )
+    response.raise_for_status()
+    data = response.json()
+    if data.get("data"):
+        for item in data["data"]["result"]:
+            if item["result_type"] == "media_bangumi":
+                idx = 0
+                for x in item["data"]:
+                    _season_data[idx] = {
+                        "media_id": x["media_id"],
+                        "title": x["title"]
+                        .replace('<em class="keyword">', "")
+                        .replace("</em>", ""),
+                    }
+                    idx += 1
+                return _season_data
+    return {}
 
 
-async def get_sub_status(id_: int, sub_type: str) -> list | None:
-    """
-    获取订阅状态
-    :param id_: 订阅 id
-    :param sub_type: 订阅类型
+async def get_sub_status(
+    session: Uninfo | None, sub_id: int, sub_type: str
+) -> list | None:
+    """获取订阅状态
+
+    参数:
+        sub_id: 订阅 id
+        sub_type: 订阅类型
+
+    返回:
+        list: 订阅状态
     """
     try:
         if sub_type == "live":
-            return await _get_live_status(id_)
+            return await _get_live_status(session, sub_id)
         elif sub_type == "up":
-            return await _get_up_status(id_)
+            return await _get_up_status(session, sub_id)
         elif sub_type == "season":
-            return await _get_season_status(id_)
-    except ResponseCodeError as msg:
-        logger.error(f"Id：{id_} 获取信息失败...{msg}")
+            return await _get_season_status(session, sub_id)
+    except ResponseCodeError as e:
+        logger.error(f"Id：{sub_id} 获取信息失败...", LOG_COMMAND, session=session, e=e)
         return None
 
 
-async def _get_live_status(id_: int) -> list:
-    """
-    获取直播订阅状态
-    :param id_: 直播间 id
+async def _get_live_status(session: Uninfo | None, sub_id: int) -> list:
+    """获取直播订阅状态
+
+    参数:
+        session: Uninfo
+        sub_id: 直播间 id
+
+    返回:
+        list: 直播状态
     """
     """bilibili_api.live库的LiveRoom类中get_room_info改为bilireq.live库的get_room_info_by_id方法"""
-    live_info = await get_room_info_by_id(id_)
+    live_info = await get_room_info_by_id(sub_id)
     title = live_info["title"]
     room_id = live_info["room_id"]
     live_status = live_info["live_status"]
     cover = live_info["user_cover"]
-    sub = await BilibiliSub.get_or_none(sub_id=id_)
+    sub_data = await BilibiliSub.get_or_none(sub_id=sub_id)
+    if not sub_data:
+        return ["该直播间未订阅，数据不存在"]
     msg_list = []
-    if sub.live_status != live_status:
-        await BilibiliSub.sub_handle(id_, live_status=live_status)
-        image = None
+    image = None
+    if sub_data.live_status != live_status:
+        await BilibiliSub.sub_handle(sub_id, live_status=live_status)
         try:
-            image_bytes = await fetch_image_bytes(cover)
+            image_bytes = await AsyncHttpx.get_content(cover)
             image = BuildImage(background=image_bytes)
         except Exception as e:
-            logger.error(f"图片构造失败，错误信息：{e}")
-    if sub.live_status in [0, 2] and live_status == 1 and image:
+            logger.error(
+                f"下载图片构造失败: {cover}", LOG_COMMAND, session=session, e=e
+            )
+    if sub_data.live_status in [0, 2] and live_status == 1 and image:
         msg_list = [
             image,
             "\n",
-            f"{sub.uname} 开播啦！🎉\n",
+            f"{sub_data.uname} 开播啦！🎉\n",
             f"标题：{title}\n",
             f"直播间链接：https://live.bilibili.com/{room_id}",
         ]
     return msg_list
 
 
-async def fetch_image_with_retry(url, retries=3, delay=2):
-    """带重试的图片获取函数"""
-    for i in range(retries):
-        try:
-            return await fetch_image_bytes(url)
-        except Exception as e:
-            if i < retries - 1:
-                await asyncio.sleep(delay)
-            else:
-                raise e
-    return None
-
-
-async def _get_up_status(id_: int) -> list:
+async def _get_up_status(session: Uninfo | None, sub_id: int) -> list:
     # 获取当前时间戳
     current_time = datetime.now()
 
-    _user = await BilibiliSub.get_or_none(sub_id=id_)
-    user_info = await get_user_card(_user.uid)
+    sub_data = await BilibiliSub.get_or_none(sub_id=sub_id)
+    if not sub_data:
+        return ["该用户未订阅，数据不存在"]
+    user_info = await get_user_card(sub_data.uid)
     uname = user_info["name"]
 
     # 获取用户视频信息
-    video_info = await get_videos(_user.uid)
+    video_info = await get_videos(sub_data.uid)
     if not video_info.get("data"):
         await handle_video_info_error(video_info)
         return []
@@ -323,35 +341,39 @@ async def _get_up_status(id_: int) -> list:
     dividing_line = "\n-------------\n"
 
     # 处理用户名更新
-    if _user.uname != uname:
-        await BilibiliSub.sub_handle(id_, uname=uname)
+    if sub_data.uname != uname:
+        await BilibiliSub.sub_handle(sub_id, uname=uname)
 
     # 处理动态信息
     dynamic_img = None
     try:
         dynamic_img, dynamic_upload_time, link = await get_user_dynamic(
-            _user.uid, _user
+            session, sub_data.uid, sub_data
         )
-    except ResponseCodeError as msg:
-        logger.error(f"Id：{id_} 动态获取失败...{msg}")
+    except ResponseCodeError as e:
+        logger.error(f"Id：{sub_id} 动态获取失败...", LOG_COMMAND, session=session, e=e)
+        return [f"Id：{sub_id} 动态获取失败..."]
 
     # 动态时效性检查
-    if dynamic_img and _user.dynamic_upload_time < dynamic_upload_time:
+    if dynamic_img and sub_data.dynamic_upload_time < dynamic_upload_time:
         dynamic_time = datetime.fromtimestamp(dynamic_upload_time)
-        logger.info(link)
         if dynamic_time > time_threshold:  # 30分钟内动态
             # 检查动态是否含广告
             if base_config.get("SLEEP_END_TIME"):
                 if await check_page_elements(link):
                     await BilibiliSub.sub_handle(
-                        id_, dynamic_upload_time=dynamic_upload_time
+                        sub_id, dynamic_upload_time=dynamic_upload_time
                     )
                     return msg_list  # 停止执行
-            
-            await BilibiliSub.sub_handle(id_, dynamic_upload_time=dynamic_upload_time)
+
+            await BilibiliSub.sub_handle(
+                sub_id, dynamic_upload_time=dynamic_upload_time
+            )
             msg_list = [f"{uname} 发布了动态！📢\n", dynamic_img, f"\n查看详情：{link}"]
         else:  # 超过30分钟仍更新时间戳避免重复处理
-            await BilibiliSub.sub_handle(id_, dynamic_upload_time=dynamic_upload_time)
+            await BilibiliSub.sub_handle(
+                sub_id, dynamic_upload_time=dynamic_upload_time
+            )
 
     # 处理视频信息
     video = None
@@ -362,7 +384,7 @@ async def _get_up_status(id_: int) -> list:
         # 视频时效性检查
         if (
             latest_video_created
-            and _user.latest_video_created < latest_video_created
+            and sub_data.latest_video_created < latest_video_created
             and datetime.fromtimestamp(latest_video_created) > time_threshold
         ):
             # 检查视频链接是否被拦截
@@ -371,12 +393,15 @@ async def _get_up_status(id_: int) -> list:
             # 带重试的封面获取
             image = None
             try:
-                image_bytes = await fetch_image_with_retry(
-                    video["pic"], retries=3, delay=2
-                )
+                image_bytes = await AsyncHttpx.get_content(video["pic"])
                 image = BuildImage(background=image_bytes)
             except Exception as e:
-                logger.error(f"封面获取失败（已重试3次）: {e}")
+                logger.error(
+                    f"下载图片构造失败: {video['pic']}",
+                    LOG_COMMAND,
+                    session=session,
+                    e=e,
+                )
 
             # 构建消息内容
             video_msg = [
@@ -388,44 +413,63 @@ async def _get_up_status(id_: int) -> list:
 
             # 合并动态和视频消息
             if msg_list and image:
-                msg_list += [dividing_line, image] + video_msg
+                msg_list += [dividing_line, image, *video_msg]
             elif image:  # 仅有视频更新
-                msg_list = [image] + video_msg
+                msg_list = [image, *video_msg]
             elif msg_list:  # 有动态但无封面
-                msg_list += [dividing_line] + video_msg
+                msg_list += [dividing_line, *video_msg]
             else:  # 仅有无封面视频
-                msg_list = ["⚠️ 封面获取失败，但仍需通知："] + video_msg
+                msg_list = ["⚠️ 封面获取失败，但仍需通知：", *video_msg]
 
             # 强制更新视频时间戳
-            await BilibiliSub.sub_handle(id_, latest_video_created=latest_video_created)
+            await BilibiliSub.sub_handle(
+                sub_id, latest_video_created=latest_video_created
+            )
 
-        elif latest_video_created > _user.latest_video_created:  # 超时视频仍更新时间戳
-            await BilibiliSub.sub_handle(id_, latest_video_created=latest_video_created)
+        elif (
+            latest_video_created > sub_data.latest_video_created
+        ):  # 超时视频仍更新时间戳
+            await BilibiliSub.sub_handle(
+                sub_id, latest_video_created=latest_video_created
+            )
 
     return msg_list
 
 
-async def _get_season_status(id_) -> list:
-    """
-    获取 番剧 更新状态
-    :param id_: 番剧 id
+async def _get_season_status(session: Uninfo | None, sub_id: int) -> list:
+    """获取 番剧 更新状态
+
+    参数:
+        session: Uninfo
+        sub_id: 番剧 id
+
+    返回:
+        list: 消息列表
     """
     """bilibili_api.bangumi库中get_meta改为bilireq.bangumi库的get_meta方法"""
-    season_info = await get_meta(id_)
+    sub_data = await BilibiliSub.get_or_none(sub_id=sub_id)
+    if not sub_data:
+        return ["该用户未订阅，数据不存在"]
+    season_info = await get_meta(sub_id)
     title = season_info["media"]["title"]
-    _idx = (await BilibiliSub.get_or_none(sub_id=id_)).season_current_episode
+    index = sub_data.season_current_episode
     new_ep = season_info["media"]["new_ep"]["index"]
     msg_list = []
-    if new_ep != _idx:
+    if new_ep != index:
         image = None
         try:
-            image_bytes = await fetch_image_bytes(season_info["media"]["cover"])
+            image_bytes = await AsyncHttpx.get_content(season_info["media"]["cover"])
             image = BuildImage(background=image_bytes)
         except Exception as e:
-            logger.error(f"图片构造失败，错误信息：{e}")
+            logger.error(
+                f"图片下载失败: {season_info['media']['cover']}",
+                LOG_COMMAND,
+                session=session,
+                e=e,
+            )
         if image:
             await BilibiliSub.sub_handle(
-                id_, season_current_episode=new_ep, season_update_time=datetime.now()
+                sub_id, season_current_episode=new_ep, season_update_time=datetime.now()
             )
             msg_list = [
                 image,
@@ -437,13 +481,17 @@ async def _get_season_status(id_) -> list:
 
 
 async def get_user_dynamic(
-    uid: int, local_user: BilibiliSub
+    session: Uninfo, uid: int, local_user: BilibiliSub
 ) -> tuple[bytes | None, int, str]:
-    """
-    获取用户动态
-    :param uid: 用户uid
-    :param local_user: 数据库存储的用户数据
-    :return: 最新动态截图与时间
+    """获取用户动态
+
+    参数:
+        session: Uninfo
+        uid: 用户uid
+        local_user: 数据库存储的用户数据
+
+    返回:
+        tuple[bytes | None, int, str]: 最新动态截图与时间
     """
     try:
         dynamic_info = await get_user_dynamics(uid)

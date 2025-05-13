@@ -1,13 +1,12 @@
 from datetime import datetime
 
 from nonebot.adapters import Bot
-from nonebot.adapters.onebot.v11 import Bot as v11Bot
-from nonebot.adapters.onebot.v12 import Bot as v12Bot
 from nonebot_plugin_alconna import Image, UniMessage
 
 from zhenxun.services.log import logger
 from zhenxun.utils.http_utils import AsyncHttpx
 from zhenxun.utils.message import MessageUtils
+from zhenxun.utils.platform import PlatformUtils
 
 
 # 获取所有 Epic Game Store 促销游戏
@@ -18,7 +17,8 @@ async def get_epic_game() -> dict | None:
     headers = {
         "Referer": "https://www.epicgames.com/store/zh-CN/",
         "Content-Type": "application/json; charset=utf-8",
-        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.80 Safari/537.36",
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)"
+        " AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.80 Safari/537.36",
     }
     try:
         res = await AsyncHttpx.get(epic_url, headers=headers, timeout=10)
@@ -26,7 +26,7 @@ async def get_epic_game() -> dict | None:
         games = res_json["data"]["Catalog"]["searchStore"]["elements"]
         return games
     except Exception as e:
-        logger.error(f"Epic 访问接口错误", e=e)
+        logger.error("Epic 访问接口错误", e=e)
     return None
 
 
@@ -39,7 +39,8 @@ async def get_epic_game_desp(name) -> dict | None:
     headers = {
         "Referer": "https://store.epicgames.com/zh-CN/p/" + str(name),
         "Content-Type": "application/json; charset=utf-8",
-        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.80 Safari/537.36",
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)"
+        " AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.80 Safari/537.36",
     }
     try:
         res = await AsyncHttpx.get(desp_url, headers=headers, timeout=10)
@@ -47,7 +48,7 @@ async def get_epic_game_desp(name) -> dict | None:
         gamesDesp = res_json["pages"][0]["data"]["about"]
         return gamesDesp
     except Exception as e:
-        logger.error(f"Epic 访问接口错误", e=e)
+        logger.error("Epic 访问接口错误", e=e)
     return None
 
 
@@ -66,6 +67,7 @@ async def get_epic_free(
             game_name = game["title"]
             game_corp = game["seller"]["name"]
             game_price = game["price"]["totalPrice"]["fmtPrice"]["originalPrice"]
+            game_desp = ""
             # 赋初值以避免 local variable referenced before assignment
             game_thumbnail, game_dev, game_pub = None, game_corp, game_corp
             try:
@@ -86,12 +88,14 @@ async def get_epic_free(
                         "%b.%d %H:%M"
                     )
                     if type_event == "Group":
-                        _message = f"\n由 {game_corp} 公司发行的游戏 {game_name} ({game_price}) 在 UTC 时间 {start_date} 即将推出免费游玩，预计截至 {end_date}。"
+                        _message = f"\n由 {game_corp} 公司发行的游戏 {game_name}"
+                        f" ({game_price}) 在 UTC 时间 {start_date}"
+                        f" 即将推出免费游玩，预计截至 {end_date}。"
                         msg_list.append(_message)
                     else:
-                        msg = "\n由 {} 公司发行的游戏 {} ({}) 在 UTC 时间 {} 即将推出免费游玩，预计截至 {}。".format(
-                            game_corp, game_name, game_price, start_date, end_date
-                        )
+                        msg = f"\n由 {game_corp} 公司发行的游戏 {game_name}"
+                        f" ({game_price}) 在 UTC 时间 {start_date}"
+                        f" 即将推出免费游玩，预计截至 {end_date}。"
                         msg_list.append(msg)
                 else:
                     for image in game["keyImages"]:
@@ -132,7 +136,7 @@ async def get_epic_free(
                         )
                     except IndexError:
                         end_date = "未知"
-                    # API 返回不包含游戏商店 URL，此处自行拼接，可能出现少数游戏 404 请反馈
+                    # API 返回不包含游戏商店URL，此处自行拼接，可能出现少数游戏404请反馈
                     if game.get("productSlug"):
                         game_url = "https://store.epicgames.com/zh-CN/p/{}".format(
                             game["productSlug"].replace("/home", "")
@@ -160,10 +164,13 @@ async def get_epic_free(
                         game_url = "https://store.epicgames.com/zh-CN{}".format(
                             f"/p/{slugs[0]}" if len(slugs) else ""
                         )
-                    if isinstance(bot, (v11Bot, v12Bot)) and type_event == "Group":
+                    if PlatformUtils.is_forward_merge_supported(bot):
                         _message = [
                             Image(url=game_thumbnail),
-                            f"\nFREE now :: {game_name} ({game_price})\n{game_desp}\n此游戏由 {game_dev} 开发、{game_pub} 发行，将在 UTC 时间 {end_date} 结束免费游玩，戳链接速度加入你的游戏库吧~\n{game_url}\n",
+                            f"\nFREE now :: {game_name} ({game_price})\n{game_desp}\n"
+                            f"此游戏由 {game_dev} 开发、{game_pub} 发行"
+                            f"，将在 UTC 时间 {end_date} 结束免费游玩，"
+                            f"戳链接速度加入你的游戏库吧~\n{game_url}\n",
                         ]
                         msg_list.append(_message)
                     else:
@@ -171,10 +178,13 @@ async def get_epic_free(
                         if game_thumbnail:
                             _message.append(Image(url=game_thumbnail))
                         _message.append(
-                            f"\n\nFREE now :: {game_name} ({game_price})\n{game_desp}\n此游戏由 {game_dev} 开发、{game_pub} 发行，将在 UTC 时间 {end_date} 结束免费游玩，戳链接速度加入你的游戏库吧~\n{game_url}\n"
+                            f"\n\nFREE now :: {game_name} ({game_price})\n"
+                            f"{game_desp}\n此游戏由 {game_dev} 开发、{game_pub}"
+                            f" 发行，将在 UTC 时间 {end_date} 结束免费游玩，"
+                            f"戳链接速度加入你的游戏库吧~\n{game_url}\n"
                         )
                         return MessageUtils.build_message(_message), 200
-            except TypeError as e:
+            except TypeError:
                 # logger.info(str(e))
                 pass
         return MessageUtils.template2forward(msg_list, bot.self_id), 200

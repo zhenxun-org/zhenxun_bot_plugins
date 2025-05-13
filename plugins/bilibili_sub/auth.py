@@ -1,20 +1,19 @@
-import json
 import random
+from typing import ClassVar
 
+from bilireq.auth import Auth
 from nonebot import get_driver
 from nonebot.log import logger
-from bilireq.auth import Auth  # type: ignore
+import ujson as json
 
-from zhenxun.configs.path_config import DATA_PATH
+from .config import BASE_PATH, LOG_COMMAND
 
-BASE_PATH = DATA_PATH / "bilibili_sub"
-BASE_PATH.mkdir(parents=True, exist_ok=True)
 auth_file = BASE_PATH / "bili_auth.json"
 auth_file.touch()
 
 
 class AuthManager:
-    grpc_auths: list[Auth] = []
+    grpc_auths: ClassVar[list[Auth]] = []
 
     @classmethod
     async def load_auths(cls) -> None:
@@ -26,9 +25,11 @@ class AuthManager:
             try:
                 auth = await auth.refresh()
                 cls.grpc_auths.append(auth)
-                logger.success(f"{auth.uid} 缓存登录成功")
+                logger.success(f"{auth.uid} 缓存登录成功", LOG_COMMAND)
             except Exception as e:
-                logger.error(f"{auth.uid} 缓存登录失败，请使用二维码登录: {e}")
+                logger.error(
+                    f"{auth.uid} 缓存登录失败，请使用二维码登录: {e}", LOG_COMMAND
+                )
         cls.dump_auths()
 
     @classmethod
@@ -47,7 +48,7 @@ class AuthManager:
             for auth in auths:
                 if auth.cookies:
                     return auth.cookies.copy()
-        logger.warning("没有可用的 bilibili cookies，请求可能风控")
+        logger.warning("没有可用的 bilibili cookies，请求可能风控", LOG_COMMAND)
         return {}
 
     @classmethod

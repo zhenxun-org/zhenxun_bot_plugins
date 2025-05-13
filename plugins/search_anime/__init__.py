@@ -47,7 +47,6 @@ async def _(name: Match[str]):
 
 @_matcher.got_path("name", prompt="是不是少了番名？")
 async def _(session: EventSession, arparma: Arparma, name: str):
-    gid = session.id3 or session.id2
     await MessageUtils.build_message(f"开始搜番 {name}...").send()
     anime_report = await from_anime_get_info(
         name,

@@ -2,8 +2,8 @@ from datetime import datetime
 
 from tortoise import fields
 
-from zhenxun.services.log import logger
 from zhenxun.services.db_context import Model
+from zhenxun.services.log import logger
 
 
 class BilibiliSub(Model):
@@ -36,7 +36,7 @@ class BilibiliSub(Model):
     season_update_time = fields.DateField(null=True)
     """番剧更新日期"""
 
-    class Meta:
+    class Meta:  # pyright: ignore [reportIncompatibleVariableOverride]
         table = "bilibili_sub"
         table_description = "B站订阅数据表"
         unique_together = ("sub_id", "sub_type")
@@ -59,23 +59,22 @@ class BilibiliSub(Model):
         season_current_episode: str | None = None,
         season_update_time: datetime | None = None,
     ) -> bool:
-        """
-        说明:
-            添加订阅
+        """添加订阅
+
         参数:
-            :param sub_id: 订阅名称，房间号，番剧号等
-            :param sub_type: 订阅类型
-            :param sub_user: 订阅此条目的用户
-            :param live_short_id: 直接短 id
-            :param live_status: 主播开播状态
-            :param dynamic_upload_time: 主播/UP最新动态时间
-            :param uid: 主播/UP uid
-            :param uname: 用户名称
-            :param latest_video_created: 最新视频上传时间
-            :param season_name: 番剧名称
-            :param season_id: 番剧 season_id
-            :param season_current_episode: 番剧最新集数
-            :param season_update_time: 番剧更新时间
+            sub_id: 订阅名称，房间号，番剧号等
+            sub_type: 订阅类型
+            sub_user: 订阅此条目的用户
+            live_short_id: 直接短 id
+            live_status: 主播开播状态
+            dynamic_upload_time: 主播/UP最新动态时间
+            uid: 主播/UP uid
+            uname: 用户名称
+            latest_video_created: 最新视频上传时间
+            season_name: 番剧名称
+            season_id: 番剧 season_id
+            season_current_episode: 番剧最新集数
+            season_update_time: 番剧更新时间
         """
         # try:
         data = {
@@ -135,8 +134,8 @@ class BilibiliSub(Model):
         说明:
             删除订阅
         参数:
-            :param sub_id: 订阅名称
-            :param sub_user: 删除此条目的用户
+            sub_id: 订阅名称
+            sub_user: 删除此条目的用户
         """
         try:
             if sub_type:
@@ -183,6 +182,8 @@ class BilibiliSub(Model):
     @classmethod
     async def _run_script(cls):
         return [
-            "ALTER TABLE bilibili_sub ALTER COLUMN season_update_time TYPE timestamp with time zone USING season_update_time::timestamp with time zone;",
-            "ALTER TABLE bilibili_sub ALTER COLUMN sub_id TYPE character varying(255);",  # 添加修改sub_id为char的SQL脚本
+            "ALTER TABLE bilibili_sub ALTER COLUMN season_update_time TYPE"
+            " timestamp"
+            " with time zone USING season_update_time::timestamp with time zone;",
+            "ALTER TABLE bilibili_sub ALTER COLUMN sub_id TYPE character varying(255);",
         ]

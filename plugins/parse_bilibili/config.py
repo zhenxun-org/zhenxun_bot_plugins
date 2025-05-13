@@ -118,4 +118,3 @@ PLUGIN_TEMP_DIR.mkdir(parents=True, exist_ok=True)
 SCREENSHOT_ELEMENT_OPUS = "#app > div.opus-detail > div.bili-opus-view"
 SCREENSHOT_ELEMENT_ARTICLE = ".article-holder"
 SCREENSHOT_TIMEOUT = 60
-

@@ -1,15 +1,21 @@
 from __future__ import annotations
 
-import re
-import time
 import base64
-import random
-import string
 import hashlib
-import urllib.parse
+import random
+import re
+import string
+import time
 from typing import Any, TypedDict
+import urllib.parse
 
-from httpx import AsyncClient  # type: ignore
+from zhenxun.utils.http_utils import AsyncHttpx
+
+HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)"
+    " AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
+    "Referer": "https://www.bilibili.com",
+}
 
 
 class WbiImg(TypedDict):
@@ -18,16 +24,27 @@ class WbiImg(TypedDict):
 
 
 wbi_img_cache: WbiImg | None = None
-dm_img_str_cache: str = base64.b64encode("".join(random.choices(string.printable, k=random.randint(16, 64))).encode())[:-2].decode()  # fmt: skip
-dm_cover_img_str_cache: str = base64.b64encode("".join(random.choices(string.printable, k=random.randint(32, 128))).encode())[:-2].decode()  # fmt: skip
+dm_img_str_cache: str = base64.b64encode(
+    "".join(random.choices(string.printable, k=random.randint(16, 64))).encode()
+)[:-2].decode()
+dm_cover_img_str_cache: str = base64.b64encode(
+    "".join(random.choices(string.printable, k=random.randint(32, 128))).encode()
+)[:-2].decode()
 
 
-async def get_wbi_img(client: AsyncClient) -> WbiImg:
+async def get_wbi_img(cookies: dict[str, str]) -> WbiImg:
+    """获取wbi图片信息
+
+    返回:
+        WbiImg: 图片信息
+    """
     global wbi_img_cache
     if wbi_img_cache is not None:
         return wbi_img_cache
     url = "https://api.bilibili.com/x/web-interface/nav"
-    res_json = (await client.get(url)).json()
+    res = await AsyncHttpx.get(url, cookies=cookies, headers=HEADERS)
+    res.raise_for_status()
+    res_json = res.json()
     assert res_json is not None
     wbi_img: WbiImg = {
         "img_key": _get_key_from_url(res_json["data"]["wbi_img"]["img_url"]),
@@ -48,7 +65,7 @@ def _get_mixin_key(string: str) -> str:
         40, 61, 26, 17, 0, 1, 60, 51, 30, 4, 22, 25, 54, 21, 56, 59, 6, 63, 57,
         62, 11, 36, 20, 34, 44, 52,
     ]  # fmt: skip
-    return "".join(list(map(lambda idx: string[idx], char_indices[:32])))
+    return "".join([string[idx] for idx in char_indices[:32]])
 
 
 def encode_wbi(params: dict[str, Any], wbi_img: WbiImg):
@@ -72,5 +89,4 @@ def encode_wbi(params: dict[str, Any], wbi_img: WbiImg):
         }
     )  # fmt: skip
     w_rid = hashlib.md5((url_encoded_params + mixin_key).encode()).hexdigest()
-    all_params = dict(params_with_dm, w_rid=w_rid)
-    return all_params
+    return dict(params_with_dm, w_rid=w_rid)

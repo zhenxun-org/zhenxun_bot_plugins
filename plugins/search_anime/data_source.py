@@ -45,9 +45,7 @@ async def get_repass(url: str, max_: int) -> list[str]:
                 .replace("\t", "")
             )
             size = item[3].xpath("string(.)")[5:].strip()
-            put_line.append(
-                "【{}】| {}\n【{}】| {}".format(class_a, title, size, magent)
-            )
+            put_line.append(f"【{class_a}】| {title}\n【{size}】| {magent}")
         except Exception as e:
-            logger.error(f"搜番发生错误", e=e)
+            logger.error("搜番发生错误", e=e)
     return put_line

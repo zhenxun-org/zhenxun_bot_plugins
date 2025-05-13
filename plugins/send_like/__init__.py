@@ -27,6 +27,8 @@ _info_matcher = on_alconna(Alconna("点赞信息"), priority=5, block=True)
 
 @_matcher.handle()
 async def send_like(bot: Bot, session: Uninfo):
+    a = LikeLog.filter(user_id=session.user.id, create_time__gte=datetime.now().date())
+    print(a.sql())
     if await LikeLog.exists(
         user_id=session.user.id, create_time__gte=datetime.now().date()
     ):

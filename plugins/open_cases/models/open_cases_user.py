@@ -4,7 +4,6 @@ from zhenxun.services.db_context import Model
 
 
 class OpenCasesUser(Model):
-
     id = fields.IntField(pk=True, generated=True, auto_increment=True)
     """自增id"""
     user_id = fields.CharField(255)
@@ -44,7 +43,7 @@ class OpenCasesUser(Model):
     knifes_name = fields.TextField(default="")
     """已获取金色"""
 
-    class Meta:
+    class Meta:  # pyright: ignore [reportIncompatibleVariableOverride]
         table = "open_cases_users"
         table_description = "开箱统计数据表"
         unique_together = ("user_id", "group_id")

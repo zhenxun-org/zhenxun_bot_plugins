@@ -10,7 +10,6 @@ base_config = Config.get("mute_setting")
 
 
 class GroupData(BaseModel):
-
     count: int
     """次数"""
     time: int
@@ -22,7 +21,6 @@ class GroupData(BaseModel):
 
 
 class MuteManage:
-
     file = DATA_PATH / "group_mute_data.json"
 
     def __init__(self) -> None:
