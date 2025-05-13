@@ -1,14 +1,8 @@
-"""
-异常模块
-
-定义了插件中使用的所有异常类型，提供了详细的错误信息和上下文
-"""
-
 from typing import Any, Dict, Optional
 
 
 class BilibiliBaseException(Exception):
-    """所有B站相关异常的基类"""
+    """B站相关异常基类"""
 
     def __init__(
         self,
@@ -16,14 +10,7 @@ class BilibiliBaseException(Exception):
         cause: Optional[Exception] = None,
         context: Optional[Dict[str, Any]] = None,
     ) -> None:
-        """
-        初始化异常
-
-        Args:
-            message: 错误消息
-            cause: 导致该异常的原始异常（可选）
-            context: 异常上下文信息（可选）
-        """
+        """初始化异常"""
         self.message = message
         self.cause = cause
         self.context = context or {}
@@ -42,15 +29,7 @@ class BilibiliBaseException(Exception):
         return result
 
     def with_context(self, **kwargs) -> "BilibiliBaseException":
-        """
-        添加上下文信息并返回自身
-
-        Args:
-            **kwargs: 要添加的上下文信息
-
-        Returns:
-            添加了上下文的异常对象
-        """
+        """添加上下文信息并返回自身"""
         self.context.update(kwargs)
         return self
 

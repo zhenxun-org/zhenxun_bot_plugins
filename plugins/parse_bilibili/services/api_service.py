@@ -1,9 +1,3 @@
-"""
-B站API服务模块
-
-提供了B站API请求服务，负责获取视频、直播、专栏等信息
-"""
-
 import asyncio
 from typing import Dict, Any, Optional, List
 

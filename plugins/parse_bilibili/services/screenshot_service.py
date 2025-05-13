@@ -19,13 +19,7 @@ class ScreenshotService:
 
     @staticmethod
     async def _resize_image(path: Path, scale: float = 0.8) -> None:
-        """
-        调整图像大小
-
-        Args:
-            path: 图像文件路径
-            scale: 缩放比例
-        """
+        """调整图像大小"""
         try:
             img = BuildImage.open(path)
 
@@ -42,19 +36,7 @@ class ScreenshotService:
 
     @staticmethod
     async def take_screenshot(url: str, element_selector: str) -> bytes:
-        """
-        获取网页元素的截图
-
-        Args:
-            url: 要截图的URL
-            element_selector: 要截图的元素选择器
-
-        Returns:
-            截图字节数据
-
-        Raises:
-            ScreenshotError: 截图失败
-        """
+        """获取网页元素的截图"""
         browser = await get_browser()
         if not browser:
             raise ScreenshotError("Browser is not available.")
@@ -180,19 +162,7 @@ class ScreenshotService:
 
     @staticmethod
     async def get_article_screenshot(cv_id: str, url: str) -> bytes:
-        """
-        获取专栏文章截图
-
-        Args:
-            cv_id: 专栏ID
-            url: 专栏URL
-
-        Returns:
-            截图字节数据
-
-        Raises:
-            ScreenshotError: 截图失败
-        """
+        """获取专栏文章截图"""
         logger.debug(f"获取专栏截图: {cv_id}, URL: {url}", "B站解析")
 
         selector = SCREENSHOT_ELEMENT_ARTICLE
@@ -202,19 +172,7 @@ class ScreenshotService:
 
     @staticmethod
     async def get_opus_screenshot(opus_id: str, url: str) -> bytes:
-        """
-        获取动态截图
-
-        Args:
-            opus_id: 动态ID
-            url: 动态URL
-
-        Returns:
-            截图字节数据
-
-        Raises:
-            ScreenshotError: 截图失败
-        """
+        """获取动态截图"""
         logger.debug(f"获取动态截图: {opus_id}, URL: {url}", "B站解析")
 
         selector = SCREENSHOT_ELEMENT_OPUS

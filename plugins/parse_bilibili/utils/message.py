@@ -14,12 +14,10 @@ from nonebot_plugin_htmlrender import html_to_pic
 from bilibili_api import comment
 from bilibili_api.comment import CommentResourceType, OrderType
 
-from zhenxun.configs.path_config import TEMP_PATH
 from zhenxun.services.log import logger
-from zhenxun.utils.http_utils import AsyncHttpx
 
 from ..model import ArticleInfo, LiveInfo, VideoInfo, SeasonInfo, UserInfo
-from ..config import base_config, bili_credential
+from ..config import base_config, bili_credential, IMAGE_CACHE_DIR
 
 TEMPLATE_DIR = Path(__file__).parent.parent / "templates"
 FONT_FILE = TEMPLATE_DIR / "vanfont.ttf"
@@ -39,43 +37,26 @@ template_env = jinja2.Environment(loader=template_loader, enable_async=True)
 
 
 class ImageHelper:
-    """图片下载和处理辅助类"""
+    """图片处理辅助类"""
 
     @staticmethod
     async def download_image(url: str, save_path: Path) -> bool:
-        """
-        下载图片并保存到指定路径
+        """下载图片"""
+        from .file_utils import download_file
 
-        Args:
-            url: 图片URL
-            save_path: 保存路径
-
-        Returns:
-            是否下载成功
-        """
         try:
-            success = await AsyncHttpx.download_file(url, save_path)
-            if success:
-                logger.debug(f"图片下载成功: {save_path}")
-                return True
-            else:
-                logger.warning(f"图片下载失败: {url}")
-                return False
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+                "Referer": "https://www.bilibili.com",
+            }
+            return await download_file(url, save_path, headers=headers, timeout=30)
         except Exception as e:
             logger.error(f"下载图片时出错 {url}: {e}")
             return False
 
     @staticmethod
     async def get_image_as_base64(path: Path) -> Optional[str]:
-        """
-        将图片转换为Base64编码的数据地址
-
-        Args:
-            path: 图片路径
-
-        Returns:
-            Base64编码的数据地址，失败时返回None
-        """
+        """转换图片为Base64"""
         if not (path.exists() and path.stat().st_size > 0):
             return None
 
@@ -91,24 +72,16 @@ class ImageHelper:
 
 
 class MessageBuilder:
-    """消息构建器，负责将不同类型的信息模型转换为可发送的消息"""
+    """消息构建器"""
 
     @staticmethod
     async def build_video_message(info: VideoInfo) -> UniMsg:
-        """
-        构建视频信息消息
-
-        Args:
-            info: 视频信息模型
-
-        Returns:
-            可发送的UniMsg消息
-        """
+        """构建视频信息消息"""
         segments = []
 
         if base_config.get("SEND_VIDEO_PIC", True) and info.pic:
             file_name = f"bili_video_cover_{info.bvid or info.aid}.jpg"
-            cover_path = TEMP_PATH / file_name
+            cover_path = IMAGE_CACHE_DIR / file_name
             if await ImageHelper.download_image(info.pic, cover_path):
                 segments.append(Image(path=cover_path))
 
@@ -138,35 +111,19 @@ class MessageBuilder:
 
     @staticmethod
     def _clean_html_description(html_description: str) -> str:
-        """
-        清理HTML描述为纯文本
-
-        Args:
-            html_description: 可能包含HTML标签的描述文本
-
-        Returns:
-            清理后的纯文本
-        """
+        """清理HTML描述为纯文本"""
         soup = BeautifulSoup(html_description or "", "html.parser")
         return soup.get_text(separator=" ", strip=True)
 
     @staticmethod
     async def build_live_message(info: LiveInfo) -> UniMsg:
-        """
-        构建直播间信息消息
-
-        Args:
-            info: 直播间信息模型
-
-        Returns:
-            可发送的UniMsg消息
-        """
+        """构建直播间信息消息"""
         segments = []
         status_text = {0: "未开播", 1: "直播中", 2: "轮播中"}
 
         if base_config.get("SEND_LIVE_PIC", True) and info.cover:
             file_name = f"bili_live_cover_{info.room_id}.jpg"
-            cover_path = TEMP_PATH / file_name
+            cover_path = IMAGE_CACHE_DIR / file_name
             if await ImageHelper.download_image(info.cover, cover_path):
                 segments.append(Image(path=cover_path))
 
@@ -198,7 +155,7 @@ class MessageBuilder:
             segments.append(Text("\n直播画面:"))
 
             keyframe_name = f"bili_live_keyframe_{info.room_id}.jpg"
-            keyframe_path = TEMP_PATH / keyframe_name
+            keyframe_path = IMAGE_CACHE_DIR / keyframe_name
             if await ImageHelper.download_image(info.keyframe_url, keyframe_path):
                 segments.append(Image(path=keyframe_path))
 
@@ -208,17 +165,7 @@ class MessageBuilder:
     async def build_article_message(
         info: ArticleInfo, render_enabled: bool = False
     ) -> Optional[UniMsg]:
-        """
-        构建文章/动态信息消息
-        如果 render_enabled=True，优先发送截图；否则发送文本摘要。
-
-        Args:
-            info: 文章/动态信息模型
-            render_enabled: 是否启用了图片渲染模式
-
-        Returns:
-            可发送的UniMsg消息，如果数据不足则返回None
-        """
+        """构建文章/动态信息消息"""
         logger.debug(
             f"构建文章/动态消息: {info.type} {info.id}, 渲染模式: {render_enabled}"
         )
@@ -271,21 +218,13 @@ class MessageBuilder:
 
     @staticmethod
     async def build_season_message(info: SeasonInfo) -> UniMsg:
-        """
-        构建番剧/影视信息消息
-
-        Args:
-            info: 番剧/影视信息模型
-
-        Returns:
-            可发送的UniMsg消息
-        """
+        """构建番剧/影视信息消息"""
         segments = []
 
         send_cover_enabled = True
         if send_cover_enabled and info.cover:
             file_name = f"bili_season_cover_{info.season_id or info.media_id}.jpg"
-            cover_path = TEMP_PATH / file_name
+            cover_path = IMAGE_CACHE_DIR / file_name
             if await ImageHelper.download_image(info.cover, cover_path):
                 segments.append(Image(path=cover_path))
 
@@ -344,7 +283,7 @@ class MessageBuilder:
 
         if info.face:
             avatar_filename = f"bili_avatar_{info.mid}.jpg"
-            avatar_path = TEMP_PATH / avatar_filename
+            avatar_path = IMAGE_CACHE_DIR / avatar_filename
             if await ImageHelper.download_image(info.face, avatar_path):
                 segments.append(Image(path=avatar_path))
 
@@ -374,43 +313,27 @@ class MessageBuilder:
 
 
 class RenderHelper:
-    """图片渲染辅助类"""
+    """渲染辅助类"""
 
     @staticmethod
     def format_number(num: int) -> str:
         """格式化数字，大数字使用万/亿单位"""
-        if num >= 100000000:
-            return f"{num / 100000000:.1f}亿"
-        if num >= 10000:
-            return f"{num / 10000:.1f}万"
-        return str(num)
+        from .common import format_number
+
+        return format_number(num)
 
     @staticmethod
     def format_duration(seconds: int) -> str:
         """格式化时间长度"""
-        minutes, seconds = divmod(seconds, 60)
-        hours, minutes = divmod(minutes, 60)
-        return (
-            f"{hours:02d}:{minutes:02d}:{seconds:02d}"
-            if hours > 0
-            else f"{minutes:02d}:{seconds:02d}"
-        )
+        from .common import format_duration
+
+        return format_duration(seconds)
 
     @staticmethod
     async def render_html_to_image(
         template_name: str, template_data: Dict[str, Any], viewport_width: int = 780
     ) -> Optional[bytes]:
-        """
-        渲染HTML模板为图片
-
-        Args:
-            template_name: 模板名称
-            template_data: 模板数据
-            viewport_width: 视口宽度
-
-        Returns:
-            渲染后的图片字节数据，失败时返回None
-        """
+        """渲染HTML模板为图片"""
         try:
             template = template_env.get_template(template_name)
             html_content = await template.render_async(template_data)
@@ -429,13 +352,13 @@ class RenderHelper:
 
 
 async def render_video_info_to_image(info: VideoInfo) -> Optional[bytes]:
-    """将 VideoInfo 渲染成 style_blue 样式的图片"""
+    """渲染视频信息为图片"""
     logger.debug("开始渲染 VideoInfo (style_blue with icons)")
 
     cover_image_src = None
     if base_config.get("SEND_VIDEO_PIC", True) and info.pic:
         file_name = f"bili_video_cover_{info.bvid or info.aid}.jpg"
-        cover_path = TEMP_PATH / file_name
+        cover_path = IMAGE_CACHE_DIR / file_name
 
         if not (cover_path.exists() and cover_path.stat().st_size > 0):
             await ImageHelper.download_image(info.pic, cover_path)
@@ -445,7 +368,7 @@ async def render_video_info_to_image(info: VideoInfo) -> Optional[bytes]:
     up_avatar_src = None
     if info.owner.face:
         avatar_filename = f"bili_avatar_{info.owner.mid}.jpg"
-        avatar_path = TEMP_PATH / avatar_filename
+        avatar_path = IMAGE_CACHE_DIR / avatar_filename
 
         if not (avatar_path.exists() and avatar_path.stat().st_size > 0):
             await ImageHelper.download_image(info.owner.face, avatar_path)
@@ -468,7 +391,7 @@ async def render_video_info_to_image(info: VideoInfo) -> Optional[bytes]:
             fetched_comments = c.get("replies", [])
             if fetched_comments:
                 count = 0
-                for i, cmt in enumerate(fetched_comments):
+                for _, cmt in enumerate(fetched_comments):
                     if count >= comment_count:
                         break
                     if (
@@ -534,7 +457,7 @@ async def render_video_info_to_image(info: VideoInfo) -> Optional[bytes]:
 
 
 async def render_season_info_to_image(info: SeasonInfo) -> Optional[bytes]:
-    """将 SeasonInfo 渲染成 style_blue 样式的图片"""
+    """渲染番剧信息为图片"""
     logger.debug("开始渲染 SeasonInfo (style_blue)")
 
     cover_image_src = None
@@ -545,7 +468,7 @@ async def render_season_info_to_image(info: SeasonInfo) -> Optional[bytes]:
             if info.target_ep_id
             else f"bili_season_cover_{info.season_id or info.media_id}"
         )
-        cover_path = TEMP_PATH / f"{file_prefix}.jpg"
+        cover_path = IMAGE_CACHE_DIR / f"{file_prefix}.jpg"
 
         if not (cover_path.exists() and cover_path.stat().st_size > 0):
             await ImageHelper.download_image(cover_url_to_download, cover_path)
@@ -590,15 +513,7 @@ async def render_season_info_to_image(info: SeasonInfo) -> Optional[bytes]:
 
 
 async def render_unimsg_to_image(message: UniMsg) -> Optional[bytes]:
-    """
-    将 UniMsg 渲染成图片
-
-    Args:
-        message: 要渲染的UniMsg消息
-
-    Returns:
-        渲染后的图片字节数据，失败时返回None
-    """
+    """将 UniMsg 渲染成图片"""
     logger.debug("开始渲染UniMsg消息")
 
     html_parts = []

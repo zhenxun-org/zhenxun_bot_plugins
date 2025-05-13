@@ -1,26 +1,26 @@
-import asyncio
-from typing import Optional, Dict, List, Union
+from typing import Optional, Dict
 from nonebot import on_command
 from nonebot.adapters import Bot, Event
 from nonebot.matcher import Matcher
 from nonebot.permission import SUPERUSER
-from nonebot_plugin_alconna import AlconnaMatcher, UniMsg, Image, Text
-
+from nonebot.adapters.onebot.v11 import MessageSegment
+import asyncio
 from bilibili_api import login_v2, exceptions as BiliExceptions
 from bilibili_api.utils.picture import Picture
 
 from zhenxun.services.log import logger
-from ..config import save_credential_to_file
+from ..config import save_credential_to_file, get_credential
 
-login_matcher = on_command(
-    "bili登录", aliases={"b站登录"}, permission=SUPERUSER, priority=5, block=True
+login_matcher = on_command("bili登录", permission=SUPERUSER, priority=5, block=True)
+credential_status_matcher = on_command(
+    "bili状态", permission=SUPERUSER, priority=5, block=True
 )
 
 login_sessions: Dict[str, login_v2.QrCodeLogin] = {}
 
 
 @login_matcher.handle()
-async def handle_login_start(bot: Bot, event: Event, matcher: AlconnaMatcher):
+async def handle_login_start(bot: Bot, event: Event, matcher: Matcher):
     user_id = event.get_user_id()
     if user_id in login_sessions and not login_sessions[user_id].has_done():
         await matcher.send("您当前有一个登录流程正在进行中，请先完成或等待超时。")
@@ -63,23 +63,17 @@ async def handle_login_start(bot: Bot, event: Event, matcher: AlconnaMatcher):
         except Exception as img_err:
             logger.error("获取二维码图片字节失败", e=img_err)
 
-        message_to_send_list: List[Union[Text, Image]] = []
-        message_to_send_list.append(
-            Text("请使用哔哩哔哩手机客户端扫描下方二维码登录：")
-        )
-        if qr_bytes:
-            message_to_send_list.append(Image(raw=qr_bytes, name="bili_login_qr.png"))
-        else:
-            message_to_send_list.append(
-                Text(
-                    "\n错误：无法生成二维码图片。登录流程已启动，请关注后续提示或尝试扫描App通知。"
-                )
-            )
-        message_to_send = UniMsg(message_to_send_list)
+        message = "请使用哔哩哔哩手机客户端扫描下方二维码登录："
 
         try:
-            await matcher.send(message_to_send)
-            logger.debug("登录提示（图片或文本）已发送")
+            if qr_bytes:
+                await matcher.send(message)
+                await matcher.send(MessageSegment.image(qr_bytes))
+                logger.debug("登录提示和二维码图片已发送")
+            else:
+                error_msg = "错误：无法生成二维码图片。登录流程已启动，请关注后续提示或尝试扫描App通知。"
+                await matcher.send(message + "\n" + error_msg)
+                logger.debug("登录提示（仅文本）已发送")
         except Exception as send_err:
             logger.error("发送登录提示消息失败", e=send_err)
             await matcher.finish("发送二维码失败，请稍后重试。")
@@ -89,7 +83,7 @@ async def handle_login_start(bot: Bot, event: Event, matcher: AlconnaMatcher):
             logger.debug("准备启动 check_login_status 任务")
             asyncio.create_task(check_login_status(matcher, user_id))
             logger.debug("check_login_status 任务已启动")
-            await matcher.stop_propagation()
+            matcher.stop_propagation()
         else:
             logger.error("二维码核心数据未生成，无法启动检查任务")
             if user_id in login_sessions:
@@ -132,7 +126,7 @@ async def check_login_status(org_matcher: Matcher, user_id: str):
             elif asyncio.get_running_loop().time() - start_time > timeout:
                 logger.warning(f"用户 {user_id} 登录超时")
                 try:
-                    await org_matcher.send("登录二维码已超时失效。", at_sender=True)
+                    await org_matcher.send("登录二维码已超时失效。")
                 except Exception:
                     pass
             break
@@ -150,12 +144,42 @@ async def check_login_status(org_matcher: Matcher, user_id: str):
             elif event == login_v2.QrCodeLoginEvents.DONE:
                 logger.info(f"用户 {user_id} 登录成功！")
                 credential = login.get_credential()
+
+                try:
+                    from bilibili_api import get_session
+
+                    session = get_session()
+                    if hasattr(session, "cookie_jar") and session.cookie_jar:
+                        for cookie in session.cookie_jar:
+                            if cookie.key == "buvid3":
+                                logger.info(f"成功获取到 buvid3: {cookie.value}")
+                                credential.buvid3 = cookie.value
+                                break
+
+                    if not credential.buvid3:
+                        logger.warning("未能从会话中获取 buvid3，尝试刷新 buvid")
+                        from bilibili_api import refresh_buvid
+
+                        await refresh_buvid()
+                        for cookie in session.cookie_jar:
+                            if cookie.key == "buvid3":
+                                logger.info(f"通过刷新获取到 buvid3: {cookie.value}")
+                                credential.buvid3 = cookie.value
+                                break
+                except Exception as e:
+                    logger.error(f"尝试获取 buvid3 时出错: {e}")
+
                 await save_credential_to_file(credential)
                 login_succeed = True
+
+                status_msg = "登录成功！Credential 已保存。"
+                if credential.buvid3:
+                    status_msg += "\nbuvid3 已成功获取并保存。"
+                else:
+                    status_msg += "\n警告：未能获取 buvid3，部分功能可能受限。"
+
                 try:
-                    await org_matcher.send(
-                        "登录成功！Credential 已保存。", at_sender=True
-                    )
+                    await org_matcher.send(status_msg)
                 except Exception:
                     pass
                 break
@@ -163,9 +187,7 @@ async def check_login_status(org_matcher: Matcher, user_id: str):
         except Exception as e:
             logger.error(f"检查用户 {user_id} 登录状态时出错", e=e)
             try:
-                await org_matcher.send(
-                    "检查登录状态时发生错误，请稍后重试。", at_sender=True
-                )
+                await org_matcher.send("检查登录状态时发生错误，请稍后重试。")
             except Exception:
                 pass
             break
@@ -175,3 +197,62 @@ async def check_login_status(org_matcher: Matcher, user_id: str):
     if user_id in login_sessions:
         del login_sessions[user_id]
         logger.debug(f"已清理用户 {user_id} 的登录会话")
+
+
+@credential_status_matcher.handle()
+async def handle_credential_status(bot: Bot, event: Event, matcher: Matcher):
+    """处理凭证状态查询命令"""
+    credential = get_credential()
+
+    if not credential:
+        await matcher.finish("当前未登录B站账号，请使用 bili登录 命令登录。")
+        return
+
+    status_lines = ["B站账号登录状态："]
+
+    if credential.has_sessdata():
+        status_lines.append("✅ SESSDATA: 已设置")
+    else:
+        status_lines.append("❌ SESSDATA: 未设置")
+
+    if credential.has_bili_jct():
+        status_lines.append("✅ bili_jct: 已设置")
+    else:
+        status_lines.append("❌ bili_jct: 未设置")
+
+    if credential.has_buvid3():
+        status_lines.append("✅ buvid3: 已设置")
+    else:
+        status_lines.append("❌ buvid3: 未设置")
+
+    if credential.has_dedeuserid():
+        status_lines.append("✅ DedeUserID: 已设置")
+    else:
+        status_lines.append("❌ DedeUserID: 未设置")
+
+    if credential.has_ac_time_value():
+        status_lines.append("✅ ac_time_value: 已设置 (支持自动刷新)")
+    else:
+        status_lines.append("❌ ac_time_value: 未设置 (不支持自动刷新)")
+
+    try:
+        is_valid = await credential.check_valid()
+        if is_valid:
+            status_lines.append("\n✅ 凭证有效，可以正常使用")
+        else:
+            status_lines.append("\n❌ 凭证无效，请重新登录")
+    except Exception as e:
+        logger.error("检查凭证有效性时出错", e=e)
+        status_lines.append(f"\n❓ 凭证状态检查失败: {str(e)}")
+
+    try:
+        need_refresh = await credential.check_refresh()
+        if need_refresh:
+            status_lines.append("⚠️ 凭证需要刷新，将在下次检查时自动刷新")
+        else:
+            status_lines.append("✅ 凭证不需要刷新")
+    except Exception as e:
+        logger.error("检查凭证刷新状态时出错", e=e)
+        status_lines.append(f"❓ 凭证刷新状态检查失败: {str(e)}")
+
+    await matcher.finish("\n".join(status_lines))
