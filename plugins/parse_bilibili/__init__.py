@@ -1,5 +1,5 @@
 import traceback
-import ujson as json
+import asyncio
 from typing import Union, Optional
 from nonebot import on_message, get_driver
 from nonebot.plugin import PluginMetadata
@@ -8,7 +8,7 @@ from nonebot.adapters import Bot, Event
 
 from nonebot_plugin_uninfo import Uninfo
 from nonebot_plugin_session import EventSession
-from nonebot_plugin_alconna import UniMsg, Text, Hyper, Image
+from nonebot_plugin_alconna import UniMsg, Text, Image
 
 from zhenxun.services.log import logger
 from zhenxun.utils.enum import PluginType
@@ -16,10 +16,14 @@ from zhenxun.utils.enum import PluginType
 from zhenxun.utils.common_utils import CommonUtils
 from zhenxun.configs.utils import Task, RegisterConfig, PluginExtraData
 
-from .config import base_config, MODULE_NAME, load_credential_from_file
+from .config import (
+    base_config,
+    MODULE_NAME,
+    load_credential_from_file,
+    check_and_refresh_credential,
+)
 from .services.parser_service import ParserService
-from .services.cache import CacheService
-from .services.file_cleaner import FileCleaner
+from .services.cache_service import CacheService
 from .services.network_service import NetworkService
 from .services import auto_download_manager
 from .utils.message import (
@@ -36,17 +40,20 @@ from .utils.exceptions import (
     ResourceNotFoundError,
 )
 from .model import VideoInfo, LiveInfo, ArticleInfo, SeasonInfo, UserInfo
-from .utils.url_parsers import UrlParserRegistry
+from .utils.url_parser import UrlParserRegistry, extract_bilibili_url_from_message
 
 from .commands import _perform_video_download
+from .commands import login_matcher, bili_download_matcher, auto_download_matcher  # noqa: F401
+from .commands.login import credential_status_matcher  # noqa: F401
 
 
 async def _initialize_services():
     await CacheService.initialize()
-    await FileCleaner.initialize()
     await NetworkService.get_session()
     await auto_download_manager.load_auto_download_config()
     await load_credential_from_file()
+
+    asyncio.create_task(check_and_refresh_credential())
 
 
 driver = get_driver()
@@ -80,6 +87,8 @@ __plugin_meta__ = PluginMetadata(
 
        - 支持视频链接、av/BV号、引用包含链接的消息或卡片。
        - 命令执行过程中会发送提示信息，并在下载完成后发送视频文件。
+       - 支持视频缓存功能，已下载过的视频会被缓存，再次下载时直接从缓存发送。
+       - 可通过配置项 VIDEO_DOWNLOAD_QUALITY 设置下载视频的质量(16=360P, 32=480P, 64=720P, 80=1080P)。
 
     3. 自动下载控制命令 (需要管理员权限):
        bili/b站自动下载 on    # 为当前群聊开启视频自动下载
@@ -87,13 +96,20 @@ __plugin_meta__ = PluginMetadata(
        - 开启后，当被动解析到视频链接时，会自动执行下载并发送视频文件。
 
     4. B站账号登录命令 (仅超级用户):
-       bili/b站登录  # 生成二维码进行B站账号登录
+       bili登录  # 生成二维码进行B站账号登录
 
        - 登录后可以获取更多需要登录才能查看的内容和更高清晰度的视频。
+       - 支持凭证自动刷新，保持登录状态长期有效。
+
+    5. B站账号状态查询命令 (仅超级用户):
+       bili状态  # 查询当前B站账号登录状态
+
+       - 可以查看当前凭证的有效性和是否需要刷新等信息。
+       - 显示sessdata等重要凭证的状态。
     """.strip(),
     extra=PluginExtraData(
         author="leekooyo (Refactored by Assistant)",
-        version="1.2.0",
+        version="1.4.0",
         plugin_type=PluginType.DEPENDANT,
         menu_type="其他",
         configs=[
@@ -128,13 +144,12 @@ __plugin_meta__ = PluginMetadata(
                 help="是否将被动解析结果渲染成图片发送",
                 type=bool,
             ),
-
             RegisterConfig(
                 module=MODULE_NAME,
-                key="FILE_CLEAN_INTERVAL",
-                value=60,
-                default_value=60,
-                help="临时文件清理间隔（分钟）",
+                key="CACHE_CLEAN_INTERVAL_HOURS",
+                value=24,
+                default_value=24,
+                help="缓存清理间隔（小时），控制所有类型缓存的清理间隔",
                 type=int,
             ),
             RegisterConfig(
@@ -147,11 +162,42 @@ __plugin_meta__ = PluginMetadata(
             ),
             RegisterConfig(
                 module=MODULE_NAME,
-                key="VIDEO_FILE_EXPIRY_DAYS",
-                value=1,
-                default_value=1,
-                help="视频文件过期时间(天), 超过此时间自动清理",
+                key="MANUAL_DOWNLOAD_MAX_DURATION",
+                value=20,
+                default_value=20,
+                help="手动下载最大时长(分钟), 超过此值不下载，设为0关闭时长限制，超级用户不受影响",
                 type=int,
+            ),
+            RegisterConfig(
+                module=MODULE_NAME,
+                key="CACHE_EXPIRY_DAYS",
+                value=7,
+                default_value=7,
+                help="缓存过期时间(天), 临时文件默认1天, 视频缓存默认7天",
+                type=int,
+            ),
+            RegisterConfig(
+                module=MODULE_NAME,
+                key="MAX_VIDEO_CACHE_SIZE_MB",
+                value=1024,
+                default_value=1024,
+                help="视频缓存最大大小(MB), 超过此大小自动清理最旧的缓存",
+                type=int,
+            ),
+            RegisterConfig(
+                module=MODULE_NAME,
+                key="VIDEO_DOWNLOAD_QUALITY",
+                value=64,
+                default_value=64,
+                help="视频下载质量(16=360P, 32=480P, 64=720P, 80=1080P)",
+                type=int,
+            ),
+            RegisterConfig(
+                module="BiliBili",
+                key="COOKIES",
+                value="",
+                default_value="",
+                help="B站cookies数据，由系统自动管理，请勿手动修改",
             ),
         ],
         tasks=[Task(module="parse_bilibili", name="b站解析")],
@@ -164,16 +210,19 @@ async def _rule(
 ) -> bool:
     if await CommonUtils.task_is_block(uninfo, "parse_bilibili"):
         return False
-    if cmd is not None and cmd and (cmd[0] == "bili下载" or cmd[0] == "b站下载"):
-        logger.debug("消息被识别为 bili下载 命令，被动解析跳过", "B站解析")
-        return False
-    if (
-        cmd is not None
-        and cmd
-        and (cmd[0] == "bili自动下载" or cmd[0] == "b站自动下载")
-    ):
-        logger.debug("消息被识别为 bili自动下载 命令，被动解析跳过", "B站解析")
-        return False
+    if cmd is not None and cmd:
+        if cmd[0] == "bili下载" or cmd[0] == "b站下载":
+            logger.debug("消息被识别为 bili下载 命令，被动解析跳过", "B站解析")
+            return False
+        if cmd[0] == "bili自动下载" or cmd[0] == "b站自动下载":
+            logger.debug("消息被识别为 bili自动下载 命令，被动解析跳过", "B站解析")
+            return False
+        if cmd[0] == "bili登录":
+            logger.debug("消息被识别为 bili登录 命令，被动解析跳过", "B站解析")
+            return False
+        if cmd[0] == "bili状态":
+            logger.debug("消息被识别为 bili状态 命令，被动解析跳过", "B站解析")
+            return False
 
     plain_text = message.extract_plain_text().strip()
     if (
@@ -181,70 +230,30 @@ async def _rule(
         or plain_text.startswith("b站下载")
         or plain_text.startswith("bili自动下载")
         or plain_text.startswith("b站自动下载")
+        or plain_text.startswith("bili登录")
+        or plain_text.startswith("bili状态")
     ):
         logger.debug(f"消息文本以命令开头，被动解析跳过: {plain_text}", "B站解析")
         return False
 
-    has_bilibili_content_in_hyper = False
-    if base_config.get("ENABLE_MINIAPP_PARSE", True):
-        for seg in message:
-            if isinstance(seg, Hyper) and seg.raw:
-                logger.debug(f"检查 Hyper 段: {seg.raw[:100]}...", "B站解析")
-                try:
-                    data = json.loads(seg.raw)
-                    excluded_apps = [
-                        "com.tencent.qun.invite",
-                        "com.tencent.qqav.groupvideo",
-                        "com.tencent.mobileqq.reading",
-                        "com.tencent.weather",
-                    ]
-                    app_name = data.get("app") or data.get("meta", {}).get(
-                        "detail_1", {}
-                    ).get("appid")
-                    if app_name in excluded_apps:
-                        logger.debug(
-                            f"Hyper 消息 app '{app_name}' 在排除列表，跳过", "B站解析"
-                        )
-                        continue
-
-                    jump_url = (
-                        data.get("meta", {}).get("news", {}).get("jumpUrl")
-                        or data.get("meta", {}).get("detail_1", {}).get("qqdocurl")
-                        or data.get("meta", {}).get("detail_1", {}).get("preview")
-                    )
-                    if (
-                        jump_url
-                        and isinstance(jump_url, str)
-                        and ("bilibili.com" in jump_url or "b23.tv" in jump_url)
-                    ):
-                        has_bilibili_content_in_hyper = True
-                        break
-                except Exception:
-                    logger.debug("解析 Hyper 失败，继续检查其他段", "B站解析")
-                    pass
-        if has_bilibili_content_in_hyper:
-            logger.debug("Hyper 消息包含B站跳转链接，符合规则", "B站解析")
-            return True
-    else:
+    check_hyper = base_config.get("ENABLE_MINIAPP_PARSE", True)
+    if not check_hyper:
         logger.debug("小程序/卡片解析已禁用，跳过 Hyper 检查", "B站解析")
+
+    url = extract_bilibili_url_from_message(message, check_hyper=check_hyper)
+
+    if url:
+        logger.debug(f"从消息中提取到B站URL: {url}", "B站解析")
+        return True
 
     plain_text_for_check = message.extract_plain_text().strip()
     if plain_text_for_check:
         logger.debug(f"检查文本内容: '{plain_text_for_check[:100]}...'", "B站解析")
         parser_found = UrlParserRegistry.get_parser(plain_text_for_check)
-        if parser_found:
-            if parser_found.PATTERN and parser_found.PATTERN.search(
-                plain_text_for_check
-            ):
-                logger.debug(
-                    f"文本内容匹配到 B 站模式 '{parser_found.__name__}'，符合规则",
-                    "B站解析",
-                )
+        if parser_found and parser_found.__name__ == "PureVideoIdParser":
+            if parser_found.PATTERN.fullmatch(plain_text_for_check):
+                logger.debug("文本内容匹配到纯视频ID，符合规则", "B站解析")
                 return True
-            elif parser_found.__name__ == "PureVideoIdParser":
-                if parser_found.PATTERN.fullmatch(plain_text_for_check):
-                    logger.debug("文本内容匹配到纯视频ID，符合规则", "B站解析")
-                    return True
 
     logger.debug("消息不符合被动解析规则", "B站解析")
     return False
@@ -253,7 +262,6 @@ async def _rule(
 async def _build_video_message(
     video_info: VideoInfo, render_enabled: bool
 ) -> Optional[UniMsg]:
-    """构建视频信息消息"""
     if render_enabled:
         logger.debug(
             f"渲染视频消息 (style_blue): {video_info.title} (BV: {video_info.bvid})",
@@ -280,7 +288,6 @@ async def _build_video_message(
 
 
 async def _build_live_message(live_info: LiveInfo, render_enabled: bool) -> UniMsg:
-    """构建直播间信息消息"""
     if render_enabled:
         logger.warning("LiveInfo 渲染暂未实现，将发送原始消息", "B站解析")
 
@@ -294,7 +301,6 @@ async def _build_live_message(live_info: LiveInfo, render_enabled: bool) -> UniM
 async def _build_article_message(
     article_info: ArticleInfo, render_enabled: bool
 ) -> Optional[UniMsg]:
-    """构建文章/动态信息消息"""
     logger.debug(
         f"构建文章/动态消息: {article_info.type} {article_info.id}, 渲染模式: {render_enabled}",
         "B站解析",
@@ -321,7 +327,6 @@ async def _build_article_message(
 async def _build_season_message(
     season_info: SeasonInfo, render_enabled: bool
 ) -> Optional[UniMsg]:
-    """构建番剧/影视信息消息"""
     if render_enabled:
         logger.debug(f"渲染番剧消息 (style_blue): {season_info.title}", "B站解析")
         try:
@@ -344,7 +349,6 @@ async def _build_season_message(
 async def _build_user_message(
     user_info: UserInfo, render_enabled: bool
 ) -> Optional[UniMsg]:
-    """构建用户信息消息"""
     if render_enabled:
         logger.warning("UserInfo 渲染暂未实现，将发送原始消息", "B站解析")
         return await MessageBuilder.build_user_message(user_info)
@@ -365,88 +369,29 @@ async def _(
     session: EventSession,
     message: UniMsg,
 ):
-    """处理消息，解析 B 站链接"""
     logger.debug(f"Handler received message: {message}", "B站解析")
 
     parsed_content: Union[
         VideoInfo, LiveInfo, ArticleInfo, SeasonInfo, UserInfo, None
     ] = None
-    target_url: Optional[str] = None
 
-    if base_config.get("ENABLE_MINIAPP_PARSE", True):
-        for seg in message:
-            if isinstance(seg, Hyper) and seg.raw:
-                try:
-                    data = json.loads(seg.raw)
-                    if data.get("app") == "com.tencent.qun.invite":
-                        continue
-                    meta_data = data.get("meta", {})
-                    jump_url = (
-                        meta_data.get("news", {}).get("jumpUrl")
-                        or meta_data.get("detail_1", {}).get("qqdocurl")
-                        or meta_data.get("detail_1", {}).get("preview")
-                    )
-                    if (
-                        jump_url
-                        and isinstance(jump_url, str)
-                        and ("bilibili.com" in jump_url or "b23.tv" in jump_url)
-                    ):
-                        target_url = jump_url.split("?")[0]
-                        if target_url.endswith("/"):
-                            target_url = target_url[:-1]
-                        logger.debug(f"从 Hyper 段提取到 URL: {target_url}", "B站解析")
-                        break
-                except Exception as e:
-                    logger.debug(f"解析 Hyper 失败: {e}", "B站解析")
-    else:
+    check_hyper = base_config.get("ENABLE_MINIAPP_PARSE", True)
+    if not check_hyper:
         logger.debug("小程序/卡片解析已禁用，跳过 Hyper 检查", "B站解析")
 
-    if not target_url:
-        logger.debug("未从 Hyper 提取到 URL，尝试从 Text 段提取", "B站解析")
-        plain_text_content = message.extract_plain_text().strip()
-        if plain_text_content:
-            parser_found = UrlParserRegistry.get_parser(plain_text_content)
-            if parser_found:
-                match = (
-                    parser_found.PATTERN.search(plain_text_content)
-                    if parser_found.PATTERN
-                    else None
-                )
-                if match:
-                    target_url = match.group(0)
-                    logger.debug(
-                        f"从文本内容提取到 URL/ID ({parser_found.__name__}): {target_url}",
-                        "B站解析",
-                    )
-                elif parser_found.__name__ == "PureVideoIdParser":
-                    if parser_found.PATTERN.fullmatch(plain_text_content):
-                        target_url = plain_text_content
-                        logger.debug(
-                            f"从文本内容提取到纯视频 ID: {target_url}", "B站解析"
-                        )
-                    else:
-                        logger.debug("文本包含视频ID，但不是纯ID，忽略", "B站解析")
-                else:
-                    logger.debug(
-                        f"找到解析器 {parser_found.__name__} 但未在文本中匹配到模式",
-                        "B站解析",
-                    )
-            else:
-                logger.debug("未找到能解析该文本内容的解析器", "B站解析")
+    target_url = extract_bilibili_url_from_message(message, check_hyper=check_hyper)
 
     if not target_url:
         logger.debug("未在消息中找到有效的 B 站 URL/ID，退出处理", "B站解析")
         return
 
-    should_parse = await CacheService.should_parse(target_url, session)
+    should_parse = await CacheService.should_parse_url(target_url, session)
     logger.debug(
-        f"Cache check for '{target_url}' in context '{CacheService._get_context_key(session)}': should_parse = {should_parse}",
+        f"缓存检查: '{target_url}' 在上下文 '{CacheService._get_context_key(session)}' 中: should_parse = {should_parse}",
         "B站解析",
     )
     if not should_parse:
-        logger.debug(
-            f"URL cached and TTL not expired, skipping: {target_url}", "B站解析"
-        )
+        logger.debug(f"URL在缓存中且TTL未过期，跳过解析: {target_url}", "B站解析")
         return
 
     try:
@@ -566,7 +511,7 @@ async def _(
             if final_message:
                 logger.debug(f"准备发送最终消息: {final_message}", "B站解析")
                 await final_message.send()
-                await CacheService.add_to_cache(target_url, session)
+                await CacheService.add_url_to_cache(target_url, session)
                 logger.info(
                     f"成功被动解析并发送: {target_url}", "B站解析", session=session
                 )
@@ -613,7 +558,7 @@ async def _(
                     "B站解析",
                     session=session,
                 )
-                await CacheService.add_to_cache(target_url, session)
+                await CacheService.add_url_to_cache(target_url, session)
 
         except Exception as e:
             logger.error(

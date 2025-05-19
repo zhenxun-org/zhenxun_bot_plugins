@@ -16,7 +16,7 @@ _initialized = False
 
 
 async def load_auto_download_config():
-    """Load the set of groups with auto-download enabled from JSON file."""
+    """从JSON文件加载启用自动下载的群组列表"""
     global _auto_download_groups, _initialized
     async with _lock:
         if _initialized:
@@ -57,7 +57,7 @@ async def load_auto_download_config():
 
 
 async def save_auto_download_config():
-    """Save the current set of auto-download enabled groups to JSON file."""
+    """将当前启用自动下载的群组列表保存到JSON文件"""
     global _auto_download_groups
     async with _lock:
         try:
@@ -76,7 +76,7 @@ async def save_auto_download_config():
 
 
 async def is_auto_download_enabled(session: EventSession) -> bool:
-    """Check if auto-download is enabled for the given session's group."""
+    """检查指定会话的群组是否启用了自动下载"""
     if not _initialized:
         await load_auto_download_config()
 
@@ -94,7 +94,7 @@ async def is_auto_download_enabled(session: EventSession) -> bool:
 
 
 async def enable_auto_download(session: EventSession):
-    """Enable auto-download for the given session's group."""
+    """为指定会话的群组启用自动下载"""
     if not _initialized:
         await load_auto_download_config()
 
@@ -110,7 +110,7 @@ async def enable_auto_download(session: EventSession):
 
 
 async def disable_auto_download(session: EventSession):
-    """Disable auto-download for the given session's group."""
+    """为指定会话的群组禁用自动下载"""
     if not _initialized:
         await load_auto_download_config()
 
