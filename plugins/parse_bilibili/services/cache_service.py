@@ -86,9 +86,7 @@ class CacheService:
 
             if CACHE_INDEX_FILE.exists():
                 try:
-                    _video_cache_index = json.loads(
-                        CACHE_INDEX_FILE.read_text(encoding="utf-8")
-                    )
+                    _video_cache_index = json.loads(CACHE_INDEX_FILE.read_text(encoding="utf-8"))
                     logger.info(
                         f"已加载视频缓存索引，包含 {len(_video_cache_index)} 个条目",
                         "B站解析",
@@ -156,9 +154,7 @@ class CacheService:
             return file_path
 
     @classmethod
-    async def save_video_to_cache(
-        cls, video_id: str, page_num: int, file_path: Path
-    ) -> bool:
+    async def save_video_to_cache(cls, video_id: str, page_num: int, file_path: Path) -> bool:
         """保存视频到缓存"""
         if not _video_cache_initialized:
             await cls._init_video_cache()
@@ -179,9 +175,7 @@ class CacheService:
                     cache_file_path.unlink()
 
                 shutil.copy2(file_path, cache_file_path)
-                logger.debug(
-                    f"已复制文件到缓存: {file_path} -> {cache_file_path}", "B站解析"
-                )
+                logger.debug(f"已复制文件到缓存: {file_path} -> {cache_file_path}", "B站解析")
 
             async with _video_cache_lock:
                 _video_cache_index[cache_key] = {
@@ -194,9 +188,7 @@ class CacheService:
                 }
                 await cls._save_video_cache_index()
 
-            logger.info(
-                f"视频已保存到缓存: {cache_key} -> {cache_file_path}", "B站解析"
-            )
+            logger.info(f"视频已保存到缓存: {cache_key} -> {cache_file_path}", "B站解析")
             return True
         except Exception as e:
             logger.error(f"保存视频到缓存失败: {e}", "B站解析")
@@ -224,9 +216,7 @@ class CacheService:
         timestamp = context_cache.get(url)
 
         if timestamp is None:
-            logger.debug(
-                f"URL '{url}' 在上下文 '{context_key}' 的缓存中未找到", "B站解析"
-            )
+            logger.debug(f"URL '{url}' 在上下文 '{context_key}' 的缓存中未找到", "B站解析")
             if len(context_cache) >= _URL_CONTEXT_CACHE_CAPACITY:
                 try:
                     removed_url, _ = context_cache.popitem(last=False)
@@ -250,9 +240,7 @@ class CacheService:
                 asyncio.create_task(cls._save_url_cache_to_disk())
                 return True
             else:
-                logger.debug(
-                    f"URL '{url}' 在上下文 '{context_key}' 的缓存未过期", "B站解析"
-                )
+                logger.debug(f"URL '{url}' 在上下文 '{context_key}' 的缓存未过期", "B站解析")
                 context_cache.move_to_end(url)
                 return False
 
@@ -282,9 +270,7 @@ class CacheService:
             except KeyError:
                 pass
         context_cache[url] = current_time
-        logger.debug(
-            f"手动添加/更新 URL '{url}' 到上下文 '{context_key}' 的缓存", "B站解析"
-        )
+        logger.debug(f"手动添加/更新 URL '{url}' 到上下文 '{context_key}' 的缓存", "B站解析")
 
         asyncio.create_task(cls._save_url_cache_to_disk())
 
@@ -379,9 +365,7 @@ class CacheService:
                             logger.debug(f"已删除缓存文件: {file_path}", "B站解析")
                             cleaned_count += 1
                         except Exception as e:
-                            logger.warning(
-                                f"删除缓存文件失败: {file_path}, 错误: {e}", "B站解析"
-                            )
+                            logger.warning(f"删除缓存文件失败: {file_path}, 错误: {e}", "B站解析")
 
                 if cache_key in _video_cache_index:
                     del _video_cache_index[cache_key]
@@ -390,9 +374,7 @@ class CacheService:
                 await cls._save_video_cache_index()
 
             if cleaned_count > 0:
-                logger.info(
-                    f"视频缓存清理完成，共清理 {cleaned_count} 个文件", "B站解析"
-                )
+                logger.info(f"视频缓存清理完成，共清理 {cleaned_count} 个文件", "B站解析")
 
             return cleaned_count
 
@@ -459,9 +441,7 @@ class CacheService:
         clean_interval_hours = base_config.get("CACHE_CLEAN_INTERVAL_HOURS", 24)
         clean_interval_seconds = clean_interval_hours * 3600
 
-        logger.info(
-            f"缓存自动清理任务启动，间隔: {clean_interval_hours} 小时", "B站解析"
-        )
+        logger.info(f"缓存自动清理任务启动，间隔: {clean_interval_hours} 小时", "B站解析")
 
         while True:
             try:
@@ -491,21 +471,15 @@ class CacheService:
         elif session.id1:
             return f"private_{session.id1}"
         else:
-            logger.warning(
-                "无法从 Session 中获取有效的上下文 ID，将使用全局缓存 Key", "B站解析"
-            )
+            logger.warning("无法从 Session 中获取有效的上下文 ID，将使用全局缓存 Key", "B站解析")
             return "global_fallback_cache"
 
     @classmethod
     async def _save_video_cache_index(cls):
         """保存视频缓存索引"""
         try:
-            CACHE_INDEX_FILE.write_text(
-                json.dumps(_video_cache_index, ensure_ascii=False), encoding="utf-8"
-            )
-            logger.debug(
-                f"视频缓存索引已保存: {len(_video_cache_index)} 个条目", "B站解析"
-            )
+            CACHE_INDEX_FILE.write_text(json.dumps(_video_cache_index, ensure_ascii=False), encoding="utf-8")
+            logger.debug(f"视频缓存索引已保存: {len(_video_cache_index)} 个条目", "B站解析")
         except Exception as e:
             logger.error(f"保存视频缓存索引失败: {e}", "B站解析")
 
@@ -551,9 +525,7 @@ class CacheService:
                 for context_key, ordered_dict in _url_context_caches.items():
                     cache_data[context_key] = dict(ordered_dict)
 
-                URL_CACHE_FILE.write_text(
-                    json.dumps(cache_data, ensure_ascii=False), encoding="utf-8"
-                )
+                URL_CACHE_FILE.write_text(json.dumps(cache_data, ensure_ascii=False), encoding="utf-8")
                 logger.debug(f"URL缓存数据已保存到磁盘: {URL_CACHE_FILE}", "B站解析")
         except Exception as e:
             logger.error(f"保存URL缓存到磁盘失败: {e}", "B站解析")

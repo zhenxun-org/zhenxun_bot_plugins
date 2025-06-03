@@ -86,9 +86,7 @@ class VideoUrlParser(RegexUrlParser):
 
     PRIORITY = 20
     RESOURCE_TYPE = ResourceType.VIDEO
-    PATTERN = re.compile(
-        r"(?:https?://)?(?:www\.|m\.)?bilibili\.com/video/(av\d+|BV[A-Za-z0-9]+)"
-    )
+    PATTERN = re.compile(r"(?:https?://)?(?:www\.|m\.)?bilibili\.com/video/(av\d+|BV[A-Za-z0-9]+)")
 
 
 class LiveUrlParser(RegexUrlParser):
@@ -112,9 +110,7 @@ class OpusUrlParser(RegexUrlParser):
 
     PRIORITY = 50
     RESOURCE_TYPE = ResourceType.OPUS
-    PATTERN = re.compile(
-        r"(?:https?://)?(?:www\.bilibili\.com/opus/|t\.bilibili\.com/)(\d+)"
-    )
+    PATTERN = re.compile(r"(?:https?://)?(?:www\.bilibili\.com/opus/|t\.bilibili\.com/)(\d+)")
 
 
 class UserUrlParser(RegexUrlParser):
@@ -130,9 +126,7 @@ class BangumiUrlParser(RegexUrlParser):
 
     PRIORITY = 70
     RESOURCE_TYPE = ResourceType.BANGUMI
-    PATTERN = re.compile(
-        r"(?:https?://)?(?:www\.|m\.)?bilibili\.com/bangumi/play/(ss\d+|ep\d+)"
-    )
+    PATTERN = re.compile(r"(?:https?://)?(?:www\.|m\.)?bilibili\.com/bangumi/play/(ss\d+|ep\d+)")
 
     @classmethod
     def can_parse(cls, url: str) -> bool:
@@ -232,11 +226,7 @@ UrlParserRegistry.register(BangumiUrlParser)
 UrlParserRegistry.register(PureVideoIdParser)
 
 
-def extract_url_from_text(text: str) -> Optional[str]:
-    """提取URL"""
-    from .common import extract_url_from_text as common_extract_url
 
-    return common_extract_url(text)
 
 
 def extract_bilibili_url_from_miniprogram(raw_str: str) -> Optional[str]:
@@ -259,9 +249,7 @@ def extract_bilibili_url_from_miniprogram(raw_str: str) -> Optional[str]:
             logger.info(f"通过正则从小程序消息提取到B站链接: {qqdocurl}")
             return qqdocurl
 
-    url_match = re.search(
-        r'https?://[^\s"\']+(?:bilibili\.com|b23\.tv)[^\s"\']*', raw_str
-    )
+    url_match = re.search(r'https?://[^\s"\']+(?:bilibili\.com|b23\.tv)[^\s"\']*', raw_str)
     if url_match:
         extracted_url = url_match.group(0)
         logger.info(f"通过通用正则从小程序消息提取到B站链接: {extracted_url}")
@@ -277,9 +265,7 @@ def extract_bilibili_url_from_miniprogram(raw_str: str) -> Optional[str]:
             "com.tencent.weather",
         ]
 
-        app_name = data.get("app") or data.get("meta", {}).get("detail_1", {}).get(
-            "appid"
-        )
+        app_name = data.get("app") or data.get("meta", {}).get("detail_1", {}).get("appid")
         if app_name in excluded_apps:
             logger.debug(f"小程序 app '{app_name}' 在排除列表，跳过", "B站解析")
             return None
@@ -309,9 +295,7 @@ def extract_bilibili_url_from_miniprogram(raw_str: str) -> Optional[str]:
     return None
 
 
-def extract_bilibili_url_from_message(
-    message, check_hyper: bool = True
-) -> Optional[str]:
+def extract_bilibili_url_from_message(message, check_hyper: bool = True) -> Optional[str]:
     """从消息提取B站URL"""
     target_url = None
 
@@ -332,11 +316,7 @@ def extract_bilibili_url_from_message(
         if plain_text:
             parser_found = UrlParserRegistry.get_parser(plain_text)
             if parser_found:
-                match = (
-                    parser_found.PATTERN.search(plain_text)
-                    if parser_found.PATTERN
-                    else None
-                )
+                match = parser_found.PATTERN.search(plain_text) if parser_found.PATTERN else None
                 if match:
                     target_url = match.group(0)
                     logger.debug(f"从文本内容提取到URL: {target_url}")
@@ -345,6 +325,7 @@ def extract_bilibili_url_from_message(
                         target_url = plain_text
                         logger.debug(f"从文本内容提取到纯视频ID: {target_url}")
             else:
+                from .common import extract_url_from_text
                 url = extract_url_from_text(plain_text)
                 if url and ("bilibili.com" in url or "b23.tv" in url):
                     target_url = url
@@ -377,9 +358,7 @@ def parse_bilibili_url(
                 elif resource_id.startswith("BV"):
                     url_info_dict["bvid"] = resource_id
 
-            logger.debug(
-                f"解析URL成功: {url} -> 类型={resource_type}, ID={resource_id}"
-            )
+            logger.debug(f"解析URL成功: {url} -> 类型={resource_type}, ID={resource_id}")
     except Exception as e:
         logger.warning(f"解析URL失败: {url}, 错误: {e}")
 
@@ -426,11 +405,7 @@ async def extract_bilibili_url_from_reply(reply: Optional[UniMsg]) -> Optional[s
                     match = patterns[key].search(text_content)
                     if match:
                         potential_url = match.group(0)
-                        if (
-                            potential_url.startswith("http")
-                            or "b23.tv" in potential_url
-                            or key == "b23_tv"
-                        ):
+                        if potential_url.startswith("http") or "b23.tv" in potential_url or key == "b23_tv":
                             target_url = potential_url
                             logger.info(f"从回复消息提取到B站链接: {target_url}")
                             break
@@ -469,9 +444,7 @@ async def extract_bilibili_url_from_reply(reply: Optional[UniMsg]) -> Optional[s
                                     or key == "b23_tv"
                                 ):
                                     target_url = potential_url
-                                    logger.info(
-                                        f"从回复消息提取到B站链接: {target_url}"
-                                    )
+                                    logger.info(f"从回复消息提取到B站链接: {target_url}")
                                     break
 
                         if not target_url:
@@ -497,9 +470,7 @@ async def extract_bilibili_url_from_json_data(json_data: str) -> Optional[str]:
             logger.info(f"从JSON数据中提取到B站链接: {qqdocurl}")
             return qqdocurl
 
-    url_match = re.search(
-        r'https?://[^\s"\']+(?:bilibili\.com|b23\.tv)[^\s"\']*', json_data
-    )
+    url_match = re.search(r'https?://[^\s"\']+(?:bilibili\.com|b23\.tv)[^\s"\']*', json_data)
     if url_match:
         extracted_url = url_match.group(0)
         logger.info(f"从JSON数据中提取到B站链接: {extracted_url}")
@@ -596,9 +567,7 @@ async def extract_bilibili_url_from_event(bot: Bot, event: Event) -> Optional[st
                             json_data = json_match.group(1)
                             logger.debug("提取到JSON数据")
 
-                            extracted_url = await extract_bilibili_url_from_json_data(
-                                json_data
-                            )
+                            extracted_url = await extract_bilibili_url_from_json_data(json_data)
                             if extracted_url:
                                 target_url = extracted_url
                                 return target_url
