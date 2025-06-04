@@ -1,9 +1,3 @@
-"""
-解析服务模块
-
-提供了B站URL解析服务，负责解析B站各类URL并返回对应的信息模型
-"""
-
 from typing import Optional, Union
 
 from zhenxun.services.log import logger
@@ -13,7 +7,7 @@ from ..services.api_service import BilibiliApiService
 from ..services.network_service import NetworkService
 from ..services.screenshot_service import ScreenshotService
 from ..utils.exceptions import UrlParseError, UnsupportedUrlError, ShortUrlError
-from ..utils.url_parsers import ResourceType, UrlParserRegistry
+from ..utils.url_parser import ResourceType, UrlParserRegistry
 
 
 class ParserService:
@@ -21,15 +15,7 @@ class ParserService:
 
     @staticmethod
     async def resolve_short_url(url: str) -> str:
-        """
-        解析短链接，返回原始URL
-
-        Args:
-            url: 可能的短链接URL
-
-        Returns:
-            解析后的URL，如果解析失败则返回原始URL
-        """
+        """解析短链接，返回原始URL"""
         original_url = url.strip()
 
         if "b23.tv" in original_url:
@@ -50,22 +36,7 @@ class ParserService:
     async def fetch_resource_info(
         resource_type: ResourceType, resource_id: str, parsed_url: str
     ) -> Union[VideoInfo, LiveInfo, ArticleInfo, UserInfo, SeasonInfo]:
-        """
-        根据资源类型和ID获取详细信息
-
-        Args:
-            resource_type: 资源类型
-            resource_id: 资源ID
-            parsed_url: 解析后的URL
-
-        Returns:
-            对应类型的信息模型
-
-        Raises:
-            UnsupportedUrlError: 当资源类型不支持时
-            ResourceNotFoundError: 当资源不存在时
-            其他异常: API调用或截图过程中的异常
-        """
+        """根据资源类型和ID获取详细信息"""
         logger.debug(
             f"获取资源信息: 类型={resource_type.name}, ID={resource_id}",
             "B站解析",
@@ -119,21 +90,7 @@ class ParserService:
     async def parse(
         cls, url: str
     ) -> Union[VideoInfo, LiveInfo, ArticleInfo, UserInfo, SeasonInfo]:
-        """
-        解析 Bilibili URL，返回相应的信息模型
-
-        Args:
-            url: 要解析的URL
-
-        Returns:
-            对应类型的信息模型
-
-        Raises:
-            UrlParseError: 当无法解析URL时
-            UnsupportedUrlError: 当URL类型不支持时
-            ResourceNotFoundError: 当资源不存在时
-            其他异常: API调用或截图过程中的异常
-        """
+        """解析Bilibili URL，返回相应的信息模型"""
         original_url = url.strip()
         logger.debug(f"开始解析URL: {original_url}", "B站解析")
 

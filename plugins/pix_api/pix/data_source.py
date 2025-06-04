@@ -1,9 +1,10 @@
-from pathlib import Path
 import random
+from pathlib import Path
 
 from zhenxun.configs.config import Config
 from zhenxun.configs.path_config import TEMP_PATH
 from zhenxun.services.log import logger
+from zhenxun.utils.decorator.retry import Retry
 from zhenxun.utils.http_utils import AsyncHttpx
 
 from .._config import PixModel, PixResult, base_config
@@ -69,6 +70,7 @@ class PixManage:
         return PixResult[list[PixModel]](**res_data)
 
     @classmethod
+    @Retry.api()
     async def get_image(cls, pix: PixModel, is_original: bool = False) -> Path | None:
         """获取图片
 

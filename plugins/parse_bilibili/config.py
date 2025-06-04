@@ -1,7 +1,6 @@
 from typing import Optional, Dict
 import asyncio
-import json
-import aiofiles
+import time
 
 try:
     from bilibili_api import Credential
@@ -35,78 +34,109 @@ def cookies_str_to_dict(cookies_str: str) -> Dict[str, str]:
 
 
 MODULE_NAME = "parse_bilibili"
+MODULE_NAME_BILI = "BiliBili"
 base_config = Config.get(MODULE_NAME)
 
 HTTP_TIMEOUT = 30
 HTTP_CONNECT_TIMEOUT = 10
 
-CREDENTIAL_FILE = DATA_PATH / MODULE_NAME / "credential.json"
-
 bili_credential: Optional[Credential] = None
 _credential_lock = asyncio.Lock()
 _credential_loaded = False
+_last_refresh_check_time = 0
+_REFRESH_CHECK_INTERVAL = 24 * 60 * 60
 
 
 async def load_credential_from_file():
-    """从文件加载 Credential"""
+    """从配置加载 Credential"""
     global bili_credential, _credential_loaded
     async with _credential_lock:
         if _credential_loaded:
             return
-        if CREDENTIAL_FILE.exists():
-            try:
-                async with aiofiles.open(CREDENTIAL_FILE, "r", encoding="utf-8") as f:
-                    content = await f.read()
-                    if content.strip():
-                        data = json.loads(content)
-                        bili_credential = Credential(
-                            sessdata=data.get("sessdata"),
-                            bili_jct=data.get("bili_jct"),
-                            buvid3=data.get("buvid3"),
-                            buvid4=data.get("buvid4"),
-                            dedeuserid=data.get("dedeuserid"),
-                            ac_time_value=data.get("ac_time_value"),
-                        )
-                        logger.info(f"成功从文件加载 B站 Credential: {CREDENTIAL_FILE}")
-                    else:
-                        logger.info(f"Credential 文件为空: {CREDENTIAL_FILE}")
-            except Exception as e:
-                logger.error(f"加载 Credential 文件失败: {CREDENTIAL_FILE}", e=e)
+
+        try:
+            cookies_str = Config.get(MODULE_NAME_BILI).get("COOKIES", "")
+            if cookies_str:
+                cookies_dict = cookies_str_to_dict(cookies_str)
+
+                bili_credential = Credential(
+                    sessdata=cookies_dict.get("SESSDATA"),
+                    bili_jct=cookies_dict.get("bili_jct"),
+                    buvid3=cookies_dict.get("buvid3"),
+                    buvid4=cookies_dict.get("buvid4"),
+                    dedeuserid=cookies_dict.get("DedeUserID"),
+                    ac_time_value=cookies_dict.get("ac_time_value"),
+                )
+                logger.info("成功从模块变量加载 B站 Credential")
+            else:
+                logger.info("模块变量中的 Cookies 为空")
                 bili_credential = None
-        else:
-            logger.info(f"未找到 Credential 文件: {CREDENTIAL_FILE}")
+        except Exception as e:
+            logger.error("加载 Credential 失败", e=e)
+            bili_credential = None
+
         _credential_loaded = True
 
 
 async def save_credential_to_file(credential: Credential):
-    """将 Credential 保存到文件"""
+    """将 Credential 保存到模块变量"""
     global bili_credential
     async with _credential_lock:
         try:
-            credential_dict = {
-                "sessdata": credential.sessdata,
-                "bili_jct": credential.bili_jct,
-                "buvid3": credential.buvid3,
-                "buvid4": credential.buvid4,
-                "dedeuserid": credential.dedeuserid,
-                "ac_time_value": credential.ac_time_value,
-            }
-            CREDENTIAL_FILE.parent.mkdir(parents=True, exist_ok=True)
-            temp_file = CREDENTIAL_FILE.with_suffix(".json.tmp")
-            async with aiofiles.open(temp_file, "w", encoding="utf-8") as f:
-                await f.write(json.dumps(credential_dict, ensure_ascii=False, indent=2))
-            temp_file.replace(CREDENTIAL_FILE)
+            cookies_parts = []
+            if credential.sessdata:
+                cookies_parts.append(f"SESSDATA={credential.sessdata}")
+            if credential.bili_jct:
+                cookies_parts.append(f"bili_jct={credential.bili_jct}")
+            if credential.buvid3:
+                cookies_parts.append(f"buvid3={credential.buvid3}")
+            if credential.buvid4:
+                cookies_parts.append(f"buvid4={credential.buvid4}")
+            if credential.dedeuserid:
+                cookies_parts.append(f"DedeUserID={credential.dedeuserid}")
+            if credential.ac_time_value:
+                cookies_parts.append(f"ac_time_value={credential.ac_time_value}")
+
+            cookies_str = "; ".join(cookies_parts)
+
+            Config.set_config(MODULE_NAME_BILI, "COOKIES", cookies_str, auto_save=True)
+
             bili_credential = credential
-            logger.info(
-                f"全局 bili_credential 已更新。保存 Credential 到文件: {CREDENTIAL_FILE}"
-            )
+            logger.info("全局 bili_credential 已更新并保存到模块变量")
         except Exception as e:
-            logger.error(f"保存 Credential 文件失败: {CREDENTIAL_FILE}", e=e)
+            logger.error("保存 Credential 失败", e=e)
 
 
 def get_credential() -> Optional[Credential]:
     """获取当前的全局 Credential 对象"""
     return bili_credential
+
+
+async def check_and_refresh_credential():
+    """检查并刷新凭证（如果需要）"""
+    global _last_refresh_check_time, bili_credential
+
+    current_time = time.time()
+    if current_time - _last_refresh_check_time < _REFRESH_CHECK_INTERVAL:
+        return
+
+    _last_refresh_check_time = current_time
+
+    if not bili_credential or not bili_credential.has_ac_time_value():
+        logger.debug("凭证不存在或没有 ac_time_value，无法刷新")
+        return
+
+    try:
+        need_refresh = await bili_credential.check_refresh()
+        if need_refresh:
+            logger.info("B站凭证需要刷新，正在刷新...")
+            await bili_credential.refresh()
+            await save_credential_to_file(bili_credential)
+            logger.info("B站凭证刷新成功")
+        else:
+            logger.debug("B站凭证不需要刷新")
+    except Exception as e:
+        logger.error("检查或刷新凭证时出错", e=e)
 
 
 PLUGIN_CACHE_DIR = DATA_PATH / MODULE_NAME / "cache"
@@ -115,6 +145,18 @@ PLUGIN_CACHE_DIR.mkdir(parents=True, exist_ok=True)
 PLUGIN_TEMP_DIR = TEMP_PATH / MODULE_NAME
 PLUGIN_TEMP_DIR.mkdir(parents=True, exist_ok=True)
 
+# 图片缓存目录
+IMAGE_CACHE_DIR = PLUGIN_TEMP_DIR / "image"
+IMAGE_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+
 SCREENSHOT_ELEMENT_OPUS = "#app > div.opus-detail > div.bili-opus-view"
 SCREENSHOT_ELEMENT_ARTICLE = ".article-holder"
 SCREENSHOT_TIMEOUT = 60
+
+
+# 视频下载和发送相关配置
+DOWNLOAD_TIMEOUT = 120  # 下载超时时间(秒)
+DOWNLOAD_MAX_RETRIES = 3  # 下载文件最大重试次数
+SEND_VIDEO_MAX_RETRIES = 3  # 发送视频最大重试次数
+SEND_VIDEO_RETRY_DELAY = 5.0  # 发送视频重试基础延迟(秒)
+SEND_VIDEO_TIMEOUT = 120  # 发送视频超时时间(秒)

@@ -215,7 +215,7 @@
         "description": "B站内容解析",
         "usage": "usage：\n        被动监听插件，解析B站视频、直播、专栏，支持小程序卡片及文本链接，5分钟内不解析相同内容",
         "author": "leekooyo",
-        "version": "0.1-89d294e",
+        "version": "1.2.0",
         "plugin_type": "DEPENDANT",
         "is_dir": true
     },
@@ -355,7 +355,7 @@
         "description": "看看自己说了什么话",
         "usage": "usage：\n        词云\n        指令：\n            今日词云：获取今天的词云\n            昨日词云：获取昨天的词云\n            本周词云：获取本周词云\n            本月词云：获取本月词云\n            年度词云：获取年度词云\n\n            历史词云(支持 ISO8601 格式的日期与时间，如 2022-02-22T22:22:22)\n            获取某日的词云\n            历史词云 2022-01-01\n            获取指定时间段的词云\n            历史词云\n            示例：历史词云 2022-01-01~2022-02-22\n            示例：历史词云 2022-02-22T11:11:11~2022-02-22T22:22:22\n\n            如果想要获取自己的发言，可在命令前添加 我的\n            示例：我的今日词云",
         "author": "yajiwa",
-        "version": "0.1-89d294e",
+        "version": "1.3.8",
         "plugin_type": "NORMAL",
         "is_dir": true
     },
@@ -405,7 +405,7 @@
         "description": "嗨嗨，这里是小记者真寻哦",
         "usage": "真寻日报",
         "author": "HibiKier",
-        "version": "0.3",
+        "version": "0.4",
         "plugin_type": "NORMAL",
         "is_dir": true
     },
@@ -465,7 +465,7 @@
         "description": "点赞小助手",
         "usage": "点赞，点赞信息",
         "author": "HibiKier",
-        "version": "0.1",
+        "version": "0.2",
         "plugin_type": "NORMAL",
         "is_dir": true
     },
