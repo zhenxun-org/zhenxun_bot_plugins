@@ -61,7 +61,9 @@ async def _download_file_core(
                     downloaded_size += len(chunk)
 
             if total_len == 0 or downloaded_size == total_len:
-                logger.debug(f"文件流下载完成: {file_path.name}, 大小: {downloaded_size / 1024 / 1024:.2f}MB")
+                logger.debug(
+                    f"文件流下载完成: {file_path.name}, 大小: {downloaded_size / 1024 / 1024:.2f}MB"
+                )
                 return True
             else:
                 logger.warning(
@@ -83,11 +85,18 @@ async def download_file(
     from .common import retry_async, RetryConfig
 
     async def _download_wrapper():
-        return await _download_file_core(url, file_path, headers, proxies, chunk_size, timeout)
+        return await _download_file_core(
+            url, file_path, headers, proxies, chunk_size, timeout
+        )
 
     config = RetryConfig.download_default()
     config.max_attempts = max_retries
-    config.exceptions = (httpx.HTTPError, httpx.RequestError, asyncio.TimeoutError, Exception)
+    config.exceptions = (
+        httpx.HTTPError,
+        httpx.RequestError,
+        asyncio.TimeoutError,
+        Exception,
+    )
 
     try:
         return await retry_async(_download_wrapper, config=config)
@@ -139,7 +148,9 @@ async def merge_media_files(
                 str(output_path.resolve()),
             ]
         else:
-            logger.info(f"开始合并音视频并编码为 H.264 (可能耗时较长) 到: {output_path.name}")
+            logger.info(
+                f"开始合并音视频并编码为 H.264 (可能耗时较长) 到: {output_path.name}"
+            )
             command = [
                 "ffmpeg",
                 "-y",
@@ -254,5 +265,7 @@ async def check_ffmpeg_available() -> bool:
 
         return is_available
     except FileNotFoundError:
-        logger.warning("FFmpeg未找到，请确保已安装FFmpeg并添加到PATH环境变量", "B站解析")
+        logger.warning(
+            "FFmpeg未找到，请确保已安装FFmpeg并添加到PATH环境变量", "B站解析"
+        )
         return False

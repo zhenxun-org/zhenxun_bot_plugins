@@ -129,11 +129,11 @@ class MessageBuilder:
 
         start_time_str = ""
         if info.live_status == 1 and info.live_start_time:
-            start_time_str = (
-                f"开播时间: {time.strftime('%Y-%m-%d %H:%M', time.localtime(info.live_start_time))}\n"
-            )
+            start_time_str = f"开播时间: {time.strftime('%Y-%m-%d %H:%M', time.localtime(info.live_start_time))}\n"
 
-        plain_description = MessageBuilder._clean_html_description(info.description or "")
+        plain_description = MessageBuilder._clean_html_description(
+            info.description or ""
+        )
         if len(plain_description) > 80:
             plain_description = plain_description[:80] + "..."
 
@@ -147,7 +147,11 @@ class MessageBuilder:
         )
         segments.append(Text(text_content))
 
-        if base_config.get("SEND_LIVE_PIC", True) and info.live_status == 1 and info.keyframe_url:
+        if (
+            base_config.get("SEND_LIVE_PIC", True)
+            and info.live_status == 1
+            and info.keyframe_url
+        ):
             segments.append(Text("\n直播画面:"))
 
             keyframe_name = f"bili_live_keyframe_{info.room_id}.jpg"
@@ -158,9 +162,13 @@ class MessageBuilder:
         return UniMsg(segments)
 
     @staticmethod
-    async def build_article_message(info: ArticleInfo, render_enabled: bool = False) -> Optional[UniMsg]:
+    async def build_article_message(
+        info: ArticleInfo, render_enabled: bool = False
+    ) -> Optional[UniMsg]:
         """构建文章/动态信息消息"""
-        logger.debug(f"构建文章/动态消息: {info.type} {info.id}, 渲染模式: {render_enabled}")
+        logger.debug(
+            f"构建文章/动态消息: {info.type} {info.id}, 渲染模式: {render_enabled}"
+        )
 
         if render_enabled:
             if info.screenshot_bytes:
@@ -227,13 +235,21 @@ class MessageBuilder:
         }.get(info.status, f"状态未知({info.status})")
 
         rating_str = (
-            f"{info.rating_score}分 ({info.rating_count}人评分)" if info.rating_score > 0 else "暂无评分"
+            f"{info.rating_score}分 ({info.rating_count}人评分)"
+            if info.rating_score > 0
+            else "暂无评分"
         )
 
         pub_info = ""
         if info.publish:
-            pub_date = info.publish.get("pub_time", "") or info.publish.get("release_date", "")
-            weekday = f" 周{info.publish.get('weekday', '')}" if info.publish.get("weekday") else ""
+            pub_date = info.publish.get("pub_time", "") or info.publish.get(
+                "release_date", ""
+            )
+            weekday = (
+                f" 周{info.publish.get('weekday', '')}"
+                if info.publish.get("weekday")
+                else ""
+            )
             pub_info = f"发行时间: {pub_date}{weekday}\n"
 
         stat_parts = [
@@ -378,7 +394,12 @@ async def render_video_info_to_image(info: VideoInfo) -> Optional[bytes]:
                 for _, cmt in enumerate(fetched_comments):
                     if count >= comment_count:
                         break
-                    if cmt and isinstance(cmt, dict) and cmt.get("member") and cmt.get("content"):
+                    if (
+                        cmt
+                        and isinstance(cmt, dict)
+                        and cmt.get("member")
+                        and cmt.get("content")
+                    ):
                         uname = cmt["member"].get("uname", "未知用户")
                         message = cmt["content"].get("message", "")
                         likes = cmt.get("like", 0)
@@ -501,7 +522,10 @@ async def render_unimsg_to_image(message: UniMsg) -> Optional[bytes]:
     for seg in message:
         if isinstance(seg, Text):
             text = (
-                seg.text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\n", "<br>")
+                seg.text.replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("\n", "<br>")
             )
             html_parts.append(f"<p>{text}</p>")
 

@@ -38,24 +38,32 @@ class AutoDownloadManager:
             try:
                 AUTO_DOWNLOAD_FILE.parent.mkdir(parents=True, exist_ok=True)
                 if AUTO_DOWNLOAD_FILE.exists():
-                    async with aiofiles.open(AUTO_DOWNLOAD_FILE, mode="r", encoding="utf-8") as f:
+                    async with aiofiles.open(
+                        AUTO_DOWNLOAD_FILE, mode="r", encoding="utf-8"
+                    ) as f:
                         content = await f.read()
                         if content.strip():
                             data = json.loads(content)
                             if isinstance(data, list):
                                 _auto_download_groups = set(str(gid) for gid in data)
                             else:
-                                logger.warning(f"自动下载配置文件格式错误，应为列表: {AUTO_DOWNLOAD_FILE}")
+                                logger.warning(
+                                    f"自动下载配置文件格式错误，应为列表: {AUTO_DOWNLOAD_FILE}"
+                                )
                                 _auto_download_groups = set()
                         else:
                             _auto_download_groups = set()
 
                 else:
                     _auto_download_groups = set()
-                    async with aiofiles.open(AUTO_DOWNLOAD_FILE, mode="w", encoding="utf-8") as f:
+                    async with aiofiles.open(
+                        AUTO_DOWNLOAD_FILE, mode="w", encoding="utf-8"
+                    ) as f:
                         await f.write(json.dumps([]))
                 _initialized = True
-                logger.info(f"自动下载配置加载完成，当前启用群组数: {len(_auto_download_groups)}")
+                logger.info(
+                    f"自动下载配置加载完成，当前启用群组数: {len(_auto_download_groups)}"
+                )
             except Exception as e:
                 logger.error(f"加载自动下载配置失败: {e}", e=e)
                 _auto_download_groups = set()
@@ -70,7 +78,11 @@ class AutoDownloadManager:
                 AUTO_DOWNLOAD_FILE.parent.mkdir(parents=True, exist_ok=True)
                 temp_file = AUTO_DOWNLOAD_FILE.with_suffix(".json.tmp")
                 async with aiofiles.open(temp_file, mode="w", encoding="utf-8") as f:
-                    await f.write(json.dumps(list(_auto_download_groups), ensure_ascii=False, indent=2))
+                    await f.write(
+                        json.dumps(
+                            list(_auto_download_groups), ensure_ascii=False, indent=2
+                        )
+                    )
                 temp_file.replace(AUTO_DOWNLOAD_FILE)
                 logger.debug(f"自动下载配置已保存: {AUTO_DOWNLOAD_FILE}")
             except Exception as e:
@@ -229,17 +241,23 @@ class ScreenshotService:
 
             element = await page.query_selector(element_selector)
             if not element:
-                logger.debug(f"初始 query_selector 未找到 '{element_selector}'，尝试 wait_for_selector")
+                logger.debug(
+                    f"初始 query_selector 未找到 '{element_selector}'，尝试 wait_for_selector"
+                )
                 try:
                     wait_timeout = 15000
-                    logger.debug(f"使用 wait_for_selector 等待: '{element_selector}', 超时: {wait_timeout}ms")
+                    logger.debug(
+                        f"使用 wait_for_selector 等待: '{element_selector}', 超时: {wait_timeout}ms"
+                    )
                     element = await page.wait_for_selector(
                         element_selector, timeout=wait_timeout, state="visible"
                     )
                     logger.debug(f"wait_for_selector 成功找到 '{element_selector}'")
                 except Exception as e:
                     logger.error(f"等待选择器 '{element_selector}' 超时或失败: {e}")
-                    raise ScreenshotError(f"未找到元素 '{element_selector}' 或超时: {e}")
+                    raise ScreenshotError(
+                        f"未找到元素 '{element_selector}' 或超时: {e}"
+                    )
 
             if element:
                 await asyncio.sleep(0.5)

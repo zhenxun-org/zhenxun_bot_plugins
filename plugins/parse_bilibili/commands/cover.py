@@ -141,7 +141,9 @@ async def handle_bili_cover(matcher: AlconnaMatcher, bot: Bot, event: Event):
         else:
             title = "封面图片"
 
-        cover_message = UniMsg([Image(raw=image_data), f"\n{title}\n原始链接: {cover_url}"])
+        cover_message = UniMsg(
+            [Image(raw=image_data), f"\n{title}\n原始链接: {cover_url}"]
+        )
 
         await cover_message.send()
         logger.info(f"成功发送封面: {title}")

@@ -42,7 +42,12 @@ from .model import VideoInfo, LiveInfo, ArticleInfo, SeasonInfo, UserInfo
 from .utils.url_parser import UrlParserRegistry, extract_bilibili_url_from_message
 
 from .commands import _perform_video_download
-from .commands import login_matcher, bili_download_matcher, auto_download_matcher, bili_cover_matcher
+from .commands import (
+    login_matcher,
+    bili_download_matcher,
+    auto_download_matcher,
+    bili_cover_matcher,
+)
 from .commands.login import credential_status_matcher
 
 __all__ = [
@@ -219,7 +224,9 @@ __plugin_meta__ = PluginMetadata(
 )
 
 
-async def _rule(uninfo: Uninfo, message: UniMsg, cmd: tuple | None = RawCommand()) -> bool:
+async def _rule(
+    uninfo: Uninfo, message: UniMsg, cmd: tuple | None = RawCommand()
+) -> bool:
     if await CommonUtils.task_is_block(uninfo, "parse_bilibili"):
         return False
     if cmd is not None and cmd:
@@ -260,7 +267,9 @@ async def _rule(uninfo: Uninfo, message: UniMsg, cmd: tuple | None = RawCommand(
     return False
 
 
-async def _build_video_message(video_info: VideoInfo, render_enabled: bool) -> Optional[UniMsg]:
+async def _build_video_message(
+    video_info: VideoInfo, render_enabled: bool
+) -> Optional[UniMsg]:
     if render_enabled:
         logger.debug(
             f"渲染视频消息 (style_blue): {video_info.title} (BV: {video_info.bvid})",
@@ -269,7 +278,9 @@ async def _build_video_message(video_info: VideoInfo, render_enabled: bool) -> O
         try:
             image_bytes = await render_video_info_to_image(video_info)
             if image_bytes:
-                return UniMsg([Image(raw=image_bytes), Text(f"链接: {video_info.parsed_url}")])
+                return UniMsg(
+                    [Image(raw=image_bytes), Text(f"链接: {video_info.parsed_url}")]
+                )
             else:
                 logger.warning("VideoInfo 渲染函数返回空，尝试原始消息", "B站解析")
                 return await MessageBuilder.build_video_message(video_info)
@@ -295,12 +306,16 @@ async def _build_live_message(live_info: LiveInfo, render_enabled: bool) -> UniM
     return await MessageBuilder.build_live_message(live_info)
 
 
-async def _build_article_message(article_info: ArticleInfo, render_enabled: bool) -> Optional[UniMsg]:
+async def _build_article_message(
+    article_info: ArticleInfo, render_enabled: bool
+) -> Optional[UniMsg]:
     logger.debug(
         f"构建文章/动态消息: {article_info.type} {article_info.id}, 渲染模式: {render_enabled}",
         "B站解析",
     )
-    article_message = await MessageBuilder.build_article_message(article_info, render_enabled=render_enabled)
+    article_message = await MessageBuilder.build_article_message(
+        article_info, render_enabled=render_enabled
+    )
 
     if article_message and article_info.url:
         image_segment = None
@@ -317,13 +332,17 @@ async def _build_article_message(article_info: ArticleInfo, render_enabled: bool
         return article_message
 
 
-async def _build_season_message(season_info: SeasonInfo, render_enabled: bool) -> Optional[UniMsg]:
+async def _build_season_message(
+    season_info: SeasonInfo, render_enabled: bool
+) -> Optional[UniMsg]:
     if render_enabled:
         logger.debug(f"渲染番剧消息 (style_blue): {season_info.title}", "B站解析")
         try:
             image_bytes = await render_season_info_to_image(season_info)
             if image_bytes:
-                return UniMsg([Image(raw=image_bytes), Text(f"\n链接: {season_info.parsed_url}")])
+                return UniMsg(
+                    [Image(raw=image_bytes), Text(f"\n链接: {season_info.parsed_url}")]
+                )
             else:
                 logger.warning("SeasonInfo 渲染函数返回空，尝试原始消息", "B站解析")
                 return await MessageBuilder.build_season_message(season_info)
@@ -335,12 +354,16 @@ async def _build_season_message(season_info: SeasonInfo, render_enabled: bool) -
         return await MessageBuilder.build_season_message(season_info)
 
 
-async def _build_user_message(user_info: UserInfo, render_enabled: bool) -> Optional[UniMsg]:
+async def _build_user_message(
+    user_info: UserInfo, render_enabled: bool
+) -> Optional[UniMsg]:
     if render_enabled:
         logger.warning("UserInfo 渲染暂未实现，将发送原始消息", "B站解析")
         return await MessageBuilder.build_user_message(user_info)
     else:
-        logger.debug(f"构建用户消息: {user_info.name} (Mid: {user_info.mid})", "B站解析")
+        logger.debug(
+            f"构建用户消息: {user_info.name} (Mid: {user_info.mid})", "B站解析"
+        )
         return await MessageBuilder.build_user_message(user_info)
 
 
@@ -356,7 +379,9 @@ async def _(
 ):
     logger.debug(f"Handler received message: {message}", "B站解析")
 
-    parsed_content: Union[VideoInfo, LiveInfo, ArticleInfo, SeasonInfo, UserInfo, None] = None
+    parsed_content: Union[
+        VideoInfo, LiveInfo, ArticleInfo, SeasonInfo, UserInfo, None
+    ] = None
 
     check_hyper = base_config.get("ENABLE_MINIAPP_PARSE", True)
     if not check_hyper:
@@ -435,54 +460,87 @@ async def _(
             final_message: UniMsg | None = None
             render_enabled = base_config.get("RENDER_AS_IMAGE", False)
 
-            if isinstance(parsed_content, VideoInfo) and base_config.get("ENABLE_VIDEO_PARSE", True):
-                final_message = await _build_video_message(parsed_content, render_enabled)
+            if isinstance(parsed_content, VideoInfo) and base_config.get(
+                "ENABLE_VIDEO_PARSE", True
+            ):
+                final_message = await _build_video_message(
+                    parsed_content, render_enabled
+                )
 
-            elif isinstance(parsed_content, LiveInfo) and base_config.get("ENABLE_LIVE_PARSE", True):
-                final_message = await _build_live_message(parsed_content, render_enabled)
+            elif isinstance(parsed_content, LiveInfo) and base_config.get(
+                "ENABLE_LIVE_PARSE", True
+            ):
+                final_message = await _build_live_message(
+                    parsed_content, render_enabled
+                )
 
-            elif isinstance(parsed_content, ArticleInfo) and base_config.get("ENABLE_ARTICLE_PARSE", True):
-                final_message = await _build_article_message(parsed_content, render_enabled)
+            elif isinstance(parsed_content, ArticleInfo) and base_config.get(
+                "ENABLE_ARTICLE_PARSE", True
+            ):
+                final_message = await _build_article_message(
+                    parsed_content, render_enabled
+                )
 
             elif isinstance(parsed_content, SeasonInfo):
-                final_message = await _build_season_message(parsed_content, render_enabled)
+                final_message = await _build_season_message(
+                    parsed_content, render_enabled
+                )
 
-            elif isinstance(parsed_content, UserInfo) and base_config.get("ENABLE_USER_PARSE", True):
-                final_message = await _build_user_message(parsed_content, render_enabled)
+            elif isinstance(parsed_content, UserInfo) and base_config.get(
+                "ENABLE_USER_PARSE", True
+            ):
+                final_message = await _build_user_message(
+                    parsed_content, render_enabled
+                )
 
             else:
                 logger.warning(
                     f"内容类型不支持或已禁用: {type(parsed_content).__name__}",
                     "B站解析",
                 )
-                if isinstance(parsed_content, VideoInfo) and not base_config.get("ENABLE_VIDEO_PARSE", True):
+                if isinstance(parsed_content, VideoInfo) and not base_config.get(
+                    "ENABLE_VIDEO_PARSE", True
+                ):
                     logger.warning("视频解析已在配置中禁用", "B站解析")
-                elif isinstance(parsed_content, LiveInfo) and not base_config.get("ENABLE_LIVE_PARSE", True):
+                elif isinstance(parsed_content, LiveInfo) and not base_config.get(
+                    "ENABLE_LIVE_PARSE", True
+                ):
                     logger.warning("直播间解析已在配置中禁用", "B站解析")
                 elif isinstance(parsed_content, ArticleInfo) and not base_config.get(
                     "ENABLE_ARTICLE_PARSE", True
                 ):
                     logger.warning("文章/动态解析已在配置中禁用", "B站解析")
 
-                elif isinstance(parsed_content, UserInfo) and not base_config.get("ENABLE_USER_PARSE", True):
+                elif isinstance(parsed_content, UserInfo) and not base_config.get(
+                    "ENABLE_USER_PARSE", True
+                ):
                     logger.warning("用户空间解析已在配置中禁用", "B站解析")
 
             if final_message:
                 logger.debug(f"准备发送最终消息: {final_message}", "B站解析")
                 await final_message.send()
                 await CacheService.add_url_to_cache(target_url, session)
-                logger.info(f"成功被动解析并发送: {target_url}", "B站解析", session=session)
+                logger.info(
+                    f"成功被动解析并发送: {target_url}", "B站解析", session=session
+                )
 
                 if isinstance(parsed_content, VideoInfo):
                     if await AutoDownloadManager.is_enabled(session):
-                        logger.debug(f"群组 {session.id2} 开启了自动下载，检查时长限制...")
+                        logger.debug(
+                            f"群组 {session.id2} 开启了自动下载，检查时长限制..."
+                        )
 
-                        max_duration_minutes = base_config.get("AUTO_DOWNLOAD_MAX_DURATION", 10)
+                        max_duration_minutes = base_config.get(
+                            "AUTO_DOWNLOAD_MAX_DURATION", 10
+                        )
                         max_duration_seconds = max_duration_minutes * 60
 
                         video_duration_minutes = round(parsed_content.duration / 60, 1)
 
-                        if max_duration_minutes > 0 and parsed_content.duration > max_duration_seconds:
+                        if (
+                            max_duration_minutes > 0
+                            and parsed_content.duration > max_duration_seconds
+                        ):
                             logger.info(
                                 f"视频时长 {video_duration_minutes}分钟 超过限制 {max_duration_minutes}分钟，取消自动下载",
                                 "B站解析",
@@ -492,9 +550,13 @@ async def _(
                                 f"视频时长 {video_duration_minutes}分钟 符合要求或限制已禁用，开始执行自动下载..."
                             )
                             try:
-                                await _perform_video_download(bot, event, parsed_content)
+                                await _perform_video_download(
+                                    bot, event, parsed_content
+                                )
                             except Exception as download_e:
-                                logger.error("自动下载过程中发生错误", "B站解析", e=download_e)
+                                logger.error(
+                                    "自动下载过程中发生错误", "B站解析", e=download_e
+                                )
                     else:
                         logger.debug(f"群组 {session.id2} 未开启自动下载", "B站解析")
 

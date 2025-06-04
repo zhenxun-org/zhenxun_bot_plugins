@@ -32,7 +32,11 @@ def format_duration(seconds: int) -> str:
     """格式化时间长度为 HH:MM:SS 或 MM:SS 格式"""
     minutes, seconds = divmod(seconds, 60)
     hours, minutes = divmod(minutes, 60)
-    return f"{hours:02d}:{minutes:02d}:{seconds:02d}" if hours > 0 else f"{minutes:02d}:{seconds:02d}"
+    return (
+        f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+        if hours > 0
+        else f"{minutes:02d}:{seconds:02d}"
+    )
 
 
 def format_timestamp(timestamp: int, format_str: str = "%Y-%m-%d %H:%M:%S") -> str:
@@ -217,7 +221,9 @@ def dict_to_cookies_str(cookies_dict: Dict[str, str]) -> str:
 
 def extract_url_from_text(text: str) -> Optional[str]:
     """从文本中提取第一个URL"""
-    url_pattern = re.compile(r"https?://(?:[-\w.]|(?:%[\da-fA-F]{2}))+[/\w\.-]*(?:\?[/\w\.-=%&+]*)?")
+    url_pattern = re.compile(
+        r"https?://(?:[-\w.]|(?:%[\da-fA-F]{2}))+[/\w\.-]*(?:\?[/\w\.-=%&+]*)?"
+    )
     match = url_pattern.search(text)
     if match:
         return match.group(0)

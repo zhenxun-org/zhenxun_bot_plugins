@@ -56,7 +56,9 @@ async def download_b_file(url: str, file_path: Path):
     from ..utils.exceptions import DownloadError
 
     proxy_setting = base_config.get("PROXY")
-    proxies = {"http://": proxy_setting, "https://": proxy_setting} if proxy_setting else None
+    proxies = (
+        {"http://": proxy_setting, "https://": proxy_setting} if proxy_setting else None
+    )
 
     logger.info(f"开始下载文件: {file_path.name}, 最大重试次数: {DOWNLOAD_MAX_RETRIES}")
     result = await download_file(
@@ -71,7 +73,9 @@ async def download_b_file(url: str, file_path: Path):
     if not result:
         error_msg = f"下载文件 {file_path.name} 失败，已达到最大重试次数 ({DOWNLOAD_MAX_RETRIES})"
         logger.error(error_msg)
-        raise DownloadError(error_msg, context={"url": url, "file_path": str(file_path)})
+        raise DownloadError(
+            error_msg, context={"url": url, "file_path": str(file_path)}
+        )
 
     return result
 
@@ -160,7 +164,9 @@ async def send_video_final(bot: Bot, event: Event, video_path: Path):
         raise DownloadError(error_msg, context={"video_path": str(video_path)})
 
     if file_size > 100 * 1024 * 1024:
-        logger.warning(f"视频文件较大 ({file_size / 1024 / 1024:.1f}MB)，可能发送失败: {video_path}")
+        logger.warning(
+            f"视频文件较大 ({file_size / 1024 / 1024:.1f}MB)，可能发送失败: {video_path}"
+        )
 
     path_str = str(video_path.resolve())
     path_str = path_str.replace("\\", "/")
@@ -173,9 +179,13 @@ async def send_video_final(bot: Bot, event: Event, video_path: Path):
 
     for attempt in range(1, max_retries + 1):
         try:
-            logger.debug(f"尝试发送视频 (尝试 {attempt}/{max_retries}), 超时设置: {send_timeout}秒")
+            logger.debug(
+                f"尝试发送视频 (尝试 {attempt}/{max_retries}), 超时设置: {send_timeout}秒"
+            )
 
-            send_task = asyncio.create_task(bot.send(event=event, message=video_segment))
+            send_task = asyncio.create_task(
+                bot.send(event=event, message=video_segment)
+            )
 
             await asyncio.wait_for(send_task, timeout=send_timeout)
 
@@ -239,7 +249,9 @@ async def send_video_final(bot: Bot, event: Event, video_path: Path):
                         },
                     )
             else:
-                logger.error(f"视频发送失败 (尝试 {attempt}/{max_retries}): {error_type}: {error_msg}")
+                logger.error(
+                    f"视频发送失败 (尝试 {attempt}/{max_retries}): {error_type}: {error_msg}"
+                )
                 if not is_last_attempt:
                     logger.info(f"将在 {delay:.1f}秒后重试发送视频")
                     await asyncio.sleep(delay)
@@ -303,7 +315,9 @@ def select_appropriate_quality(
     video_streams.sort(key=lambda s: s.get("id", 0), reverse=True)
 
     if initial_quality_id is not None:
-        filtered_streams = [s for s in video_streams if s.get("id", 0) <= initial_quality_id]
+        filtered_streams = [
+            s for s in video_streams if s.get("id", 0) <= initial_quality_id
+        ]
         if filtered_streams:
             video_streams = filtered_streams
 
@@ -311,9 +325,13 @@ def select_appropriate_quality(
     original_quality_id = selected_video_stream.get("id", 0)
     quality_reduced = False
 
-    estimated_size = estimate_video_size(selected_video_stream, selected_audio_stream, duration_seconds)
+    estimated_size = estimate_video_size(
+        selected_video_stream, selected_audio_stream, duration_seconds
+    )
 
-    logger.debug(f"初始视频流质量: {original_quality_id}, 估算大小: {estimated_size:.2f}MB")
+    logger.debug(
+        f"初始视频流质量: {original_quality_id}, 估算大小: {estimated_size:.2f}MB"
+    )
 
     if estimated_size > max_size_mb:
         current_quality_id = original_quality_id
@@ -332,9 +350,13 @@ def select_appropriate_quality(
 
             for stream in video_streams:
                 if stream.get("id", 0) == next_quality_id:
-                    new_size = estimate_video_size(stream, selected_audio_stream, duration_seconds)
+                    new_size = estimate_video_size(
+                        stream, selected_audio_stream, duration_seconds
+                    )
 
-                    logger.debug(f"尝试降低清晰度: {next_quality_id}, 估算大小: {new_size:.2f}MB")
+                    logger.debug(
+                        f"尝试降低清晰度: {next_quality_id}, 估算大小: {new_size:.2f}MB"
+                    )
 
                     if new_size <= max_size_mb:
                         selected_video_stream = stream
@@ -399,7 +421,9 @@ async def check_video_duration(
     max_duration_seconds = max_duration_minutes * 60
 
     if duration_seconds > max_duration_seconds:
-        logger.debug(f"视频时长 {duration_minutes}分钟 超过限制 {max_duration_minutes}分钟，取消下载")
+        logger.debug(
+            f"视频时长 {duration_minutes}分钟 超过限制 {max_duration_minutes}分钟，取消下载"
+        )
         if matcher:
             await matcher.send(
                 f"视频时长 {duration_minutes}分钟 超过限制 {max_duration_minutes}分钟，无法下载"
@@ -423,7 +447,9 @@ def get_bangumi_info_sync(url_info: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     """获取番剧信息(同步)"""
     api_url = None
     if "ep_id" in url_info:
-        api_url = f"https://api.bilibili.com/pgc/view/web/season?ep_id={url_info['ep_id']}"
+        api_url = (
+            f"https://api.bilibili.com/pgc/view/web/season?ep_id={url_info['ep_id']}"
+        )
     elif "season_id" in url_info:
         api_url = f"https://api.bilibili.com/pgc/view/web/season?season_id={url_info['season_id']}"
     else:
@@ -446,7 +472,9 @@ def get_bangumi_info_sync(url_info: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         logger.debug(f"获取到番剧信息: {data['result'].get('title', '未知')}")
         return data["result"]
     else:
-        logger.error(f"获取番剧信息 API 错误: Code={data.get('code')} Msg={data.get('message')}")
+        logger.error(
+            f"获取番剧信息 API 错误: Code={data.get('code')} Msg={data.get('message')}"
+        )
         return None
 
 
@@ -457,7 +485,9 @@ def get_bangumi_info_sync(url_info: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     reraise=False,
     default_return=None,
 )
-def get_play_url_sync(ep_id: int, cid: int, quality: int = 120, fnval: int = 16) -> Optional[Dict[str, Any]]:
+def get_play_url_sync(
+    ep_id: int, cid: int, quality: int = 120, fnval: int = 16
+) -> Optional[Dict[str, Any]]:
     """获取番剧播放链接(同步)"""
     api_url = "https://api.bilibili.com/pgc/player/web/playurl"
     params = {
@@ -485,11 +515,15 @@ def get_play_url_sync(ep_id: int, cid: int, quality: int = 120, fnval: int = 16)
         logger.debug("获取播放链接成功")
         return data["result"]
     else:
-        logger.warning(f"获取播放链接失败: Code={data.get('code')} Msg={data.get('message')}")
+        logger.warning(
+            f"获取播放链接失败: Code={data.get('code')} Msg={data.get('message')}"
+        )
         return None
 
 
-async def get_bangumi_play_url_with_fallback(ep_id: int, cid: int) -> Optional[Dict[str, Any]]:
+async def get_bangumi_play_url_with_fallback(
+    ep_id: int, cid: int
+) -> Optional[Dict[str, Any]]:
     """获取番剧播放链接"""
     loop = asyncio.get_running_loop()
 
@@ -524,7 +558,9 @@ async def _perform_bangumi_download(
     loop = asyncio.get_running_loop()
     logger.info(f"开始下载番剧: {url_info_dict}")
 
-    bangumi_info = await loop.run_in_executor(None, get_bangumi_info_sync, url_info_dict)
+    bangumi_info = await loop.run_in_executor(
+        None, get_bangumi_info_sync, url_info_dict
+    )
     if not bangumi_info:
         error_msg = "无法获取番剧信息"
         logger.error(error_msg)
@@ -571,7 +607,9 @@ async def _perform_bangumi_download(
     if not play_info:
         error_msg = f"获取播放链接失败 for ep {ep_id}"
         logger.error(error_msg)
-        raise DownloadError(error_msg, context={"ep_id": ep_id, "cid": cid, "title": title})
+        raise DownloadError(
+            error_msg, context={"ep_id": ep_id, "cid": cid, "title": title}
+        )
 
     downloaded_file_path: Optional[Path] = None
     v_stream_path: Optional[Path] = None
@@ -590,10 +628,14 @@ async def _perform_bangumi_download(
             max_quality = base_config.get("VIDEO_DOWNLOAD_QUALITY", 64)
             logger.debug(f"配置的番剧视频质量上限: qn={max_quality}")
 
-            filtered_streams = [s for s in video_streams if s.get("id", 0) <= max_quality]
+            filtered_streams = [
+                s for s in video_streams if s.get("id", 0) <= max_quality
+            ]
 
             if not filtered_streams:
-                logger.warning(f"未找到质量 <= {max_quality} 的番剧视频流，尝试选择最接近的质量")
+                logger.warning(
+                    f"未找到质量 <= {max_quality} 的番剧视频流，尝试选择最接近的质量"
+                )
                 all_streams = sorted(video_streams, key=lambda s: s.get("id", 0))
 
                 for stream in all_streams:
@@ -631,7 +673,11 @@ async def _perform_bangumi_download(
                 raise DownloadError("无法获取番剧视频流 URL")
 
             v_stream_path = PLUGIN_TEMP_DIR / f"bili_video_ep{ep_id}_video.m4s"
-            a_stream_path = PLUGIN_TEMP_DIR / f"bili_video_ep{ep_id}_audio.m4s" if audio_url else None
+            a_stream_path = (
+                PLUGIN_TEMP_DIR / f"bili_video_ep{ep_id}_audio.m4s"
+                if audio_url
+                else None
+            )
 
             if audio_url:
                 logger.info("开始下载番剧音视频流...")
@@ -645,7 +691,9 @@ async def _perform_bangumi_download(
                 if not dl_video_ok:
                     raise DownloadError("番剧视频流下载失败")
 
-            merge_ok = await merge_file_to_mp4(v_stream_path, a_stream_path, output_path, use_copy_codec=True)
+            merge_ok = await merge_file_to_mp4(
+                v_stream_path, a_stream_path, output_path, use_copy_codec=True
+            )
             if not merge_ok:
                 raise MediaProcessError("番剧合并失败")
             downloaded_file_path = output_path
@@ -725,7 +773,9 @@ async def _perform_video_download(
             path_str = path_str.replace("\\", "/")
             file_uri = "file:///" + path_str
             video_segment = V11MessageSegment.video(file_uri)
-            logger.debug(f"从缓存发送视频: {type(video_segment)}, 内容: {video_segment}")
+            logger.debug(
+                f"从缓存发送视频: {type(video_segment)}, 内容: {video_segment}"
+            )
             await bot.send(event=event, message=video_segment)
             logger.info(f"缓存视频发送成功: {cached_file}")
             return
@@ -752,7 +802,9 @@ async def _perform_video_download(
             raise DownloadError(error_msg, context={"video_id": video_id})
 
         logger.debug(f"获取下载链接 (P{page_num + 1})")
-        download_url_data: Dict[str, Any] = await v.get_download_url(page_index=page_num)
+        download_url_data: Dict[str, Any] = await v.get_download_url(
+            page_index=page_num
+        )
 
         selected_video_stream: Optional[Dict[str, Any]] = None
         selected_audio_stream: Optional[Dict[str, Any]] = None
@@ -779,13 +831,18 @@ async def _perform_video_download(
                 s
                 for s in dash_video_streams
                 if s.get("id", 0) <= max_quality
-                and (not isinstance(s.get("codecs"), str) or not s["codecs"].startswith("avc"))
+                and (
+                    not isinstance(s.get("codecs"), str)
+                    or not s["codecs"].startswith("avc")
+                )
             ]
 
             video_streams_to_use = h264_streams if h264_streams else non_h264_streams
 
             if not video_streams_to_use:
-                logger.warning(f"未找到质量 <= {max_quality} 的视频流，尝试选择最接近的质量")
+                logger.warning(
+                    f"未找到质量 <= {max_quality} 的视频流，尝试选择最接近的质量"
+                )
                 all_streams = sorted(dash_video_streams, key=lambda s: s.get("id", 0))
 
                 for stream in all_streams:
@@ -799,7 +856,9 @@ async def _perform_video_download(
             if not video_streams_to_use:
                 error_msg = "未找到可用视频流"
                 logger.error(error_msg)
-                raise DownloadError(error_msg, context={"video_id": video_id, "page_num": page_num})
+                raise DownloadError(
+                    error_msg, context={"video_id": video_id, "page_num": page_num}
+                )
 
             if not dash_audio_streams:
                 logger.warning("未找到可用音频流，将处理为无音频视频")
@@ -807,20 +866,26 @@ async def _perform_video_download(
                 audio_url = None
                 selected_video_stream = video_streams_to_use[0]
             else:
-                selected_video_stream, selected_audio_stream, _ = select_appropriate_quality(
-                    video_streams=video_streams_to_use,
-                    audio_streams=dash_audio_streams,
-                    duration_seconds=video_info.duration,
-                    max_size_mb=100.0,
-                    initial_quality_id=max_quality,
+                selected_video_stream, selected_audio_stream, _ = (
+                    select_appropriate_quality(
+                        video_streams=video_streams_to_use,
+                        audio_streams=dash_audio_streams,
+                        duration_seconds=video_info.duration,
+                        max_size_mb=100.0,
+                        initial_quality_id=max_quality,
+                    )
                 )
-                audio_url = selected_audio_stream.get("baseUrl") or selected_audio_stream.get("base_url")
+                audio_url = selected_audio_stream.get(
+                    "baseUrl"
+                ) or selected_audio_stream.get("base_url")
 
-            use_copy_codec = isinstance(selected_video_stream.get("codecs"), str) and selected_video_stream[
-                "codecs"
-            ].startswith("avc")
+            use_copy_codec = isinstance(
+                selected_video_stream.get("codecs"), str
+            ) and selected_video_stream["codecs"].startswith("avc")
 
-            video_url = selected_video_stream.get("baseUrl") or selected_video_stream.get("base_url")
+            video_url = selected_video_stream.get(
+                "baseUrl"
+            ) or selected_video_stream.get("base_url")
 
             logger.info(
                 f"最终选择的视频流: qn={selected_video_stream.get('id')}, 编码: {selected_video_stream.get('codecs')}"
@@ -842,7 +907,9 @@ async def _perform_video_download(
 
         base_filename = f"bili_video_{video_id}_P{page_num + 1}"
         v_stream_path = PLUGIN_TEMP_DIR / f"{base_filename}-video.m4s"
-        a_stream_path = PLUGIN_TEMP_DIR / f"{base_filename}-audio.m4s" if audio_url else None
+        a_stream_path = (
+            PLUGIN_TEMP_DIR / f"{base_filename}-audio.m4s" if audio_url else None
+        )
 
         cache_filename = f"{video_id}_P{page_num + 1}.mp4"
         output_mp4_path = VIDEO_CACHE_DIR / cache_filename
@@ -855,9 +922,7 @@ async def _perform_video_download(
                 return_exceptions=True,
             )
             if isinstance(results[0], Exception) or not results[0]:
-                error_msg = (
-                    f"下载视频流失败: {results[0] if isinstance(results[0], Exception) else '未知错误'}"
-                )
+                error_msg = f"下载视频流失败: {results[0] if isinstance(results[0], Exception) else '未知错误'}"
                 logger.error(error_msg)
                 raise DownloadError(
                     error_msg,
@@ -869,9 +934,7 @@ async def _perform_video_download(
                     },
                 )
             if isinstance(results[1], Exception) or not results[1]:
-                error_msg = (
-                    f"下载音频流失败: {results[1] if isinstance(results[1], Exception) else '未知错误'}"
-                )
+                error_msg = f"下载音频流失败: {results[1] if isinstance(results[1], Exception) else '未知错误'}"
                 logger.error(error_msg)
                 raise DownloadError(
                     error_msg,
@@ -908,9 +971,13 @@ async def _perform_video_download(
             logger.info(f"视频处理成功: {downloaded_file_path}")
 
             cache_key = f"{video_id}_{page_num}"
-            logger.info(f"视频已直接保存到缓存目录: {cache_key} -> {downloaded_file_path}")
+            logger.info(
+                f"视频已直接保存到缓存目录: {cache_key} -> {downloaded_file_path}"
+            )
 
-            await CacheService.save_video_to_cache(video_id, page_num, downloaded_file_path)
+            await CacheService.save_video_to_cache(
+                video_id, page_num, downloaded_file_path
+            )
 
             logger.debug(f"准备发送最终视频文件: {downloaded_file_path}")
             if downloaded_file_path.exists():
@@ -972,7 +1039,9 @@ async def handle_bili_download(
 
     if not target_url_or_id:
         logger.debug("未找到有效链接/ID")
-        await matcher.finish("未找到有效的B站链接或视频ID，请检查输入或回复包含B站链接的消息。")
+        await matcher.finish(
+            "未找到有效的B站链接或视频ID，请检查输入或回复包含B站链接的消息。"
+        )
 
     resource_type: Optional[ResourceType] = None
     resource_id: Optional[str] = None
@@ -1033,7 +1102,9 @@ async def handle_bili_download(
 
     if resource_type == ResourceType.BANGUMI and url_info_dict:
         loop = asyncio.get_running_loop()
-        bangumi_info = await loop.run_in_executor(None, get_bangumi_info_sync, url_info_dict)
+        bangumi_info = await loop.run_in_executor(
+            None, get_bangumi_info_sync, url_info_dict
+        )
 
         if not bangumi_info:
             logger.error("无法获取番剧信息")
@@ -1060,7 +1131,9 @@ async def handle_bili_download(
 
         episode_duration = target_episode.get("duration", 0) / 1000
 
-        duration_check_result = await check_video_duration(episode_duration, event, matcher)
+        duration_check_result = await check_video_duration(
+            episode_duration, event, matcher
+        )
         if not duration_check_result:
             return
 
@@ -1082,13 +1155,17 @@ async def handle_bili_download(
             if isinstance(parsed_content, VideoInfo):
                 video_info = parsed_content
 
-                duration_check_result = await check_video_duration(parsed_content.duration, event, matcher)
+                duration_check_result = await check_video_duration(
+                    parsed_content.duration, event, matcher
+                )
                 if not duration_check_result:
                     return
 
                 await _perform_video_download(bot, event, video_info, matcher)
             else:
-                logger.error(f"解析普通视频链接未返回 VideoInfo: {type(parsed_content)}")
+                logger.error(
+                    f"解析普通视频链接未返回 VideoInfo: {type(parsed_content)}"
+                )
                 await matcher.finish("解析视频信息失败，请稍后重试。")
         except BilibiliBaseException as e:
             logger.error(f"执行普通视频下载失败 for {resource_id} (已处理异常): {e}")
@@ -1105,7 +1182,9 @@ async def handle_bili_download(
                 logger.debug(f"短链接解析为视频: {parsed_content.title}")
                 video_info = parsed_content
 
-                duration_check_result = await check_video_duration(parsed_content.duration, event, matcher)
+                duration_check_result = await check_video_duration(
+                    parsed_content.duration, event, matcher
+                )
                 if not duration_check_result:
                     return
 
@@ -1120,7 +1199,9 @@ async def handle_bili_download(
             logger.error(f"使用ParserService解析短链接失败 (未处理异常): {e}")
             await matcher.send(f"解析短链接失败: {str(e)[:100]}")
     else:
-        logger.warning(f"识别的资源类型 ({resource_type}) 不是支持的下载类型 (Video/Bangumi/SHORT_URL)")
+        logger.warning(
+            f"识别的资源类型 ({resource_type}) 不是支持的下载类型 (Video/Bangumi/SHORT_URL)"
+        )
         await matcher.finish(f"不支持下载此类型的内容: {resource_type}")
 
     logger.debug("handle_bili_download 函数执行完毕")
