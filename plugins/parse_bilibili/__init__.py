@@ -22,10 +22,9 @@ from .config import (
     load_credential_from_file,
     check_and_refresh_credential,
 )
-from .services.parser_service import ParserService
+from .services.network_service import ParserService, NetworkService
 from .services.cache_service import CacheService
-from .services.network_service import NetworkService
-from .services import auto_download_manager
+from .services.utility_service import AutoDownloadManager
 from .utils.message import (
     MessageBuilder,
     render_video_info_to_image,
@@ -43,14 +42,27 @@ from .model import VideoInfo, LiveInfo, ArticleInfo, SeasonInfo, UserInfo
 from .utils.url_parser import UrlParserRegistry, extract_bilibili_url_from_message
 
 from .commands import _perform_video_download
-from .commands import login_matcher, bili_download_matcher, auto_download_matcher  # noqa: F401
-from .commands.login import credential_status_matcher  # noqa: F401
+from .commands import (
+    login_matcher,
+    bili_download_matcher,
+    auto_download_matcher,
+    bili_cover_matcher,
+)
+from .commands.login import credential_status_matcher
+
+__all__ = [
+    "login_matcher",
+    "bili_download_matcher",
+    "auto_download_matcher",
+    "bili_cover_matcher",
+    "credential_status_matcher",
+]
 
 
 async def _initialize_services():
     await CacheService.initialize()
     await NetworkService.get_session()
-    await auto_download_manager.load_auto_download_config()
+    await AutoDownloadManager.load_config()
     await load_credential_from_file()
 
     asyncio.create_task(check_and_refresh_credential())
@@ -90,18 +102,25 @@ __plugin_meta__ = PluginMetadata(
        - 支持视频缓存功能，已下载过的视频会被缓存，再次下载时直接从缓存发送。
        - 可通过配置项 VIDEO_DOWNLOAD_QUALITY 设置下载视频的质量(16=360P, 32=480P, 64=720P, 80=1080P)。
 
-    3. 自动下载控制命令 (需要管理员权限):
+    3. 获取封面命令：
+       bili/b站封面  # 获取B站视频/番剧的原始封面图片
+
+       - 只能通过引用包含B站链接的消息来触发，不支持直接传入链接参数。
+       - 支持视频(av/BV)和番剧(ss/ep)的封面获取。
+       - 返回原始大小的封面图片，不受尺寸限制。
+
+    4. 自动下载控制命令 (需要管理员权限):
        bili/b站自动下载 on    # 为当前群聊开启视频自动下载
        bili/b站自动下载 off   # 为当前群聊关闭视频自动下载
        - 开启后，当被动解析到视频链接时，会自动执行下载并发送视频文件。
 
-    4. B站账号登录命令 (仅超级用户):
+    5. B站账号登录命令 (仅超级用户):
        bili登录  # 生成二维码进行B站账号登录
 
        - 登录后可以获取更多需要登录才能查看的内容和更高清晰度的视频。
        - 支持凭证自动刷新，保持登录状态长期有效。
 
-    5. B站账号状态查询命令 (仅超级用户):
+    6. B站账号状态查询命令 (仅超级用户):
        bili状态  # 查询当前B站账号登录状态
 
        - 可以查看当前凭证的有效性和是否需要刷新等信息。
@@ -109,7 +128,7 @@ __plugin_meta__ = PluginMetadata(
     """.strip(),
     extra=PluginExtraData(
         author="leekooyo (Refactored by Assistant)",
-        version="1.4.0",
+        version="1.4.5",
         plugin_type=PluginType.DEPENDANT,
         menu_type="其他",
         configs=[
@@ -214,24 +233,13 @@ async def _rule(
         if cmd[0] == "bili下载" or cmd[0] == "b站下载":
             logger.debug("消息被识别为 bili下载 命令，被动解析跳过", "B站解析")
             return False
-        if cmd[0] == "bili自动下载" or cmd[0] == "b站自动下载":
-            logger.debug("消息被识别为 bili自动下载 命令，被动解析跳过", "B站解析")
-            return False
-        if cmd[0] == "bili登录":
-            logger.debug("消息被识别为 bili登录 命令，被动解析跳过", "B站解析")
-            return False
-        if cmd[0] == "bili状态":
-            logger.debug("消息被识别为 bili状态 命令，被动解析跳过", "B站解析")
-            return False
 
     plain_text = message.extract_plain_text().strip()
     if (
         plain_text.startswith("bili下载")
         or plain_text.startswith("b站下载")
-        or plain_text.startswith("bili自动下载")
-        or plain_text.startswith("b站自动下载")
-        or plain_text.startswith("bili登录")
-        or plain_text.startswith("bili状态")
+        or plain_text.startswith("bili封面")
+        or plain_text.startswith("b站封面")
     ):
         logger.debug(f"消息文本以命令开头，被动解析跳过: {plain_text}", "B站解析")
         return False
@@ -517,7 +525,7 @@ async def _(
                 )
 
                 if isinstance(parsed_content, VideoInfo):
-                    if await auto_download_manager.is_auto_download_enabled(session):
+                    if await AutoDownloadManager.is_enabled(session):
                         logger.debug(
                             f"群组 {session.id2} 开启了自动下载，检查时长限制..."
                         )

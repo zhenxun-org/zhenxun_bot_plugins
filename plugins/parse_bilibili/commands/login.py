@@ -158,14 +158,22 @@ async def check_login_status(org_matcher: Matcher, user_id: str):
 
                     if not credential.buvid3:
                         logger.warning("未能从会话中获取 buvid3，尝试刷新 buvid")
-                        from bilibili_api import refresh_buvid
+                        try:
+                            from bilibili_api import refresh_buvid
 
-                        await refresh_buvid()
-                        for cookie in session.cookie_jar:
-                            if cookie.key == "buvid3":
-                                logger.info(f"通过刷新获取到 buvid3: {cookie.value}")
-                                credential.buvid3 = cookie.value
-                                break
+                            refresh_buvid()
+
+                            session = get_session()
+                            if hasattr(session, "cookie_jar") and session.cookie_jar:
+                                for cookie in session.cookie_jar:
+                                    if cookie.key == "buvid3":
+                                        logger.info(
+                                            f"通过刷新获取到 buvid3: {cookie.value}"
+                                        )
+                                        credential.buvid3 = cookie.value
+                                        break
+                        except Exception as refresh_error:
+                            logger.error(f"刷新 buvid 时出错: {refresh_error}")
                 except Exception as e:
                     logger.error(f"尝试获取 buvid3 时出错: {e}")
 

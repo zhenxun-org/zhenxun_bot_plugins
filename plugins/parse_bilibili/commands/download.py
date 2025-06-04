@@ -34,12 +34,10 @@ from ..config import (
     SEND_VIDEO_RETRY_DELAY,
 )
 from ..model import VideoInfo
-from ..services.parser_service import ParserService
+from ..services.network_service import ParserService, async_handle_errors, handle_errors
+from ..services.utility_service import AutoDownloadManager
 from ..utils.exceptions import MediaProcessError, DownloadError, BilibiliBaseException
 from ..utils.url_parser import ResourceType, UrlParserRegistry
-from ..services.network_service import async_handle_errors, handle_errors
-
-from ..services import auto_download_manager
 
 BILIBILI_HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.127 Safari/537.36",
@@ -89,7 +87,7 @@ async def download_b_file(url: str, file_path: Path):
 )
 async def merge_file_to_mp4(
     v_path: Path,
-    a_path: Path,
+    a_path: Optional[Path],
     output_path: Path,
     use_copy_codec: bool = False,
     log_output: bool = False,
@@ -122,7 +120,7 @@ async def merge_file_to_mp4(
                 "音视频合并失败",
                 context={
                     "video_path": str(v_path),
-                    "audio_path": str(a_path),
+                    "audio_path": str(a_path) if a_path else None,
                     "output_path": str(output_path),
                     "use_copy_codec": use_copy_codec,
                 },
@@ -131,11 +129,15 @@ async def merge_file_to_mp4(
         return success
     finally:
         try:
+            cleaned_files = []
             if v_path.exists():
                 v_path.unlink()
-            if a_path.exists():
+                cleaned_files.append(v_path.name)
+            if a_path and a_path.exists():
                 a_path.unlink()
-            logger.debug(f"已清理临时文件: {v_path.name}, {a_path.name}")
+                cleaned_files.append(a_path.name)
+            if cleaned_files:
+                logger.debug(f"已清理临时文件: {', '.join(cleaned_files)}")
         except OSError as e:
             logger.warning("清理临时文件失败", e=e)
 
@@ -647,36 +649,47 @@ async def _perform_bangumi_download(
             if not filtered_streams:
                 raise DownloadError("未找到可用的番剧视频流")
 
-            if not audio_streams:
-                raise DownloadError("未找到可用的番剧音频流")
-
             episode_duration_seconds = target_episode.get("duration", 0) / 1000
 
-            video_stream, audio_stream, _ = select_appropriate_quality(
-                video_streams=filtered_streams,
-                audio_streams=audio_streams,
-                duration_seconds=episode_duration_seconds,
-                max_size_mb=100.0,
-                initial_quality_id=max_quality,
-            )
+            if not audio_streams:
+                logger.warning("未找到可用的番剧音频流，将处理为无音频视频")
+                audio_stream = None
+                audio_url = None
+                video_stream = filtered_streams[0]
+            else:
+                video_stream, audio_stream, _ = select_appropriate_quality(
+                    video_streams=filtered_streams,
+                    audio_streams=audio_streams,
+                    duration_seconds=episode_duration_seconds,
+                    max_size_mb=100.0,
+                    initial_quality_id=max_quality,
+                )
+                audio_url = audio_stream.get("baseUrl") or audio_stream.get("base_url")
 
             logger.info(f"最终选择的番剧视频流: qn={video_stream.get('id')}")
 
             video_url = video_stream.get("baseUrl") or video_stream.get("base_url")
-            audio_url = audio_stream.get("baseUrl") or audio_stream.get("base_url")
-            if not video_url or not audio_url:
-                raise DownloadError("无法获取 DASH 流 URL")
+            if not video_url:
+                raise DownloadError("无法获取番剧视频流 URL")
 
             v_stream_path = PLUGIN_TEMP_DIR / f"bili_video_ep{ep_id}_video.m4s"
-            a_stream_path = PLUGIN_TEMP_DIR / f"bili_video_ep{ep_id}_audio.m4s"
+            a_stream_path = (
+                PLUGIN_TEMP_DIR / f"bili_video_ep{ep_id}_audio.m4s"
+                if audio_url
+                else None
+            )
 
-            logger.info("开始下载番剧视频流...")
-            dl_video_ok = await download_b_file(video_url, v_stream_path)
-            logger.info("开始下载番剧音频流...")
-            dl_audio_ok = await download_b_file(audio_url, a_stream_path)
-
-            if not dl_video_ok or not dl_audio_ok:
-                raise DownloadError("番剧音视频流下载失败")
+            if audio_url:
+                logger.info("开始下载番剧音视频流...")
+                dl_video_ok = await download_b_file(video_url, v_stream_path)
+                dl_audio_ok = await download_b_file(audio_url, a_stream_path)
+                if not dl_video_ok or not dl_audio_ok:
+                    raise DownloadError("番剧音视频流下载失败")
+            else:
+                logger.info("开始下载番剧视频流（无音频）...")
+                dl_video_ok = await download_b_file(video_url, v_stream_path)
+                if not dl_video_ok:
+                    raise DownloadError("番剧视频流下载失败")
 
             merge_ok = await merge_file_to_mp4(
                 v_stream_path, a_stream_path, output_path, use_copy_codec=True
@@ -713,10 +726,11 @@ async def _perform_bangumi_download(
         logger.error(f"执行番剧下载失败 for ep {ep_id}: {e}")
         if v_stream_path and v_stream_path.exists():
             v_stream_path.unlink(missing_ok=True)
-        if a_stream_path and a_stream_path.exists():
+        if a_stream_path and a_stream_path is not None and a_stream_path.exists():
             a_stream_path.unlink(missing_ok=True)
         if matcher:
-            await matcher.finish(f"番剧下载处理失败: {str(e)[:100]}")
+            await matcher.send(f"番剧下载处理失败: {str(e)[:100]}")
+        raise
 
 
 @async_handle_errors(
@@ -847,21 +861,23 @@ async def _perform_video_download(
                 )
 
             if not dash_audio_streams:
-                error_msg = "未找到可用音频流"
-                logger.error(error_msg)
-                raise DownloadError(
-                    error_msg, context={"video_id": video_id, "page_num": page_num}
+                logger.warning("未找到可用音频流，将处理为无音频视频")
+                selected_audio_stream = None
+                audio_url = None
+                selected_video_stream = video_streams_to_use[0]
+            else:
+                selected_video_stream, selected_audio_stream, _ = (
+                    select_appropriate_quality(
+                        video_streams=video_streams_to_use,
+                        audio_streams=dash_audio_streams,
+                        duration_seconds=video_info.duration,
+                        max_size_mb=100.0,
+                        initial_quality_id=max_quality,
+                    )
                 )
-
-            selected_video_stream, selected_audio_stream, _ = (
-                select_appropriate_quality(
-                    video_streams=video_streams_to_use,
-                    audio_streams=dash_audio_streams,
-                    duration_seconds=video_info.duration,
-                    max_size_mb=100.0,
-                    initial_quality_id=max_quality,
-                )
-            )
+                audio_url = selected_audio_stream.get(
+                    "baseUrl"
+                ) or selected_audio_stream.get("base_url")
 
             use_copy_codec = isinstance(
                 selected_video_stream.get("codecs"), str
@@ -870,15 +886,12 @@ async def _perform_video_download(
             video_url = selected_video_stream.get(
                 "baseUrl"
             ) or selected_video_stream.get("base_url")
-            audio_url = selected_audio_stream.get(
-                "baseUrl"
-            ) or selected_audio_stream.get("base_url")
 
             logger.info(
                 f"最终选择的视频流: qn={selected_video_stream.get('id')}, 编码: {selected_video_stream.get('codecs')}"
             )
-        if not video_url or not audio_url:
-            error_msg = "未能选择有效的音视频流 URL"
+        if not video_url:
+            error_msg = "未能选择有效的视频流 URL"
             logger.error(error_msg)
             raise DownloadError(
                 error_msg,
@@ -894,41 +907,61 @@ async def _perform_video_download(
 
         base_filename = f"bili_video_{video_id}_P{page_num + 1}"
         v_stream_path = PLUGIN_TEMP_DIR / f"{base_filename}-video.m4s"
-        a_stream_path = PLUGIN_TEMP_DIR / f"{base_filename}-audio.m4s"
+        a_stream_path = (
+            PLUGIN_TEMP_DIR / f"{base_filename}-audio.m4s" if audio_url else None
+        )
 
         cache_filename = f"{video_id}_P{page_num + 1}.mp4"
         output_mp4_path = VIDEO_CACHE_DIR / cache_filename
-        logger.info("开始下载音视频流...")
-        results = await asyncio.gather(
-            download_b_file(video_url, v_stream_path),
-            download_b_file(audio_url, a_stream_path),
-            return_exceptions=True,
-        )
-        if isinstance(results[0], Exception) or not results[0]:
-            error_msg = f"下载视频流失败: {results[0] if isinstance(results[0], Exception) else '未知错误'}"
-            logger.error(error_msg)
-            raise DownloadError(
-                error_msg,
-                context={
-                    "video_id": video_id,
-                    "page_num": page_num,
-                    "video_url": video_url,
-                    "video_path": str(v_stream_path),
-                },
+
+        if audio_url:
+            logger.info("开始下载音视频流...")
+            results = await asyncio.gather(
+                download_b_file(video_url, v_stream_path),
+                download_b_file(audio_url, a_stream_path),
+                return_exceptions=True,
             )
-        if isinstance(results[1], Exception) or not results[1]:
-            error_msg = f"下载音频流失败: {results[1] if isinstance(results[1], Exception) else '未知错误'}"
-            logger.error(error_msg)
-            raise DownloadError(
-                error_msg,
-                context={
-                    "video_id": video_id,
-                    "page_num": page_num,
-                    "audio_url": audio_url,
-                    "audio_path": str(a_stream_path),
-                },
-            )
-        logger.info("音视频流下载完成.")
+            if isinstance(results[0], Exception) or not results[0]:
+                error_msg = f"下载视频流失败: {results[0] if isinstance(results[0], Exception) else '未知错误'}"
+                logger.error(error_msg)
+                raise DownloadError(
+                    error_msg,
+                    context={
+                        "video_id": video_id,
+                        "page_num": page_num,
+                        "video_url": video_url,
+                        "video_path": str(v_stream_path),
+                    },
+                )
+            if isinstance(results[1], Exception) or not results[1]:
+                error_msg = f"下载音频流失败: {results[1] if isinstance(results[1], Exception) else '未知错误'}"
+                logger.error(error_msg)
+                raise DownloadError(
+                    error_msg,
+                    context={
+                        "video_id": video_id,
+                        "page_num": page_num,
+                        "audio_url": audio_url,
+                        "audio_path": str(a_stream_path),
+                    },
+                )
+            logger.info("音视频流下载完成.")
+        else:
+            logger.info("开始下载视频流（无音频）...")
+            video_download_success = await download_b_file(video_url, v_stream_path)
+            if not video_download_success:
+                error_msg = "下载视频流失败"
+                logger.error(error_msg)
+                raise DownloadError(
+                    error_msg,
+                    context={
+                        "video_id": video_id,
+                        "page_num": page_num,
+                        "video_url": video_url,
+                        "video_path": str(v_stream_path),
+                    },
+                )
+            logger.info("视频流下载完成.")
 
         merge_success = await merge_file_to_mp4(
             v_stream_path, a_stream_path, output_mp4_path, use_copy_codec=use_copy_codec
@@ -969,10 +1002,11 @@ async def _perform_video_download(
         logger.error(f"执行视频下载/处理失败 for {video_id}", e=e)
         if v_stream_path and v_stream_path.exists():
             v_stream_path.unlink(missing_ok=True)
-        if a_stream_path and a_stream_path.exists():
+        if a_stream_path and a_stream_path is not None and a_stream_path.exists():
             a_stream_path.unlink(missing_ok=True)
         if matcher:
-            await matcher.finish(f"视频下载处理失败: {str(e)[:100]}")
+            await matcher.send(f"视频下载处理失败: {str(e)[:100]}")
+        raise
 
 
 bili_download_cmd = Alconna("bili下载", Args["link?", str])
@@ -1063,7 +1097,8 @@ async def handle_bili_download(
                 await matcher.finish(f"无法解析短链接: {target_url_or_id}")
         except Exception as e:
             logger.error(f"解析短链接失败: {e}")
-            await matcher.finish(f"解析短链接失败: {str(e)[:100]}")
+            await matcher.send(f"解析短链接失败: {str(e)[:100]}")
+            return
 
     if resource_type == ResourceType.BANGUMI and url_info_dict:
         loop = asyncio.get_running_loop()
@@ -1108,10 +1143,10 @@ async def handle_bili_download(
             await _perform_bangumi_download(bot, event, url_info_dict, matcher)
         except BilibiliBaseException as e:
             logger.error(f"番剧下载失败 (已处理异常): {e}")
-            await matcher.finish(f"番剧下载失败: {str(e)[:100]}")
+            await matcher.send(f"番剧下载失败: {str(e)[:100]}")
         except Exception as e:
             logger.error(f"番剧下载失败 (未处理异常): {e}")
-            await matcher.finish(f"番剧下载失败: {str(e)[:100]}")
+            await matcher.send(f"番剧下载失败: {str(e)[:100]}")
     elif resource_type == ResourceType.VIDEO and resource_id:
         video_info: Optional[VideoInfo] = None
         try:
@@ -1134,10 +1169,10 @@ async def handle_bili_download(
                 await matcher.finish("解析视频信息失败，请稍后重试。")
         except BilibiliBaseException as e:
             logger.error(f"执行普通视频下载失败 for {resource_id} (已处理异常): {e}")
-            await matcher.finish(f"下载视频失败: {str(e)[:100]}")
+            await matcher.send(f"下载视频失败: {str(e)[:100]}")
         except Exception as e:
             logger.error(f"执行普通视频下载失败 for {resource_id} (未处理异常): {e}")
-            await matcher.finish(f"下载视频失败: {str(e)[:100]}")
+            await matcher.send(f"下载视频失败: {str(e)[:100]}")
     elif resource_type == ResourceType.SHORT_URL:
         logger.info(f"检测到短链接类型，尝试使用ParserService解析: {target_url_or_id}")
         try:
@@ -1159,10 +1194,10 @@ async def handle_bili_download(
                 logger.error(f"短链接解析结果不是视频: {type(parsed_content)}")
         except BilibiliBaseException as e:
             logger.error(f"使用ParserService解析短链接失败 (已处理异常): {e}")
-            await matcher.finish(f"解析短链接失败: {str(e)[:100]}")
+            await matcher.send(f"解析短链接失败: {str(e)[:100]}")
         except Exception as e:
             logger.error(f"使用ParserService解析短链接失败 (未处理异常): {e}")
-            await matcher.finish(f"解析短链接失败: {str(e)[:100]}")
+            await matcher.send(f"解析短链接失败: {str(e)[:100]}")
     else:
         logger.warning(
             f"识别的资源类型 ({resource_type}) 不是支持的下载类型 (Video/Bangumi/SHORT_URL)"
@@ -1198,13 +1233,13 @@ async def handle_auto_download_switch(
 
     group_id = str(session.id2)
     if action == "on":
-        success = await auto_download_manager.enable_auto_download(session)
+        success = await AutoDownloadManager.enable(session)
         if success:
             await matcher.send(f"已为当前群聊({group_id})开启B站视频自动下载功能。")
         else:
             await matcher.send(f"当前群聊({group_id})已开启自动下载，无需重复操作。")
     elif action == "off":
-        success = await auto_download_manager.disable_auto_download(session)
+        success = await AutoDownloadManager.disable(session)
         if success:
             await matcher.send(f"已为当前群聊({group_id})关闭B站视频自动下载功能。")
         else:
