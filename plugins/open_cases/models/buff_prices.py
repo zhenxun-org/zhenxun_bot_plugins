@@ -6,7 +6,6 @@ from zhenxun.services.db_context import Model
 
 
 class BuffPrice(Model):
-
     id = fields.IntField(pk=True, generated=True, auto_increment=True)
     """自增id"""
     case_id = fields.IntField()

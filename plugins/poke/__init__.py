@@ -1,6 +1,5 @@
 import json
 import os
-import json
 import random
 
 from nonebot import on_notice
@@ -78,6 +77,7 @@ depend_send_voice = "dinggong"
 IMAGE_MANAGEMENT = IMAGE_PATH / "image_management"
 
 text_data = {}
+
 
 @poke_.handle()
 async def _(bot: Bot, event: PokeNotifyEvent):

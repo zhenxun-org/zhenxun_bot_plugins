@@ -327,7 +327,7 @@ class GuardianHandle(BaseHandle[GuardianData]):
             idx += 1
         # 头像框
         await self.download_img(
-            GT_URL + "/8/8e/ogbqslbhuykjhnc8trtoa0p0nhfzohs.png", f"avatar_frame"
+            GT_URL + "/8/8e/ogbqslbhuykjhnc8trtoa0p0nhfzohs.png", "avatar_frame"
         )
         await self.update_up_char()
 

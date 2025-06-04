@@ -1,5 +1,4 @@
 import asyncio
-import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import ClassVar
@@ -147,7 +146,7 @@ class JmDownload:
                 DetailInfo(
                     bot=bot, user_id=user_id, group_id=group_id, album_id=album_id
                 ),
-                zip_path=zip_path
+                zip_path=zip_path,
             )
         else:
             if album_id not in cls._data:

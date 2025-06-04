@@ -178,7 +178,7 @@ async def xie_ai(text: str) -> str:
             else await check_text(content)
         )
     except Exception as e:
-        logger.error(f"Ai xie_ai 发生错误", e=e)
+        logger.error("Ai xie_ai 发生错误", e=e)
         return ""
 
 
@@ -237,5 +237,5 @@ async def check_text(text: str) -> str:
             if data["data"]["conclusion_type"] == 2:
                 return ""
     except Exception as e:
-        logger.error(f"检测违规文本错误...", e=e)
+        logger.error("检测违规文本错误...", e=e)
     return text

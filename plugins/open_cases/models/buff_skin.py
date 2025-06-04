@@ -7,7 +7,6 @@ from zhenxun.utils.common_utils import SqlUtils
 
 
 class BuffSkin(Model):
-
     id = fields.IntField(pk=True, generated=True, auto_increment=True)
     """自增id"""
     case_name: str = fields.CharField(255)  # type: ignore
@@ -53,11 +52,9 @@ class BuffSkin(Model):
         # unique_together = ("case_name", "name", "skin_name", "abrasion", "is_stattrak")
 
     def __eq__(self, other: Self):  # type: ignore
-
         return self.skin_id == other.skin_id
 
     def __hash__(self):
-
         return hash(self.case_name + self.name + self.skin_name + str(self.is_stattrak))
 
     @classmethod

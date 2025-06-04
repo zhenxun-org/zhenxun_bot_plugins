@@ -1,13 +1,10 @@
 from tortoise import fields
 
-from zhenxun.services.log import logger
-from zhenxun.configs.config import BotConfig
 from zhenxun.services.db_context import Model
 from zhenxun.utils.common_utils import SqlUtils
 
 
 class OmegaPixivIllusts(Model):
-
     id = fields.IntField(pk=True, generated=True, auto_increment=True)
     """自增id"""
     pid = fields.BigIntField()

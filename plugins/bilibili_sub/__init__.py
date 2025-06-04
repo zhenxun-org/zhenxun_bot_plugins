@@ -366,20 +366,24 @@ async def _(uid: int):
         await MessageUtils.build_message(msg).finish()
     await MessageUtils.build_message(f"账号 {uid} 已退出登录").finish()
 
+
 def should_run():
     """判断当前时间是否在运行时间段内（7点30到次日1点）"""
     now = datetime.now().time()
     # 如果当前时间在 7:30 到 23:59:59 之间，或者 0:00 到 1:00 之间，则运行
-    return (now >= datetime.strptime(base_config.get("SLEEP_END_TIME"), "%H:%M").time()) or (now < datetime.strptime(base_config.get("SLEEP_START_TIME"), "%H:%M").time())
+    return (
+        now >= datetime.strptime(base_config.get("SLEEP_END_TIME"), "%H:%M").time()
+    ) or (now < datetime.strptime(base_config.get("SLEEP_START_TIME"), "%H:%M").time())
 
 
 # 信号量，限制并发任务数
 semaphore = asyncio.Semaphore(200)
 
+
 # 推送
 @scheduler.scheduled_job(
     "interval",
-    seconds=base_config.get("CHECK_TIME") if base_config.get("CHECK_TIME") else 30,  
+    seconds=base_config.get("CHECK_TIME") if base_config.get("CHECK_TIME") else 30,
     max_instances=500,
     misfire_grace_time=40,
 )
@@ -408,9 +412,7 @@ async def check_subscriptions():
                     logger.info("No subscription data available.")
                     continue
 
-                logger.info(
-                    f"Bilibili订阅开始检测：{sub.sub_id}，类型：{sub.sub_type}"
-                )
+                logger.info(f"Bilibili订阅开始检测：{sub.sub_id}，类型：{sub.sub_type}")
 
                 # 获取订阅状态，设置超时时间为30秒
                 msg_list = await asyncio.wait_for(

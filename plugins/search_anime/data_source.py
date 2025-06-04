@@ -49,5 +49,5 @@ async def get_repass(url: str, max_: int) -> list[str]:
                 "【{}】| {}\n【{}】| {}".format(class_a, title, size, magent)
             )
         except Exception as e:
-            logger.error(f"搜番发生错误", e=e)
+            logger.error("搜番发生错误", e=e)
     return put_line

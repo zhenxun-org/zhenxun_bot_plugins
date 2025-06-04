@@ -26,7 +26,7 @@ async def get_epic_game() -> dict | None:
         games = res_json["data"]["Catalog"]["searchStore"]["elements"]
         return games
     except Exception as e:
-        logger.error(f"Epic 访问接口错误", e=e)
+        logger.error("Epic 访问接口错误", e=e)
     return None
 
 
@@ -47,7 +47,7 @@ async def get_epic_game_desp(name) -> dict | None:
         gamesDesp = res_json["pages"][0]["data"]["about"]
         return gamesDesp
     except Exception as e:
-        logger.error(f"Epic 访问接口错误", e=e)
+        logger.error("Epic 访问接口错误", e=e)
     return None
 
 
@@ -174,7 +174,7 @@ async def get_epic_free(
                             f"\n\nFREE now :: {game_name} ({game_price})\n{game_desp}\n此游戏由 {game_dev} 开发、{game_pub} 发行，将在 UTC 时间 {end_date} 结束免费游玩，戳链接速度加入你的游戏库吧~\n{game_url}\n"
                         )
                         return MessageUtils.build_message(_message), 200
-            except TypeError as e:
+            except TypeError:
                 # logger.info(str(e))
                 pass
         return MessageUtils.template2forward(msg_list, bot.self_id), 200

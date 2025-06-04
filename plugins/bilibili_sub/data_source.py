@@ -2,7 +2,6 @@ import asyncio
 import httpx
 import nonebot
 import random
-from typing import List
 from asyncio.exceptions import TimeoutError
 from bilireq.exceptions import ResponseCodeError
 from datetime import datetime, timedelta
@@ -347,7 +346,7 @@ async def _get_up_status(id_: int) -> list:
                         id_, dynamic_upload_time=dynamic_upload_time
                     )
                     return msg_list  # 停止执行
-            
+
             await BilibiliSub.sub_handle(id_, dynamic_upload_time=dynamic_upload_time)
             msg_list = [f"{uname} 发布了动态！📢\n", dynamic_img, f"\n查看详情：{link}"]
         else:  # 超过30分钟仍更新时间戳避免重复处理

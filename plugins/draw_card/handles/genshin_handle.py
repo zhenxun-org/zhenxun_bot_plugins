@@ -376,7 +376,7 @@ class GenshinHandle(BaseHandle[GenshinData]):
             idx += 1
         # 下载头像框
         await self.download_img(
-            YS_URL + "/2/2e/opbcst4xbtcq0i4lwerucmosawn29ti.png", f"avatar_frame"
+            YS_URL + "/2/2e/opbcst4xbtcq0i4lwerucmosawn29ti.png", "avatar_frame"
         )
         await self.update_up_char()
 

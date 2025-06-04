@@ -4,7 +4,6 @@ from zhenxun.services.db_context import Model
 
 
 class OpenCasesLog(Model):
-
     id = fields.IntField(pk=True, generated=True, auto_increment=True)
     """自增id"""
     user_id = fields.CharField(255)

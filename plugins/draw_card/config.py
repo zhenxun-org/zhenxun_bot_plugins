@@ -170,7 +170,7 @@ AConfig.add_plugin_config(
     "draw_card",
     "SEMAPHORE",
     5,
-    help=f"异步数据下载数量限制",
+    help="异步数据下载数量限制",
     default_value=5,
     type=int,
 )
