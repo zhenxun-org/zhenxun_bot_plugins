@@ -30,9 +30,10 @@ cloud_handler = CloudHandler()
 _matcher = on_alconna(
     Alconna(
         "wordcloud",
-        Args["date?", ["今日", "昨日", "本周", "上周", "本月", "上月", "本季", "年度", "历史"]][
-            "at_user?", At
-        ],
+        Args[
+            "date?",
+            ["今日", "昨日", "本周", "上周", "本月", "上月", "本季", "年度", "历史"],
+        ]["at_user?", At],
         Option("-m|--my", action=store_true, help_text="个人词云"),
         Option("-d|--a_date", Args["z_date", str]),
         Option(

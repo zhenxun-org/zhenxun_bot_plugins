@@ -34,9 +34,9 @@ class TimeService:
             )
             stop = dt
         elif time_type == "上周":
-            this_week_start = dt.replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(
-                days=dt.weekday()
-            )
+            this_week_start = dt.replace(
+                hour=0, minute=0, second=0, microsecond=0
+            ) - timedelta(days=dt.weekday())
             start = this_week_start - timedelta(days=7)
             stop = this_week_start
         elif time_type == "本月":

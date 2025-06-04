@@ -27,7 +27,6 @@ _info_matcher = on_alconna(Alconna("点赞信息"), priority=5, block=True)
 
 @_matcher.handle()
 async def send_like(bot: Bot, session: Uninfo):
-
     now = datetime.now()
     filter_time: datetime = now - timedelta(
         hours=now.hour, minutes=now.minute, seconds=now.second

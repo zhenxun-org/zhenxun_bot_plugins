@@ -88,7 +88,6 @@ class ArticleInfo(BaseModel):
 class UserStat(BaseModel):
     """用户统计信息"""
 
-
     following: int = 0
     follower: int = 0
     archive_view: int = 0
