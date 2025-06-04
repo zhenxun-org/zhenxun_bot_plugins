@@ -42,8 +42,16 @@ from .model import VideoInfo, LiveInfo, ArticleInfo, SeasonInfo, UserInfo
 from .utils.url_parser import UrlParserRegistry, extract_bilibili_url_from_message
 
 from .commands import _perform_video_download
-from .commands import login_matcher, bili_download_matcher, auto_download_matcher, bili_cover_matcher  # noqa: F401
-from .commands.login import credential_status_matcher  # noqa: F401
+from .commands import login_matcher, bili_download_matcher, auto_download_matcher, bili_cover_matcher
+from .commands.login import credential_status_matcher
+
+__all__ = [
+    "login_matcher",
+    "bili_download_matcher",
+    "auto_download_matcher",
+    "bili_cover_matcher",
+    "credential_status_matcher",
+]
 
 
 async def _initialize_services():
