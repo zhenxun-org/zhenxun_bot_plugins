@@ -1,20 +1,18 @@
 import asyncio
-import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import ClassVar
 
 import jmcomic
-import pyminizip
 from jmcomic import JmAlbumDetail
 from nonebot.adapters.onebot.v11 import Bot
 from pikepdf import Encryption, Pdf
+import pyminizip
 
 from zhenxun.configs.path_config import DATA_PATH, TEMP_PATH
 from zhenxun.services.log import logger
 from zhenxun.utils.platform import PlatformUtils
 from zhenxun.utils.utils import ResourceDirManager
-
 
 IMAGE_OUTPUT_PATH = TEMP_PATH / "jmcomic"
 IMAGE_OUTPUT_PATH.mkdir(parents=True, exist_ok=True)
@@ -147,7 +145,7 @@ class JmDownload:
                 DetailInfo(
                     bot=bot, user_id=user_id, group_id=group_id, album_id=album_id
                 ),
-                zip_path=zip_path
+                zip_path=zip_path,
             )
         else:
             if album_id not in cls._data:

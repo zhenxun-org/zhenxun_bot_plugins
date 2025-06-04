@@ -1,11 +1,12 @@
 import asyncio
+from datetime import datetime
 import random
 import re
-from datetime import datetime
 
 from nonebot_plugin_alconna import UniMessage
-from nonebot_plugin_session import EventSession
+from nonebot_plugin_uninfo import Uninfo
 from tortoise.functions import Sum
+
 from zhenxun.configs.config import Config
 from zhenxun.configs.path_config import IMAGE_PATH
 from zhenxun.models.sign_user import SignUser
@@ -14,6 +15,7 @@ from zhenxun.services.log import logger
 from zhenxun.utils._build_image import BuildImage
 from zhenxun.utils._image_template import ImageTemplate
 from zhenxun.utils.message import MessageUtils
+from zhenxun.utils.platform import PlatformUtils
 from zhenxun.utils.utils import cn2py
 
 from .buff import BuffUpdateManager, CaseManager
@@ -118,8 +120,8 @@ class OpenCaseManager:
             ["红色暗金", data["arst"]],
             ["金色罕见", data["ak"]],
             ["金色暗金", data["akst"]],
-            ["花费金额", f'{data["am"]:.2f}'],
-            ["获取金额", f'{data["asp"]:.2f}'],
+            ["花费金额", f"{data['am']:.2f}"],
+            ["获取金额", f"{data['asp']:.2f}"],
         ]
         return await ImageTemplate.table_page(
             "群组开箱统计", None, ["名称", "数量"], data_list
@@ -167,7 +169,8 @@ class OpenCaseManager:
             num: 开箱次数
 
         返回:
-            tuple[OpenCasesUser | UniMessage, str, int]: 开箱用户或返回消息和箱子名称和最大开箱数
+            tuple[OpenCasesUser | UniMessage, str, int]:
+                            开箱用户或返回消息和箱子名称和最大开箱数
         """
         if not CaseManager.CURRENT_CASES:
             return MessageUtils.build_message("未收录任何武器箱"), "", 0
@@ -198,7 +201,8 @@ class OpenCaseManager:
         if user.today_open_total >= max_count:
             return (
                 MessageUtils.build_message(
-                    "今天已达开箱上限了喔，明天再来吧\n(提升好感度可以增加每日开箱数 #疯狂暗示)"
+                    "今天已达开箱上限了喔，明天再来吧\n"
+                    "(提升好感度可以增加每日开箱数 #疯狂暗示)"
                 ),
                 "",
                 0,
@@ -271,7 +275,7 @@ class OpenCaseManager:
         user: OpenCasesUser,
         num: int,
         max_count: int,
-        session: EventSession,
+        session: Uninfo,
     ) -> UniMessage:
         """开一箱
 
@@ -280,7 +284,7 @@ class OpenCaseManager:
             user: 开箱用户
             num: 开箱数量
             max_count: 最大开箱数
-            session: EventSession
+            session: Uninfo
 
         返回:
             UniMessage: 返回消息
@@ -294,6 +298,8 @@ class OpenCaseManager:
         img_list = []
         total_price = 0
         img_w, img_h = 0, 0
+        if c := await BuffSkin.get_or_none(case_name=case_name, color="CASE"):
+            case_price = c.sell_min_price
         for skin, rand in skin_list:
             img = await draw_card(skin, str(rand)[:11])
             img_w, img_h = img.size
@@ -339,13 +345,13 @@ class OpenCaseManager:
         group_id: str,
         case_name: str | None,
         num: int,
-        session: EventSession,
+        session: Uninfo,
     ) -> UniMessage:
         user, case_name, max_count = await cls.__open_check(
-            case_name, user_id, group_id, session.platform, num
+            case_name, user_id, group_id, PlatformUtils.get_platform(session), num
         )
         if not isinstance(user, OpenCasesUser):
-            return user
+            return MessageUtils.build_message(user)
         logger.debug(f"尝试开启武器箱: {case_name}", "开箱", session=session)
         return await cls.__start_open_one(case_name, user, num, max_count, session)
 

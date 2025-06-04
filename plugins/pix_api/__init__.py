@@ -4,7 +4,7 @@ import nonebot
 from nonebot.plugin import PluginMetadata
 
 from zhenxun.configs.config import Config
-from zhenxun.configs.utils import Command, PluginExtraData, RegisterConfig
+from zhenxun.configs.utils import PluginExtraData, RegisterConfig
 from zhenxun.utils.enum import PluginType
 
 Config.set_name("pix", "PIX图库")

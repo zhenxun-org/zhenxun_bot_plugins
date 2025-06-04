@@ -7,12 +7,15 @@ import re
 import time
 from typing import ClassVar, Literal
 
-from nonebot import require
 from nonebot.adapters import Bot
 from nonebot.compat import model_dump
 from nonebot_plugin_alconna import Text, UniMessage, UniMsg
 from nonebot_plugin_uninfo import Uninfo
 
+from zhenxun.builtin_plugins.sign_in.utils import (
+    get_level_and_next_impression,
+    level2attitude,
+)
 from zhenxun.configs.config import BotConfig, Config
 from zhenxun.configs.path_config import IMAGE_PATH
 from zhenxun.configs.utils import AICallableTag
@@ -23,17 +26,6 @@ from zhenxun.utils.http_utils import AsyncHttpx
 from zhenxun.utils.message import MessageUtils
 
 from .call_tool import AiCallTool
-from .exception import CallApiParamException, NotResultException
-from .models.bym_chat import BymChat
-from .models.bym_gift_log import GiftLog
-
-require("sign_in")
-
-from zhenxun.builtin_plugins.sign_in.utils import (
-    get_level_and_next_impression,
-    level2attitude,
-)
-
 from .config import (
     BYM_CONTENT,
     DEEP_SEEK_SPLIT,
@@ -51,6 +43,9 @@ from .config import (
     OpenAiResult,
     base_config,
 )
+from .exception import CallApiParamException, NotResultException
+from .models.bym_chat import BymChat
+from .models.bym_gift_log import GiftLog
 
 semaphore = asyncio.Semaphore(3)
 
@@ -356,6 +351,9 @@ class CallApi:
         conversation: list[ChatMessage],
         tools: Sequence[AICallableTag] | None,
     ) -> OpenAiResult:
+        if not self.chat_url:
+            logger.warning("请求接口错误, 未配置接口地址", "BYM_AI")
+            raise Exception("请求接口错误, 未配置接口地址")
         send_json = {
             "stream": False,
             "model": self.tool_model if tools else self.chat_model,
@@ -739,7 +737,7 @@ class ChatManager:
             if call_result:
                 conversation.append(ChatMessage(role="assistant", content=call_result))
                 # temp_conversation.extend(
-                #     await AiCallTool.build_conversation(message.tool_calls, func_param)
+                # await AiCallTool.build_conversation(message.tool_calls, func_param)
                 # )
                 result = await CallApi().fetch_chat(session.user.id, conversation, [])
                 group_id, assistant_reply, message = cls._get_base_data(

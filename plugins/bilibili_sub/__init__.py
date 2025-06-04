@@ -1,13 +1,13 @@
 import asyncio
-import time
-import nonebot
 from datetime import datetime
 from io import BytesIO
+import time
+
 from arclet.alconna.typing import CommandMeta
 from bilireq.login import Login
-from nonebot.adapters.onebot.v11 import Bot
+import nonebot
+from nonebot.adapters import Bot
 from nonebot.drivers import Driver
-from nonebot.log import logger
 from nonebot.matcher import Matcher
 from nonebot.params import ArgStr
 from nonebot.permission import SUPERUSER
@@ -16,15 +16,18 @@ from nonebot.typing import T_State
 from nonebot_plugin_alconna import Alconna, Args, UniMessage, on_alconna
 from nonebot_plugin_apscheduler import scheduler
 from nonebot_plugin_session import EventSession
+from nonebot_plugin_uninfo import Uninfo
+
 from zhenxun.configs.config import Config
 from zhenxun.configs.utils import PluginExtraData, RegisterConfig
 from zhenxun.models.group_console import GroupConsole
-from zhenxun.services.log import logger  # noqa: F811
+from zhenxun.services.log import logger
 from zhenxun.utils.image_utils import text2image
 from zhenxun.utils.message import MessageUtils
 from zhenxun.utils.platform import PlatformUtils
 
 from .auth import AuthManager
+from .config import LOG_COMMAND
 from .data_source import (
     BilibiliSub,
     SubManager,
@@ -210,53 +213,58 @@ async def _(session: EventSession, state: T_State, sub_type: str, sub_msg: str):
         sub_msg = sub_msg.split("?")[0]
         sub_msg = sub_msg[:-1] if sub_msg[-1] == "/" else sub_msg
         sub_msg = sub_msg.split("/")[-1]
-    id_ = sub_msg[2:] if sub_msg.startswith("md") else sub_msg
-    if not id_.isdigit():
+    sub_id = sub_msg[2:] if sub_msg.startswith("md") else sub_msg
+    if not sub_id.isdigit():
         if sub_type in ["season", "动漫", "番剧"]:
             rst = "*以为您找到以下番剧，请输入Id选择：*\n"
-            state["season_data"] = await get_media_id(id_)
+            state["season_data"] = await get_media_id(sub_id)
+            if not state["season_data"]:
+                await MessageUtils.build_message(f"未找到番剧：{sub_msg}").finish()
             if len(state["season_data"]) == 0:
                 await MessageUtils.build_message(f"未找到番剧：{sub_msg}").finish()
             for i, x in enumerate(state["season_data"]):
-                rst += f'{i + 1}.{state["season_data"][x]["title"]}\n----------\n'
+                rst += f"{i + 1}.{state['season_data'][x]['title']}\n----------\n"
             await MessageUtils.build_message("\n".join(rst.split("\n")[:-1])).send()
         else:
             await MessageUtils.build_message("Id 必须为全数字！").finish()
     else:
-        state["id"] = int(id_)
+        state["sub_id"] = int(sub_id)
 
 
 @add_sub.got("sub_type")
 @add_sub.got("sub_user")
 @add_sub.got("id")
 async def _(
-    session: EventSession,
+    session: Uninfo,
     state: T_State,
-    id_: str = ArgStr("id"),
+    sub_id: str = ArgStr("sub_id"),
     sub_type: str = ArgStr("sub_type"),
     sub_user: str = ArgStr("sub_user"),
 ):
-    if sub_type in ["season", "动漫", "番剧"] and state.get("season_data"):
+    if sub_type in {"season", "动漫", "番剧"} and state.get("season_data"):
         season_data = state["season_data"]
-        if not id_.isdigit() or int(id_) < 1 or int(id_) > len(season_data):
+        if not sub_id.isdigit() or int(sub_id) < 1 or int(sub_id) > len(season_data):
             await add_sub.reject_arg("id", "Id必须为数字且在范围内！请重新输入...")
-        id_ = season_data[int(id_) - 1]["media_id"]
-    id_ = int(id_)
-    if sub_type in ["主播", "直播"]:
-        await MessageUtils.build_message(await add_live_sub(id_, sub_user)).send()
-    elif sub_type.lower() in ["up", "用户"]:
-        await MessageUtils.build_message(await add_up_sub(id_, sub_user)).send()
-    elif sub_type in ["season", "动漫", "番剧"]:
-        await MessageUtils.build_message(await add_season_sub(id_, sub_user)).send()
+        sub_id = season_data[int(sub_id) - 1]["media_id"]
+    id_data = int(sub_id)
+    if sub_type in {"主播", "直播"}:
+        await MessageUtils.build_message(
+            await add_live_sub(session, id_data, sub_user)
+        ).send()
+    elif sub_type.lower() in {"up", "用户"}:
+        await MessageUtils.build_message(
+            await add_up_sub(session, id_data, sub_user)
+        ).send()
+    elif sub_type in {"season", "动漫", "番剧"}:
+        await MessageUtils.build_message(
+            await add_season_sub(session, id_data, sub_user)
+        ).send()
     else:
         await MessageUtils.build_message(
             "参数错误，第一参数必须为：主播/up/番剧！"
         ).finish()
-    gid = session.id3 or session.id2
     logger.info(
-        f"(USER {session.id1}, GROUP "
-        f"{gid if gid else 'private'})"
-        f" 添加订阅：{sub_type} -> {sub_user} -> {id_}"
+        f"添加订阅：{sub_type} -> {sub_user} -> {id_data}", LOG_COMMAND, session=session
     )
 
 
@@ -269,20 +277,15 @@ async def _(
     sub_type: str = ArgStr("sub_type"),
     sub_user: str = ArgStr("sub_user"),
 ):
-    if sub_type in ["主播", "直播"]:
+    if sub_type in {"主播", "直播"}:
         result = await BilibiliSub.delete_bilibili_sub(int(id_), sub_user, "live")
-    elif sub_type.lower() in ["up", "用户"]:
+    elif sub_type.lower() in {"up", "用户"}:
         result = await BilibiliSub.delete_bilibili_sub(int(id_), sub_user, "up")
     else:
         result = await BilibiliSub.delete_bilibili_sub(int(id_), sub_user)
     if result:
         await MessageUtils.build_message(f"删除订阅id：{id_} 成功...").send()
-        gid = session.id3 or session.id2
-        logger.info(
-            f"(USER {session.id1}, GROUP "
-            f"{gid if gid else 'private'})"
-            f" 删除订阅 {id_}"
-        )
+        logger.info(f"删除订阅 {id_}", session=session)
     else:
         await MessageUtils.build_message(f"删除订阅id：{id_} 失败...").send()
 
@@ -298,12 +301,10 @@ async def _(session: EventSession):
     for x in data:
         if x.sub_type == "live":
             live_rst += (
-                f"\t直播间id：{x.sub_id}\n"
-                f"\t名称：{x.uname}\n"
-                f"------------------\n"
+                f"\t直播间id：{x.sub_id}\n\t名称：{x.uname}\n------------------\n"
             )
         if x.sub_type == "up":
-            up_rst += f"\tUP：{x.uname}\n" f"\tuid：{x.uid}\n" f"------------------\n"
+            up_rst += f"\tUP：{x.uname}\n\tuid：{x.uid}\n------------------\n"
         if x.sub_type == "season":
             season_rst += (
                 f"\t番剧id：{x.sub_id}\n"
@@ -346,14 +347,15 @@ async def _(matcher: Matcher):
     img = await login.get_qrcode(qr_url)
     if not img:
         await MessageUtils.build_message("获取二维码失败").finish()
+    if isinstance(img, str):
+        await MessageUtils.build_message(img).finish()
     buffered = BytesIO()
-    img.save(buffered, format="PNG")
+    img.save(buffered)
     img_data = buffered.getvalue()
     await MessageUtils.build_message(img_data).send()
     try:
         auth = await login.qrcode_login(interval=5)
         assert auth, "登录失败，返回数据为空"
-        logger.debug(auth.data)
         AuthManager.add_auth(auth)
     except Exception as e:
         await MessageUtils.build_message(f"登录失败: {e}").finish()
@@ -366,20 +368,24 @@ async def _(uid: int):
         await MessageUtils.build_message(msg).finish()
     await MessageUtils.build_message(f"账号 {uid} 已退出登录").finish()
 
+
 def should_run():
     """判断当前时间是否在运行时间段内（7点30到次日1点）"""
     now = datetime.now().time()
     # 如果当前时间在 7:30 到 23:59:59 之间，或者 0:00 到 1:00 之间，则运行
-    return (now >= datetime.strptime(base_config.get("SLEEP_END_TIME"), "%H:%M").time()) or (now < datetime.strptime(base_config.get("SLEEP_START_TIME"), "%H:%M").time())
+    return (
+        now >= datetime.strptime(base_config.get("SLEEP_END_TIME"), "%H:%M").time()
+    ) or (now < datetime.strptime(base_config.get("SLEEP_START_TIME"), "%H:%M").time())
 
 
 # 信号量，限制并发任务数
 semaphore = asyncio.Semaphore(200)
 
+
 # 推送
 @scheduler.scheduled_job(
     "interval",
-    seconds=base_config.get("CHECK_TIME") if base_config.get("CHECK_TIME") else 30,  
+    seconds=base_config.get("CHECK_TIME") or 30,
     max_instances=500,
     misfire_grace_time=40,
 )
@@ -387,6 +393,8 @@ async def check_subscriptions():
     """
     定时任务：检查订阅并发送消息
     """
+    if not sub_manager:
+        return
     async with semaphore:  # 限制并发任务数
         if base_config.get("ENABLE_SLEEP_MODE"):
             if not should_run():
@@ -401,20 +409,20 @@ async def check_subscriptions():
             if not bot:
                 continue
 
+            # 获取随机订阅数据
+            sub = await sub_manager.random_sub_data()
+            if not sub:
+                logger.debug("没有获取可用的订阅数据", LOG_COMMAND)
+                continue
             try:
-                # 获取随机订阅数据
-                sub = await sub_manager.random_sub_data()
-                if not sub:
-                    logger.info("No subscription data available.")
-                    continue
-
                 logger.info(
-                    f"Bilibili订阅开始检测：{sub.sub_id}，类型：{sub.sub_type}"
+                    f"Bilibili订阅开始检测：{sub.sub_id}，类型：{sub.sub_type}",
+                    LOG_COMMAND,
                 )
 
                 # 获取订阅状态，设置超时时间为30秒
                 msg_list = await asyncio.wait_for(
-                    get_sub_status(sub.sub_id, sub.sub_type), timeout=30
+                    get_sub_status(None, int(sub.sub_id), sub.sub_type), timeout=30
                 )
 
                 if msg_list:
@@ -423,23 +431,26 @@ async def check_subscriptions():
                     # 如果是直播订阅，额外检测UP主动态
                     if sub.sub_type == "live":
                         msg_list = await asyncio.wait_for(
-                            get_sub_status(sub.sub_id, "up"), timeout=30
+                            get_sub_status(None, int(sub.sub_id), "up"), timeout=30
                         )
                         if msg_list:
                             await send_sub_msg(msg_list, sub, bot)
 
             except asyncio.TimeoutError:
-                logger.error(f"任务超时：检测订阅 {sub.sub_id} 时超时")
+                logger.error(f"任务超时：检测订阅 {sub.sub_id} 时超时", LOG_COMMAND)
             except Exception as e:
-                logger.error(f"任务异常：检测订阅 {sub.sub_id} 时出错：{e}")
+                logger.error(
+                    f"任务异常：检测订阅 {sub.sub_id} 时出错", LOG_COMMAND, e=e
+                )
 
 
 async def send_sub_msg(msg_list: list, sub: BilibiliSub, bot: Bot):
-    """
-    推送信息
-    :param msg_list: 消息列表
-    :param sub: BilibiliSub
-    :param bot: Bot
+    """推送信息
+
+    参数:
+        msg_list: 消息列表
+        sub: BilibiliSub
+        bot: Bot
     """
     temp_group = []
     if msg_list:
@@ -479,4 +490,6 @@ async def send_sub_msg(msg_list: list, sub: BilibiliSub, bot: Bot):
                         message=MessageUtils.build_message(msg_list),
                     )
             except Exception as e:
-                logger.error(f"B站订阅推送发生错误 sub_id：{sub.sub_id} {type(e)}：{e}")
+                logger.error(
+                    f"B站订阅推送发生错误 sub_id：{sub.sub_id}", LOG_COMMAND, e=e
+                )

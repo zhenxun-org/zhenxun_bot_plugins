@@ -14,7 +14,7 @@ from ..config import base_config, PLUGIN_TEMP_DIR, PLUGIN_CACHE_DIR, IMAGE_CACHE
 VIDEO_CACHE_DIR = PLUGIN_TEMP_DIR / "video_cache"
 VIDEO_CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
-CACHE_INDEX_FILE = PLUGIN_CACHE_DIR/ "cache_index.json"
+CACHE_INDEX_FILE = PLUGIN_CACHE_DIR / "cache_index.json"
 URL_CACHE_FILE = PLUGIN_CACHE_DIR / "url_cache.json"
 
 _video_cache_lock = asyncio.Lock()

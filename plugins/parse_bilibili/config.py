@@ -153,6 +153,7 @@ SCREENSHOT_ELEMENT_OPUS = "#app > div.opus-detail > div.bili-opus-view"
 SCREENSHOT_ELEMENT_ARTICLE = ".article-holder"
 SCREENSHOT_TIMEOUT = 60
 
+
 # 视频下载和发送相关配置
 DOWNLOAD_TIMEOUT = 120  # 下载超时时间(秒)
 DOWNLOAD_MAX_RETRIES = 3  # 下载文件最大重试次数

@@ -84,19 +84,19 @@ async def _(
 ):
     if handle_type == "b":
         result = await KeywordManage.handle_keyword(
-            session.user.id, id, None, KwHandleType.BLACK
+            session.user.id, ids, None, KwHandleType.BLACK
         )
     elif handle_type == "a":
         result = await KeywordManage.handle_keyword(
-            session.user.id, id, None, KwHandleType.PASS
+            session.user.id, ids, None, KwHandleType.PASS
         )
     elif handle_type == "f":
         result = await KeywordManage.handle_keyword(
-            session.user.id, id, None, KwHandleType.FAIL
+            session.user.id, ids, None, KwHandleType.FAIL
         )
     else:
         result = await KeywordManage.handle_keyword(
-            session.user.id, id, None, KwHandleType.IGNORE
+            session.user.id, ids, None, KwHandleType.IGNORE
         )
     await MessageUtils.build_message(result).send()
     logger.info(f"PIX 处理结果: {result}", arparma.header_result, session=session)
