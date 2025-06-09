@@ -232,13 +232,6 @@ UrlParserRegistry.register(BangumiUrlParser)
 UrlParserRegistry.register(PureVideoIdParser)
 
 
-def extract_url_from_text(text: str) -> Optional[str]:
-    """提取URL"""
-    from .common import extract_url_from_text as common_extract_url
-
-    return common_extract_url(text)
-
-
 def extract_bilibili_url_from_miniprogram(raw_str: str) -> Optional[str]:
     """从小程序消息提取B站URL"""
     logger.debug(f"开始解析小程序消息，原始数据长度: {len(raw_str)}")
@@ -345,6 +338,8 @@ def extract_bilibili_url_from_message(
                         target_url = plain_text
                         logger.debug(f"从文本内容提取到纯视频ID: {target_url}")
             else:
+                from .common import extract_url_from_text
+
                 url = extract_url_from_text(plain_text)
                 if url and ("bilibili.com" in url or "b23.tv" in url):
                     target_url = url
