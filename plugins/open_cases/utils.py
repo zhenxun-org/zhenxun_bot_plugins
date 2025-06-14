@@ -1,26 +1,42 @@
 import random
 
-from zhenxun.services.log import logger
+from nonebot.params import Depends
+from nonebot_plugin_uninfo import Uninfo
 
-from .models.buff_skin import BuffSkin
+from zhenxun.services.log import logger
+from zhenxun.utils.message import MessageUtils
+
 from .config import (
+    BLUE_ST,
+    FACTORY_NEW_E,
+    FIELD_TESTED_E,
+    FIELD_TESTED_S,
     KNIFE,
     KNIFE_ST,
-    RED,
-    RED_ST,
+    MINIMAL_WEAR_E,
+    MINIMAL_WEAR_S,
     PINK,
     PINK_ST,
     PURPLE,
     PURPLE_ST,
-    BLUE_ST,
-    FACTORY_NEW_E,
-    MINIMAL_WEAR_S,
-    MINIMAL_WEAR_E,
-    FIELD_TESTED_S,
-    FIELD_TESTED_E,
-    WELL_WORN_S,
+    RED,
+    RED_ST,
     WELL_WORN_E,
+    WELL_WORN_S,
 )
+from .models.buff_skin import BuffSkin
+
+
+def GetGroupId():
+    """获取群组id"""
+
+    async def dependency(session: Uninfo):
+        group_id = session.group.id if session.group else None
+        if not group_id:
+            await MessageUtils.build_message("群组id为空").finish()
+        return group_id
+
+    return Depends(dependency)
 
 
 def get_wear(rand: float) -> str:

@@ -1,9 +1,3 @@
-"""
-B站API服务模块
-
-提供了B站API请求服务，负责获取视频、直播、专栏等信息
-"""
-
 import asyncio
 from typing import Dict, Any, Optional, List
 
@@ -31,7 +25,7 @@ from ..model import (
     SeasonStat,
     ArticleInfo,
 )
-from ..services.network_service import NetworkService
+from .network_service import NetworkService
 from ..utils.exceptions import (
     BilibiliRequestError,
     BilibiliResponseError,
@@ -51,22 +45,11 @@ RETRYABLE_EXCEPTIONS = (
 
 
 class BilibiliApiService:
-    """B站API服务，负责获取视频、直播、专栏等信息"""
+    """B站API服务"""
 
     @staticmethod
     def _create_video_instance(vid: str) -> video.Video:
-        """
-        创建Video实例
-
-        Args:
-            vid: 视频ID (av或BV开头)
-
-        Returns:
-            Video实例
-
-        Raises:
-            UrlParseError: 当视频ID格式错误时
-        """
+        """创建Video实例"""
         if vid.lower().startswith("av"):
             try:
                 aid = int(vid[2:])
@@ -80,16 +63,7 @@ class BilibiliApiService:
 
     @staticmethod
     def _map_video_info_to_model(info: Dict[str, Any], parsed_url: str) -> VideoInfo:
-        """
-        将API返回的视频信息映射到VideoInfo模型
-
-        Args:
-            info: API返回的视频信息
-            parsed_url: 解析后的URL
-
-        Returns:
-            VideoInfo模型实例
-        """
+        """将API返回的视频信息映射到VideoInfo模型"""
         owner = Owner(
             mid=info["owner"]["mid"],
             name=info["owner"]["name"],
@@ -144,16 +118,7 @@ class BilibiliApiService:
 
     @staticmethod
     def _map_live_info_to_model(info: Dict[str, Any], parsed_url: str) -> LiveInfo:
-        """
-        将API返回的直播间信息映射到LiveInfo模型
-
-        Args:
-            info: API返回的直播间信息
-            parsed_url: 解析后的URL
-
-        Returns:
-            LiveInfo模型实例
-        """
+        """将API返回的直播间信息映射到LiveInfo模型"""
         room_info = info["room_info"]
         anchor_info = info.get("anchor_info", {}).get("base_info", {})
 
@@ -187,21 +152,7 @@ class BilibiliApiService:
 
     @staticmethod
     async def get_video_info(vid: str, parsed_url: str) -> VideoInfo:
-        """
-        获取视频信息
-
-        Args:
-            vid: 视频ID (av或BV开头)
-            parsed_url: 解析后的URL
-
-        Returns:
-            VideoInfo模型实例
-
-        Raises:
-            ResourceNotFoundError: 当视频不存在时
-            BilibiliResponseError: 当API响应错误时
-            BilibiliRequestError: 当网络请求错误时
-        """
+        """获取视频信息"""
         logger.debug(f"获取视频信息: {vid}, URL: {parsed_url}", "B站解析")
 
         try:
@@ -272,21 +223,7 @@ class BilibiliApiService:
 
     @staticmethod
     async def get_live_info(room_id: int, parsed_url: str) -> LiveInfo:
-        """
-        获取直播间信息
-
-        Args:
-            room_id: 直播间ID
-            parsed_url: 解析后的URL
-
-        Returns:
-            LiveInfo模型实例
-
-        Raises:
-            ResourceNotFoundError: 当直播间不存在时
-            BilibiliResponseError: 当API响应错误时
-            BilibiliRequestError: 当网络请求错误时
-        """
+        """获取直播间信息"""
         logger.debug(f"获取直播间信息: {room_id}", "B站解析")
 
         try:
@@ -364,22 +301,7 @@ class BilibiliApiService:
         retry=retry_if_exception_type(RETRYABLE_EXCEPTIONS),
     )
     async def get_article_info(cv_id: str, parsed_url: str) -> ArticleInfo:
-        """
-        获取专栏文章信息 (使用 bilibili-api)
-
-        Args:
-            cv_id: 专栏ID (cv开头)
-            parsed_url: 解析后的URL
-
-        Returns:
-            ArticleInfo模型实例
-
-        Raises:
-            ResourceNotFoundError: 当专栏不存在时
-            BilibiliResponseError: 当API响应错误时
-            BilibiliRequestError: 当网络请求错误时
-            UrlParseError: ID 格式错误
-        """
+        """获取专栏文章信息"""
         logger.debug(f"获取专栏信息: {cv_id}", "B站解析")
         context = {"cv_id": cv_id, "url": parsed_url}
 
@@ -452,21 +374,7 @@ class BilibiliApiService:
         retry=retry_if_exception_type(RETRYABLE_EXCEPTIONS),
     )
     async def get_user_info(uid: int, parsed_url: str) -> UserInfo:
-        """
-        获取用户空间信息 (优化 API 调用)
-
-        Args:
-            uid: 用户 UID
-            parsed_url: 解析后的URL
-
-        Returns:
-            UserInfo 模型实例
-
-        Raises:
-            ResourceNotFoundError: 用户不存在
-            BilibiliResponseError: API响应错误
-            BilibiliRequestError: 网络请求错误
-        """
+        """获取用户空间信息"""
         logger.debug(f"获取用户信息: {uid}", "B站解析")
         context = {"uid": uid, "url": parsed_url}
 
@@ -579,7 +487,7 @@ class BilibiliApiService:
     def _map_season_info_to_model(
         result: Dict[str, Any], parsed_url: str, target_ep_id: Optional[int] = None
     ) -> SeasonInfo:
-        """将API返回的番剧信息映射到SeasonInfo模型，并可选地填充目标分集信息"""
+        """将API返回的番剧信息映射到SeasonInfo模型"""
         stat_data = result.get("stat", {})
         stat = SeasonStat(
             views=stat_data.get("views", 0),
@@ -649,7 +557,7 @@ class BilibiliApiService:
     async def get_bangumi_info(
         parsed_url: str, season_id: Optional[int] = None, ep_id: Optional[int] = None
     ) -> SeasonInfo:
-        """获取番剧/电影信息 (使用 bilibili_api)"""
+        """获取番剧/电影信息"""
         if not season_id and not ep_id:
             raise ValueError("必须提供 season_id 或 ep_id")
 

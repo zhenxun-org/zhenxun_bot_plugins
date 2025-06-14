@@ -52,7 +52,6 @@ _language_matcher = on_alconna(Alconna("翻译语种"), priority=5, block=True)
 
 @_language_matcher.handle()
 async def _(session: EventSession, arparma: Arparma):
-    s = ""
     column_list = ["语种", "代码"]
     data_list = []
     for key, value in language.items():

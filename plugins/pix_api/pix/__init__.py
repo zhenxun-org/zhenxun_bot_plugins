@@ -204,8 +204,12 @@ async def _(
         and max_once_num2forward <= len(result.data)
         and session.group
     ):
+        if not base_config.get("SHOW_INFO"):
+            result_list = [[f"pid：{r[1].pid}\n", r[0][-1]] for r in result_list]
+        else:
+            result_list = [r[0] for r in result_list]
         await MessageUtils.alc_forward_msg(
-            [r[0] for r in result_list], bot.self_id, BotConfig.self_nickname
+            result_list, bot.self_id, BotConfig.self_nickname
         ).send()
     else:
         for r, pix in result_list:

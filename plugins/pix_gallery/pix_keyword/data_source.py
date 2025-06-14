@@ -198,8 +198,7 @@ class KeywordManage:
             else:
                 ignore_kw.append(c)
                 logger.warning(f"关键词: {c} 已存在，跳过添加")
-        result = f"已成功添加pix搜图{kw_type}: {content}!"
-
+        return f"已成功添加pix搜图{kw_type}: {content}!"
 
     @classmethod
     async def __check_id_exists(cls, id: str, type: KwType) -> str:

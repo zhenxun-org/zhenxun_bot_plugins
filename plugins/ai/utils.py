@@ -85,9 +85,9 @@ class AiMessageManager:
                 return None
         except KeyError:
             return None
-        msg = await self._get_user_repeat_message_result(user_id)
-        if not msg:
-            msg = await self._get_user_same_message_result(user_id)
+        msg = await self._get_user_repeat_message_result(
+            user_id
+        ) or await self._get_user_same_message_result(user_id)
         if msg:
             if "[uname]" in msg:
                 msg = msg.replace("[uname]", nickname)

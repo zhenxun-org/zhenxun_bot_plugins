@@ -4,7 +4,6 @@ from zhenxun.services.db_context import Model
 
 
 class BuffSkinLog(Model):
-
     id = fields.IntField(pk=True, generated=True, auto_increment=True)
     """自增id"""
     case_name = fields.CharField(255)
@@ -38,7 +37,7 @@ class BuffSkinLog(Model):
     create_time = fields.DatetimeField(auto_add_now=True)
     """创建日期"""
 
-    class Meta:
+    class Meta:  # pyright: ignore [reportIncompatibleVariableOverride]
         table = "buff_skin_log"
         table_description = "Buff皮肤更新日志表"
 
