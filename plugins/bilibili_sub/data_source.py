@@ -1,10 +1,9 @@
-from datetime import datetime, timedelta
 import random
+from datetime import datetime, timedelta
 
-from bilireq.exceptions import ResponseCodeError
 import nonebot
+from bilireq.exceptions import ResponseCodeError
 from nonebot_plugin_uninfo import Uninfo
-
 from zhenxun.configs.config import Config
 from zhenxun.services.log import logger
 from zhenxun.utils._build_image import BuildImage
@@ -125,9 +124,11 @@ async def add_up_sub(session: Uninfo, uid: int, sub_user: str) -> str:
         try:
             dynamic_info = await get_user_dynamics(uid)
         except ResponseCodeError as e:
-            if e.code == -352:
-                return "风控校验失败，请联系管理员登录b站'"
-            return "添加订阅失败..."
+            return (
+                "风控校验失败，请联系管理员登录b站'"
+                if e.code == -352
+                else "添加订阅失败..."
+            )
         dynamic_upload_time = 0
         if dynamic_info.get("cards"):
             dynamic_upload_time = dynamic_info["cards"][0]["desc"]["timestamp"]
@@ -138,6 +139,8 @@ async def add_up_sub(session: Uninfo, uid: int, sub_user: str) -> str:
             return "订阅失败，请联系管理员"
         else:
             video_info = video_info["data"]
+        if video_info.get("code") != 0:
+            return f"添加订阅失败，请联系管理员：{video_info.get('message', '')}"
         latest_video_created = 0
         if video_info["list"].get("vlist"):
             latest_video_created = video_info["list"]["vlist"][0]["created"]
