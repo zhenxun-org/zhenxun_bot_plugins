@@ -82,7 +82,7 @@ async def add_live_sub(session: Uninfo, live_id: int, sub_user: str) -> str:
             live_short_id=short_id,
             live_status=live_status,
         ):
-            await _get_up_status(room_id)
+            await _get_up_status(session, room_id)
             sub_data = await BilibiliSub.get_or_none(sub_id=room_id)
             if not sub_data:
                 logger.debug(
