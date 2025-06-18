@@ -82,7 +82,7 @@ async def add_live_sub(session: Uninfo, live_id: int, sub_user: str) -> str:
             live_short_id=short_id,
             live_status=live_status,
         ):
-            await _get_up_status(room_id)
+            await _get_up_status(session, room_id)
             sub_data = await BilibiliSub.get_or_none(sub_id=room_id)
             if not sub_data:
                 logger.debug(
@@ -379,12 +379,13 @@ async def _get_up_status(session: Uninfo | None, sub_id: int) -> list:
     video = None
     if video_info["list"].get("vlist"):
         video = video_info["list"]["vlist"][0]
-        latest_video_created = video.get("created", "")
+        latest_video_created = video.get("created", 0)
+        sub_latest_video_created = sub_data.latest_video_created or 0
 
         # 视频时效性检查
         if (
             latest_video_created
-            and sub_data.latest_video_created < latest_video_created
+            and sub_latest_video_created < latest_video_created
             and datetime.fromtimestamp(latest_video_created) > time_threshold
         ):
             # 检查视频链接是否被拦截
@@ -426,9 +427,7 @@ async def _get_up_status(session: Uninfo | None, sub_id: int) -> list:
                 sub_id, latest_video_created=latest_video_created
             )
 
-        elif (
-            latest_video_created > sub_data.latest_video_created
-        ):  # 超时视频仍更新时间戳
+        elif latest_video_created > sub_latest_video_created:  # 超时视频仍更新时间戳
             await BilibiliSub.sub_handle(
                 sub_id, latest_video_created=latest_video_created
             )
