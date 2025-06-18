@@ -1,11 +1,10 @@
 import asyncio
 import json
 from pathlib import Path
-from typing import Set
 
 import aiofiles
-from nonebot_plugin_session import EventSession
 from nonebot_plugin_htmlrender import get_browser
+from nonebot_plugin_session import EventSession
 
 from zhenxun.configs.path_config import DATA_PATH
 from zhenxun.services.log import logger
@@ -20,7 +19,7 @@ from ..utils.exceptions import ScreenshotError
 
 MODULE_NAME = "parse_bilibili"
 AUTO_DOWNLOAD_FILE = DATA_PATH / MODULE_NAME / "auto_download_groups.json"
-_auto_download_groups: Set[str] = set()
+_auto_download_groups: set[str] = set()
 _lock = asyncio.Lock()
 _initialized = False
 
@@ -38,17 +37,16 @@ class AutoDownloadManager:
             try:
                 AUTO_DOWNLOAD_FILE.parent.mkdir(parents=True, exist_ok=True)
                 if AUTO_DOWNLOAD_FILE.exists():
-                    async with aiofiles.open(
-                        AUTO_DOWNLOAD_FILE, mode="r", encoding="utf-8"
-                    ) as f:
+                    async with aiofiles.open(AUTO_DOWNLOAD_FILE, encoding="utf-8") as f:
                         content = await f.read()
                         if content.strip():
                             data = json.loads(content)
                             if isinstance(data, list):
-                                _auto_download_groups = set(str(gid) for gid in data)
+                                _auto_download_groups = {str(gid) for gid in data}
                             else:
                                 logger.warning(
-                                    f"自动下载配置文件格式错误，应为列表: {AUTO_DOWNLOAD_FILE}"
+                                    f"自动下载配置文件格式错误，"
+                                    f"应为列表: {AUTO_DOWNLOAD_FILE}"
                                 )
                                 _auto_download_groups = set()
                         else:
@@ -62,7 +60,7 @@ class AutoDownloadManager:
                         await f.write(json.dumps([]))
                 _initialized = True
                 logger.info(
-                    f"自动下载配置加载完成，当前启用群组数: {len(_auto_download_groups)}"
+                    f"自动下载配置加载完成，当前启用群组数:{len(_auto_download_groups)}"
                 )
             except Exception as e:
                 logger.error(f"加载自动下载配置失败: {e}", e=e)
@@ -189,48 +187,44 @@ class ScreenshotService:
             header_selectors = ["#bili-header-m", ".fixed-header", ".bili-header__bar"]
 
             try:
-                js_code = """
-                (function() {
+                js_code = f"""
+                (function() {{
                     // 移除登录提示框
-                    const loginSelectors = %s;
-                    loginSelectors.forEach(selector => {
+                    const loginSelectors = {login_popup_selectors!s};
+                    loginSelectors.forEach(selector => {{
                         const elements = document.querySelectorAll(selector);
-                        elements.forEach(el => {
-                            if (el) {
+                        elements.forEach(el => {{
+                            if (el) {{
                                 el.remove();
                                 console.log('Removed login element: ' + selector);
-                            }
-                        });
-                    });
+                            }}
+                        }});
+                    }});
 
                     // 隐藏顶栏
-                    const headerSelectors = %s;
-                    headerSelectors.forEach(selector => {
+                    const headerSelectors = {header_selectors!s};
+                    headerSelectors.forEach(selector => {{
                         const elements = document.querySelectorAll(selector);
-                        elements.forEach(el => {
-                            if (el) {
+                        elements.forEach(el => {{
+                            if (el) {{
                                 el.style.display = 'none';
                                 console.log('Hidden header element: ' + selector);
-                            }
-                        });
-                    });
+                            }}
+                        }});
+                    }});
 
                     // 隐藏其他可能的浮动元素
                     const floatingElements = document.querySelectorAll('.fixed-element, .floating, .popup, .modal, [style*="position: fixed"]');
-                    floatingElements.forEach(el => {
-                        if (el && !el.matches('%s')) { // 不隐藏目标截图元素
+                    floatingElements.forEach(el => {{
+                        if (el && !el.matches('{element_selector}')) {{ // 不隐藏目标截图元素
                             el.style.display = 'none';
                             console.log('Hidden floating element');
-                        }
-                    });
+                        }}
+                    }});
 
                     return 'Attempted to clean up page for screenshot';
-                })();
-                """ % (
-                    str(login_popup_selectors),
-                    str(header_selectors),
-                    element_selector,
-                )
+                }})();
+                """  # noqa: E501
 
                 result = await page.evaluate(js_code)
                 logger.debug(f"执行页面清理 JS 结果: {result}", "B站截图")
@@ -242,12 +236,14 @@ class ScreenshotService:
             element = await page.query_selector(element_selector)
             if not element:
                 logger.debug(
-                    f"初始 query_selector 未找到 '{element_selector}'，尝试 wait_for_selector"
+                    f"初始 query_selector 未找到 '{element_selector}'，"
+                    "尝试 wait_for_selector"
                 )
                 try:
                     wait_timeout = 15000
                     logger.debug(
-                        f"使用 wait_for_selector 等待: '{element_selector}', 超时: {wait_timeout}ms"
+                        f"使用 wait_for_selector 等待: '{element_selector}',"
+                        f" 超时: {wait_timeout}ms"
                     )
                     element = await page.wait_for_selector(
                         element_selector, timeout=wait_timeout, state="visible"

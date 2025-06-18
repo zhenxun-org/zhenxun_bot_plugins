@@ -1,61 +1,59 @@
-import traceback
 import asyncio
-from typing import Union, Optional
-from nonebot import on_message, get_driver
-from nonebot.plugin import PluginMetadata
-from nonebot.params import RawCommand
+import traceback
+
+from nonebot import get_driver, on_message
 from nonebot.adapters import Bot, Event
-
-from nonebot_plugin_uninfo import Uninfo
+from nonebot.plugin import PluginMetadata
+from nonebot_plugin_alconna import Image, UniMessage, UniMsg
 from nonebot_plugin_session import EventSession
-from nonebot_plugin_alconna import UniMsg, Text, Image
+from nonebot_plugin_uninfo import Uninfo
 
+from zhenxun.configs.utils import PluginExtraData, RegisterConfig, Task
 from zhenxun.services.log import logger
-from zhenxun.utils.enum import PluginType
-
 from zhenxun.utils.common_utils import CommonUtils
-from zhenxun.configs.utils import Task, RegisterConfig, PluginExtraData
+from zhenxun.utils.depends import OneCommand
+from zhenxun.utils.enum import PluginType
+from zhenxun.utils.message import MessageUtils
 
-from .config import (
-    base_config,
-    MODULE_NAME,
-    load_credential_from_file,
-    check_and_refresh_credential,
-)
-from .services.network_service import ParserService, NetworkService
-from .services.cache_service import CacheService
-from .services.utility_service import AutoDownloadManager
-from .utils.message import (
-    MessageBuilder,
-    render_video_info_to_image,
-    render_season_info_to_image,
-)
-from .utils.exceptions import (
-    UrlParseError,
-    UnsupportedUrlError,
-    BilibiliRequestError,
-    BilibiliResponseError,
-    ScreenshotError,
-    ResourceNotFoundError,
-)
-from .model import VideoInfo, LiveInfo, ArticleInfo, SeasonInfo, UserInfo
-from .utils.url_parser import UrlParserRegistry, extract_bilibili_url_from_message
-
-from .commands import _perform_video_download
 from .commands import (
-    login_matcher,
-    bili_download_matcher,
+    _perform_video_download,
     auto_download_matcher,
     bili_cover_matcher,
+    bili_download_matcher,
+    login_matcher,
 )
 from .commands.login import credential_status_matcher
+from .config import (
+    MODULE_NAME,
+    base_config,
+    check_and_refresh_credential,
+    load_credential_from_file,
+)
+from .model import ArticleInfo, LiveInfo, SeasonInfo, UserInfo, VideoInfo
+from .services.cache_service import CacheService
+from .services.network_service import NetworkService, ParserService
+from .services.utility_service import AutoDownloadManager
+from .utils.exceptions import (
+    BilibiliRequestError,
+    BilibiliResponseError,
+    ResourceNotFoundError,
+    ScreenshotError,
+    UnsupportedUrlError,
+    UrlParseError,
+)
+from .utils.message import (
+    MessageBuilder,
+    render_season_info_to_image,
+    render_video_info_to_image,
+)
+from .utils.url_parser import UrlParserRegistry, extract_bilibili_url_from_message
 
 __all__ = [
-    "login_matcher",
-    "bili_download_matcher",
     "auto_download_matcher",
     "bili_cover_matcher",
+    "bili_download_matcher",
     "credential_status_matcher",
+    "login_matcher",
 ]
 
 
@@ -65,7 +63,7 @@ async def _initialize_services():
     await AutoDownloadManager.load_config()
     await load_credential_from_file()
 
-    asyncio.create_task(check_and_refresh_credential())
+    asyncio.create_task(check_and_refresh_credential())  # noqa: RUF006
 
 
 driver = get_driver()
@@ -87,7 +85,7 @@ __plugin_meta__ = PluginMetadata(
     usage="""
     插件功能：
     1. 被动解析：自动监听消息中的 B 站链接，并发送解析结果（可配置渲染成图片）。
-       - 支持视频(av/BV)、直播、专栏(cv)、动态(t.bili/opus)、番剧/影视(ss/ep)、用户空间(space)。
+       - 支持视频(av/BV)、直播、专栏、动态、番剧/影视、用户空间。
        - 支持短链(b23.tv)、小程序/卡片（需开启）。
        - 默认配置下，5分钟内同一链接在同一会话不重复解析。
        - 开启方式：
@@ -100,7 +98,8 @@ __plugin_meta__ = PluginMetadata(
        - 支持视频链接、av/BV号、引用包含链接的消息或卡片。
        - 命令执行过程中会发送提示信息，并在下载完成后发送视频文件。
        - 支持视频缓存功能，已下载过的视频会被缓存，再次下载时直接从缓存发送。
-       - 可通过配置项 VIDEO_DOWNLOAD_QUALITY 设置下载视频的质量(16=360P, 32=480P, 64=720P, 80=1080P)。
+       - 可通过配置项 VIDEO_DOWNLOAD_QUALITY
+            设置下载视频的质量(16=360P, 32=480P, 64=720P, 80=1080P)。
 
     3. 获取封面命令：
        bili/b站封面  # 获取B站视频/番剧的原始封面图片
@@ -152,7 +151,8 @@ __plugin_meta__ = PluginMetadata(
                 key="ENABLE_MINIAPP_PARSE",
                 value=True,
                 default_value=True,
-                help="是否在被动解析中解析QQ小程序/JSON卡片中的B站链接（不影响 bili解析 命令）",
+                help="是否在被动解析中解析QQ小程序/JSON卡片中的B站链接"
+                "（不影响 bili解析 命令）",
                 type=bool,
             ),
             RegisterConfig(
@@ -184,7 +184,8 @@ __plugin_meta__ = PluginMetadata(
                 key="MANUAL_DOWNLOAD_MAX_DURATION",
                 value=20,
                 default_value=20,
-                help="手动下载最大时长(分钟), 超过此值不下载，设为0关闭时长限制，超级用户不受影响",
+                help="手动下载最大时长(分钟), 超过此值不下载，"
+                "设为0关闭时长限制，超级用户不受影响",
                 type=int,
             ),
             RegisterConfig(
@@ -220,19 +221,16 @@ __plugin_meta__ = PluginMetadata(
             ),
         ],
         tasks=[Task(module="parse_bilibili", name="b站解析")],
-    ).dict(),
+    ).to_dict(),
 )
 
 
-async def _rule(
-    uninfo: Uninfo, message: UniMsg, cmd: tuple | None = RawCommand()
-) -> bool:
+async def _rule(uninfo: Uninfo, message: UniMsg, cmd: str = OneCommand()) -> bool:
     if await CommonUtils.task_is_block(uninfo, "parse_bilibili"):
         return False
-    if cmd is not None and cmd:
-        if cmd[0] == "bili下载" or cmd[0] == "b站下载":
-            logger.debug("消息被识别为 bili下载 命令，被动解析跳过", "B站解析")
-            return False
+    if cmd and cmd in {"bili下载", "b站下载"}:
+        logger.debug("消息被识别为 bili下载 命令，被动解析跳过", "B站解析")
+        return False
 
     plain_text = message.extract_plain_text().strip()
     if (
@@ -248,20 +246,20 @@ async def _rule(
     if not check_hyper:
         logger.debug("小程序/卡片解析已禁用，跳过 Hyper 检查", "B站解析")
 
-    url = extract_bilibili_url_from_message(message, check_hyper=check_hyper)
-
-    if url:
+    if url := extract_bilibili_url_from_message(message, check_hyper=check_hyper):
         logger.debug(f"从消息中提取到B站URL: {url}", "B站解析")
         return True
 
-    plain_text_for_check = message.extract_plain_text().strip()
-    if plain_text_for_check:
+    if plain_text_for_check := message.extract_plain_text().strip():
         logger.debug(f"检查文本内容: '{plain_text_for_check[:100]}...'", "B站解析")
         parser_found = UrlParserRegistry.get_parser(plain_text_for_check)
-        if parser_found and parser_found.__name__ == "PureVideoIdParser":
-            if parser_found.PATTERN.fullmatch(plain_text_for_check):
-                logger.debug("文本内容匹配到纯视频ID，符合规则", "B站解析")
-                return True
+        if (
+            parser_found
+            and parser_found.__name__ == "PureVideoIdParser"
+            and parser_found.PATTERN.fullmatch(plain_text_for_check)  # type: ignore
+        ):
+            logger.debug("文本内容匹配到纯视频ID，符合规则", "B站解析")
+            return True
 
     logger.debug("消息不符合被动解析规则", "B站解析")
     return False
@@ -269,7 +267,7 @@ async def _rule(
 
 async def _build_video_message(
     video_info: VideoInfo, render_enabled: bool
-) -> Optional[UniMsg]:
+) -> UniMessage | None:
     if render_enabled:
         logger.debug(
             f"渲染视频消息 (style_blue): {video_info.title} (BV: {video_info.bvid})",
@@ -278,12 +276,11 @@ async def _build_video_message(
         try:
             image_bytes = await render_video_info_to_image(video_info)
             if image_bytes:
-                return UniMsg(
-                    [Image(raw=image_bytes), Text(f"链接: {video_info.parsed_url}")]
+                return MessageUtils.build_message(
+                    [image_bytes, f"链接: {video_info.parsed_url}"]
                 )
-            else:
-                logger.warning("VideoInfo 渲染函数返回空，尝试原始消息", "B站解析")
-                return await MessageBuilder.build_video_message(video_info)
+            logger.warning("VideoInfo 渲染函数返回空，尝试原始消息", "B站解析")
+            return await MessageBuilder.build_video_message(video_info)
         except Exception as render_err:
             logger.error("渲染失败，将使用原始消息", "B站解析", e=render_err)
             return await MessageBuilder.build_video_message(video_info)
@@ -308,44 +305,41 @@ async def _build_live_message(live_info: LiveInfo, render_enabled: bool) -> UniM
 
 async def _build_article_message(
     article_info: ArticleInfo, render_enabled: bool
-) -> Optional[UniMsg]:
+) -> UniMsg | None:
     logger.debug(
-        f"构建文章/动态消息: {article_info.type} {article_info.id}, 渲染模式: {render_enabled}",
+        f"构建文章/动态消息: {article_info.type} {article_info.id},"
+        f" 渲染模式: {render_enabled}",
         "B站解析",
     )
     article_message = await MessageBuilder.build_article_message(
         article_info, render_enabled=render_enabled
     )
 
-    if article_message and article_info.url:
-        image_segment = None
-        for seg in article_message:
-            if isinstance(seg, Image):
-                image_segment = seg
-                break
-
-        if image_segment:
-            return UniMsg([image_segment, Text(f"\n链接: {article_info.url}")])
-        else:
-            return article_message
-    else:
+    if not article_message or not article_info.url:
         return article_message
+    image_segment = next(
+        (seg for seg in article_message if isinstance(seg, Image)), None
+    )
+    return (
+        MessageUtils.build_message([image_segment, f"\n链接: {article_info.url}"])
+        if image_segment
+        else article_message
+    )
 
 
 async def _build_season_message(
     season_info: SeasonInfo, render_enabled: bool
-) -> Optional[UniMsg]:
+) -> UniMsg | None:
     if render_enabled:
         logger.debug(f"渲染番剧消息 (style_blue): {season_info.title}", "B站解析")
         try:
             image_bytes = await render_season_info_to_image(season_info)
             if image_bytes:
-                return UniMsg(
-                    [Image(raw=image_bytes), Text(f"\n链接: {season_info.parsed_url}")]
+                return MessageUtils.build_message(
+                    [image_bytes, f"\n链接: {season_info.parsed_url}"]
                 )
-            else:
-                logger.warning("SeasonInfo 渲染函数返回空，尝试原始消息", "B站解析")
-                return await MessageBuilder.build_season_message(season_info)
+            logger.warning("SeasonInfo 渲染函数返回空，尝试原始消息", "B站解析")
+            return await MessageBuilder.build_season_message(season_info)
         except Exception as render_err:
             logger.error("渲染失败，将使用原始消息", "B站解析", e=render_err)
             return await MessageBuilder.build_season_message(season_info)
@@ -356,15 +350,15 @@ async def _build_season_message(
 
 async def _build_user_message(
     user_info: UserInfo, render_enabled: bool
-) -> Optional[UniMsg]:
+) -> UniMessage | None:
     if render_enabled:
         logger.warning("UserInfo 渲染暂未实现，将发送原始消息", "B站解析")
-        return await MessageBuilder.build_user_message(user_info)
     else:
         logger.debug(
             f"构建用户消息: {user_info.name} (Mid: {user_info.mid})", "B站解析"
         )
-        return await MessageBuilder.build_user_message(user_info)
+
+    return await MessageBuilder.build_user_message(user_info)
 
 
 _matcher = on_message(priority=50, block=False, rule=_rule)
@@ -379,9 +373,9 @@ async def _(
 ):
     logger.debug(f"Handler received message: {message}", "B站解析")
 
-    parsed_content: Union[
-        VideoInfo, LiveInfo, ArticleInfo, SeasonInfo, UserInfo, None
-    ] = None
+    parsed_content: (
+        VideoInfo | LiveInfo | ArticleInfo | SeasonInfo | UserInfo | None
+    ) = None
 
     check_hyper = base_config.get("ENABLE_MINIAPP_PARSE", True)
     if not check_hyper:
@@ -395,7 +389,8 @@ async def _(
 
     should_parse = await CacheService.should_parse_url(target_url, session)
     logger.debug(
-        f"缓存检查: '{target_url}' 在上下文 '{CacheService._get_context_key(session)}' 中: should_parse = {should_parse}",
+        f"缓存检查: '{target_url}' 在上下文 '{CacheService._get_context_key(session)}'"
+        f" 中: should_parse = {should_parse}",
         "B站解析",
     )
     if not should_parse:
@@ -405,9 +400,9 @@ async def _(
     try:
         logger.info(f"开始解析URL: {target_url}", "B站解析", session=session)
 
-        parsed_content: Union[
-            VideoInfo, LiveInfo, ArticleInfo, SeasonInfo, UserInfo, None
-        ] = await ParserService.parse(target_url)
+        parsed_content: (
+            VideoInfo | LiveInfo | ArticleInfo | SeasonInfo | UserInfo | None
+        ) = await ParserService.parse(target_url)
         logger.debug(f"解析结果类型: {type(parsed_content).__name__}", "B站解析")
     except ResourceNotFoundError as e:
         logger.info(
@@ -453,7 +448,7 @@ async def _(
 
     if parsed_content:
         logger.debug(
-            f"Building message for parsed content type: {type(parsed_content).__name__}",
+            f"Building message for parsed content type:{type(parsed_content).__name__}",
             "B站解析",
         )
         try:
@@ -542,12 +537,14 @@ async def _(
                             and parsed_content.duration > max_duration_seconds
                         ):
                             logger.info(
-                                f"视频时长 {video_duration_minutes}分钟 超过限制 {max_duration_minutes}分钟，取消自动下载",
+                                f"视频时长 {video_duration_minutes}分钟 超过限制"
+                                f" {max_duration_minutes}分钟，取消自动下载",
                                 "B站解析",
                             )
                         else:
                             logger.info(
-                                f"视频时长 {video_duration_minutes}分钟 符合要求或限制已禁用，开始执行自动下载..."
+                                f"视频时长 {video_duration_minutes}分钟 "
+                                "符合要求或限制已禁用，开始执行自动下载..."
                             )
                             try:
                                 await _perform_video_download(

@@ -1,26 +1,27 @@
 import asyncio
-import time
-import urllib.parse
+from collections import defaultdict
+from collections.abc import Awaitable, Callable
 import functools
+import time
 import traceback
-from typing import Dict, Any, Optional, Callable, TypeVar, Awaitable, Union, List, Type
+from typing import Any, ClassVar, TypeVar
+import urllib.parse
 
 import aiohttp
-from collections import defaultdict
 
 from zhenxun.services.log import logger
 
-from ..config import HTTP_TIMEOUT, HTTP_CONNECT_TIMEOUT
-from ..model import VideoInfo, LiveInfo, ArticleInfo, UserInfo, SeasonInfo
+from ..config import HTTP_CONNECT_TIMEOUT, HTTP_TIMEOUT
+from ..model import ArticleInfo, LiveInfo, SeasonInfo, UserInfo, VideoInfo
 from ..utils.exceptions import (
+    BilibiliBaseException,
     BilibiliRequestError,
     BilibiliResponseError,
-    RateLimitError,
     NetworkError,
-    BilibiliBaseException,
-    UrlParseError,
-    UnsupportedUrlError,
+    RateLimitError,
     ShortUrlError,
+    UnsupportedUrlError,
+    UrlParseError,
 )
 from ..utils.headers import get_bilibili_headers
 from ..utils.url_parser import ResourceType, UrlParserRegistry
@@ -33,22 +34,20 @@ RetryConditionType = Callable[[Exception, int], bool]
 
 
 def _log_exception(
-    e: Exception, error_msg: str, log_level: str, error_context: Dict[str, Any]
+    e: Exception, error_msg: str, log_level: str, error_context: dict[str, Any]
 ):
     """记录异常日志"""
     log_func = getattr(logger, log_level)
     if isinstance(e, BilibiliBaseException):
         e.with_context(**error_context)
-        log_func(f"{error_msg}: {e}", "B站解析")
-    else:
-        log_func(f"{error_msg}: {e}", "B站解析")
+    log_func(f"{error_msg}: {e}", "B站解析")
 
 
 def format_exception(e: Exception) -> str:
     """格式化异常信息"""
     tb = traceback.format_exception(type(e), e, e.__traceback__)
     tb_simplified = tb[-3:]
-    return f"{type(e).__name__}: {str(e)}\n{''.join(tb_simplified)}"
+    return f"{type(e).__name__}: {e!s}\n{''.join(tb_simplified)}"
 
 
 def network_retry_condition(exception: Exception, attempt: int) -> bool:
@@ -122,11 +121,11 @@ def calculate_next_wait_time(
 
 def handle_errors(
     error_msg: str = "操作执行失败",
-    exc_types: Union[Type[Exception], List[Type[Exception]]] = Exception,
+    exc_types: type[Exception] | list[type[Exception]] = Exception,
     log_level: str = "error",
     reraise: bool = True,
     default_return: Any = None,
-    context: Optional[Dict[str, Any]] = None,
+    context: dict[str, Any] | None = None,
 ) -> Callable[[F], F]:
     """同步函数错误处理装饰器"""
     if isinstance(exc_types, type) and issubclass(exc_types, Exception):
@@ -154,18 +153,18 @@ def handle_errors(
 
                 return default_return
 
-        return wrapper
+        return wrapper  # type: ignore
 
     return decorator
 
 
 def async_handle_errors(
     error_msg: str = "操作执行失败",
-    exc_types: Union[Type[Exception], List[Type[Exception]]] = Exception,
+    exc_types: type[Exception] | list[type[Exception]] = Exception,
     log_level: str = "error",
     reraise: bool = True,
     default_return: Any = None,
-    context: Optional[Dict[str, Any]] = None,
+    context: dict[str, Any] | None = None,
 ) -> Callable[[AF], AF]:
     """异步函数错误处理装饰器"""
     if isinstance(exc_types, type) and issubclass(exc_types, Exception):
@@ -193,7 +192,7 @@ def async_handle_errors(
 
                 return default_return
 
-        return wrapper
+        return wrapper  # type: ignore
 
     return decorator
 
@@ -201,11 +200,11 @@ def async_handle_errors(
 class RateLimiter:
     """请求限流器，控制对特定域名的请求频率"""
 
-    _domain_limits: Dict[str, tuple[float, float]] = {}
+    _domain_limits: ClassVar[dict[str, tuple[float, float]]] = {}
 
-    _domain_counters = defaultdict(int)
+    _domain_counters: ClassVar[dict[str, int]] = defaultdict(int)
 
-    _domain_rate_limits = {
+    _domain_rate_limits: ClassVar[dict[str, float]] = {
         "api.bilibili.com": 0.5,
         "www.bilibili.com": 0.5,
         "live.bilibili.com": 0.5,
@@ -240,7 +239,7 @@ class RateLimiter:
         return wait_time
 
     @classmethod
-    def get_domain_stats(cls) -> Dict[str, Dict[str, Any]]:
+    def get_domain_stats(cls) -> dict[str, dict[str, Any]]:
         """获取域名请求统计"""
         stats = {}
         for domain, counter in cls._domain_counters.items():
@@ -267,11 +266,11 @@ class RateLimiter:
 class NetworkService:
     """网络请求服务，提供优化的请求方法"""
 
-    _session: Optional[aiohttp.ClientSession] = None
+    _session: aiohttp.ClientSession | None = None
 
     _session_lock = asyncio.Lock()
 
-    _DEFAULT_RETRY_CONFIG = {
+    _DEFAULT_RETRY_CONFIG: ClassVar[dict[str, int | float]] = {
         "max_attempts": 3,
         "min_wait": 1.0,
         "max_wait": 10.0,
@@ -307,9 +306,9 @@ class NetworkService:
     async def get(
         cls,
         url: str,
-        params: Optional[Dict[str, Any]] = None,
-        headers: Optional[Dict[str, str]] = None,
-        timeout: Optional[float] = None,
+        params: dict[str, Any] | None = None,
+        headers: dict[str, str] | None = None,
+        timeout: float | None = None,
         use_rate_limit: bool = True,
         max_attempts: int = 3,
     ) -> aiohttp.ClientResponse:
@@ -346,27 +345,28 @@ class NetworkService:
                 if response.status == 429:
                     retry_after = int(response.headers.get("Retry-After", "5"))
                     logger.warning(
-                        f"请求频率限制 ({attempt}/{max_attempts}): {url}, 需等待 {retry_after}s",
+                        f"请求频率限制 ({attempt}/{max_attempts}): {url},"
+                        f" 需等待 {retry_after}s",
                         "B站解析",
                     )
 
-                    if attempt < max_attempts:
-                        await asyncio.sleep(retry_after)
-                        continue
-                    else:
+                    if attempt >= max_attempts:
                         raise RateLimitError(
                             f"请求频率限制: {url}",
                             retry_after=retry_after,
                             context=context,
                         )
 
+                    await asyncio.sleep(retry_after)
+                    continue
                 return response
 
             except (aiohttp.ClientError, asyncio.TimeoutError) as e:
                 if attempt < max_attempts:
                     wait_time = 1.0 * (2 ** (attempt - 1))
                     logger.warning(
-                        f"请求失败 ({attempt}/{max_attempts}): {url}, 等待 {wait_time:.1f}s 后重试: {e}",
+                        f"请求失败 ({attempt}/{max_attempts}): {url},"
+                        f" 等待 {wait_time:.1f}s 后重试: {e}",
                         "B站解析",
                     )
                     await asyncio.sleep(wait_time)
@@ -396,12 +396,12 @@ class NetworkService:
     async def get_json(
         cls,
         url: str,
-        params: Optional[Dict[str, Any]] = None,
-        headers: Optional[Dict[str, str]] = None,
-        timeout: Optional[float] = None,
+        params: dict[str, Any] | None = None,
+        headers: dict[str, str] | None = None,
+        timeout: float | None = None,
         use_bilibili_headers: bool = True,
         max_attempts: int = 3,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """发送GET请求并解析JSON响应"""
         if headers is None and use_bilibili_headers:
             headers = get_bilibili_headers()
@@ -434,9 +434,9 @@ class NetworkService:
     async def get_text(
         cls,
         url: str,
-        params: Optional[Dict[str, Any]] = None,
-        headers: Optional[Dict[str, str]] = None,
-        timeout: Optional[float] = None,
+        params: dict[str, Any] | None = None,
+        headers: dict[str, str] | None = None,
+        timeout: float | None = None,
         max_attempts: int = 3,
     ) -> str:
         """发送GET请求并获取文本响应"""
@@ -479,7 +479,7 @@ class NetworkService:
         if netloc.startswith("m."):
             netloc = netloc.replace("m.", "www.", 1)
 
-        clean_url = urllib.parse.urlunparse(
+        return urllib.parse.urlunparse(
             (
                 parsed_url.scheme,
                 netloc,
@@ -489,8 +489,6 @@ class NetworkService:
                 "",
             )
         )
-
-        return clean_url
 
     @classmethod
     @async_handle_errors(
@@ -560,7 +558,8 @@ class NetworkService:
                 )
 
                 logger.debug(
-                    f"操作失败 (尝试 {attempt}/{max_attempts}), 等待 {wait_time:.1f}s 后重试: {e}",
+                    f"操作失败 (尝试 {attempt}/{max_attempts}), "
+                    f"等待 {wait_time:.1f}s 后重试: {e}",
                     "B站解析",
                 )
 
@@ -599,7 +598,7 @@ class ParserService:
     @staticmethod
     async def fetch_resource_info(
         resource_type: ResourceType, resource_id: str, parsed_url: str
-    ) -> Union[VideoInfo, LiveInfo, ArticleInfo, UserInfo, SeasonInfo]:
+    ) -> VideoInfo | LiveInfo | ArticleInfo | UserInfo | SeasonInfo:
         """根据资源类型和ID获取详细信息"""
         from .api_service import BilibiliApiService
         from .utility_service import ScreenshotService
@@ -636,8 +635,8 @@ class ParserService:
                 uid=int(resource_id), parsed_url=parsed_url
             )
         elif resource_type == ResourceType.BANGUMI:
-            ss_id: Optional[int] = None
-            ep_id: Optional[int] = None
+            ss_id: int | None = None
+            ep_id: int | None = None
             if resource_id.startswith("ss"):
                 ss_id = int(resource_id[2:])
             elif resource_id.startswith("ep"):
@@ -656,7 +655,7 @@ class ParserService:
     @classmethod
     async def parse(
         cls, url: str
-    ) -> Union[VideoInfo, LiveInfo, ArticleInfo, UserInfo, SeasonInfo]:
+    ) -> VideoInfo | LiveInfo | ArticleInfo | UserInfo | SeasonInfo:
         """解析Bilibili URL，返回相应的信息模型"""
         original_url = url.strip()
         logger.debug(f"开始解析URL: {original_url}", "B站解析")

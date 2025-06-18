@@ -1,22 +1,25 @@
-from typing import Optional, Dict
+import asyncio
+import contextlib
+
+from bilibili_api import exceptions as BiliExceptions
+from bilibili_api import login_v2
+from bilibili_api.utils.picture import Picture
 from nonebot import on_command
 from nonebot.adapters import Bot, Event
+from nonebot.adapters.onebot.v11 import MessageSegment
 from nonebot.matcher import Matcher
 from nonebot.permission import SUPERUSER
-from nonebot.adapters.onebot.v11 import MessageSegment
-import asyncio
-from bilibili_api import login_v2, exceptions as BiliExceptions
-from bilibili_api.utils.picture import Picture
 
 from zhenxun.services.log import logger
-from ..config import save_credential_to_file, get_credential
+
+from ..config import get_credential, save_credential_to_file
 
 login_matcher = on_command("bili登录", permission=SUPERUSER, priority=5, block=True)
 credential_status_matcher = on_command(
     "bili状态", permission=SUPERUSER, priority=5, block=True
 )
 
-login_sessions: Dict[str, login_v2.QrCodeLogin] = {}
+login_sessions: dict[str, login_v2.QrCodeLogin] = {}
 
 
 @login_matcher.handle()
@@ -29,7 +32,7 @@ async def handle_login_start(bot: Bot, event: Event, matcher: Matcher):
     logger.info(f"用户 {user_id} 请求 B站扫码登录")
     await matcher.send("正在生成登录二维码，请稍候...")
 
-    login_instance: Optional[login_v2.QrCodeLogin] = None
+    login_instance: login_v2.QrCodeLogin | None = None
     try:
         login_instance = login_v2.QrCodeLogin(platform=login_v2.QrCodeLoginChannel.WEB)
 
@@ -52,7 +55,7 @@ async def handle_login_start(bot: Bot, event: Event, matcher: Matcher):
 
         login_sessions[user_id] = login_instance
 
-        qr_bytes: Optional[bytes] = None
+        qr_bytes: bytes | None = None
         try:
             qr_pic: Picture = login_instance.get_qrcode_picture()
             qr_bytes = qr_pic.content
@@ -81,20 +84,18 @@ async def handle_login_start(bot: Bot, event: Event, matcher: Matcher):
 
         if login_instance.has_qrcode():
             logger.debug("准备启动 check_login_status 任务")
-            asyncio.create_task(check_login_status(matcher, user_id))
+            asyncio.create_task(check_login_status(matcher, user_id))  # noqa: RUF006
             logger.debug("check_login_status 任务已启动")
             matcher.stop_propagation()
         else:
             logger.error("二维码核心数据未生成，无法启动检查任务")
-            if user_id in login_sessions:
-                del login_sessions[user_id]
+            login_sessions.pop(user_id, None)
             await matcher.finish("获取二维码核心数据失败，请重试。")
             return
 
     except Exception as e:
         logger.error("启动登录流程时发生意外错误", e=e)
-        if user_id in login_sessions:
-            del login_sessions[user_id]
+        login_sessions.pop(user_id, None)
         await matcher.finish("启动登录流程时发生错误，请检查日志。")
 
 
@@ -125,10 +126,8 @@ async def check_login_status(org_matcher: Matcher, user_id: str):
                 logger.info(f"用户 {user_id} 登录已完成 (可能在其他地方处理)")
             elif asyncio.get_running_loop().time() - start_time > timeout:
                 logger.warning(f"用户 {user_id} 登录超时")
-                try:
+                with contextlib.suppress(Exception):
                     await org_matcher.send("登录二维码已超时失效。")
-                except Exception:
-                    pass
             break
 
         try:
@@ -149,8 +148,12 @@ async def check_login_status(org_matcher: Matcher, user_id: str):
                     from bilibili_api import get_session
 
                     session = get_session()
-                    if hasattr(session, "cookie_jar") and session.cookie_jar:
-                        for cookie in session.cookie_jar:
+                    cookie_jar = None
+                    if hasattr(session, "cookie_jar"):
+                        cookie_jar = getattr(session, "cookie_jar")
+
+                    if cookie_jar:
+                        for cookie in cookie_jar:
                             if cookie.key == "buvid3":
                                 logger.info(f"成功获取到 buvid3: {cookie.value}")
                                 credential.buvid3 = cookie.value
@@ -162,10 +165,8 @@ async def check_login_status(org_matcher: Matcher, user_id: str):
                             from bilibili_api import refresh_buvid
 
                             refresh_buvid()
-
-                            session = get_session()
-                            if hasattr(session, "cookie_jar") and session.cookie_jar:
-                                for cookie in session.cookie_jar:
+                            if cookie_jar:
+                                for cookie in cookie_jar:
                                     if cookie.key == "buvid3":
                                         logger.info(
                                             f"通过刷新获取到 buvid3: {cookie.value}"
@@ -180,24 +181,19 @@ async def check_login_status(org_matcher: Matcher, user_id: str):
                 await save_credential_to_file(credential)
                 login_succeed = True
 
-                status_msg = "登录成功！Credential 已保存。"
-                if credential.buvid3:
-                    status_msg += "\nbuvid3 已成功获取并保存。"
-                else:
-                    status_msg += "\n警告：未能获取 buvid3，部分功能可能受限。"
-
-                try:
+                status_msg = "登录成功！Credential 已保存。" + (
+                    "\nbuvid3 已成功获取并保存。"
+                    if credential.buvid3
+                    else "\n警告：未能获取 buvid3，部分功能可能受限。"
+                )
+                with contextlib.suppress(Exception):
                     await org_matcher.send(status_msg)
-                except Exception:
-                    pass
                 break
 
         except Exception as e:
             logger.error(f"检查用户 {user_id} 登录状态时出错", e=e)
-            try:
+            with contextlib.suppress(Exception):
                 await org_matcher.send("检查登录状态时发生错误，请稍后重试。")
-            except Exception:
-                pass
             break
 
         await asyncio.sleep(check_interval)
@@ -251,7 +247,7 @@ async def handle_credential_status(bot: Bot, event: Event, matcher: Matcher):
             status_lines.append("\n❌ 凭证无效，请重新登录")
     except Exception as e:
         logger.error("检查凭证有效性时出错", e=e)
-        status_lines.append(f"\n❓ 凭证状态检查失败: {str(e)}")
+        status_lines.append(f"\n❓ 凭证状态检查失败: {e!s}")
 
     try:
         need_refresh = await credential.check_refresh()
@@ -261,6 +257,6 @@ async def handle_credential_status(bot: Bot, event: Event, matcher: Matcher):
             status_lines.append("✅ 凭证不需要刷新")
     except Exception as e:
         logger.error("检查凭证刷新状态时出错", e=e)
-        status_lines.append(f"❓ 凭证刷新状态检查失败: {str(e)}")
+        status_lines.append(f"❓ 凭证刷新状态检查失败: {e!s}")
 
     await matcher.finish("\n".join(status_lines))

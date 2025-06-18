@@ -1,47 +1,21 @@
-from typing import Optional
-
 from nonebot.adapters import Bot, Event
-from nonebot_plugin_alconna import on_alconna, Alconna, AlconnaMatcher
-from nonebot_plugin_alconna import UniMsg, Image
+from nonebot_plugin_alconna import Alconna, AlconnaMatcher, on_alconna
 
 from zhenxun.services.log import logger
+from zhenxun.utils.message import MessageUtils
 
-from ..services.network_service import ParserService, NetworkService
-from ..utils.url_parser import extract_bilibili_url_from_event
+from ..model import SeasonInfo, VideoInfo
+from ..services.network_service import NetworkService, ParserService
 from ..utils.exceptions import (
     BilibiliBaseException,
-    UrlParseError,
-    UnsupportedUrlError,
     ResourceNotFoundError,
+    UnsupportedUrlError,
+    UrlParseError,
 )
-from ..model import VideoInfo, SeasonInfo
+from ..utils.url_parser import extract_bilibili_url_from_event
 
 
-async def get_reply_message(bot: Bot, event: Event) -> Optional[str]:
-    """获取引用消息的内容"""
-    try:
-        if hasattr(event, "reply") and event.reply:
-            reply_msg_id = event.reply.message_id
-            logger.debug(f"检测到引用消息ID: {reply_msg_id}")
-
-            if hasattr(bot, "get_msg"):
-                try:
-                    reply_msg = await bot.get_msg(message_id=reply_msg_id)
-                    if reply_msg and "message" in reply_msg:
-                        return str(reply_msg["message"])
-                except Exception as e:
-                    logger.debug(f"获取引用消息失败: {e}")
-
-            if hasattr(event.reply, "message"):
-                return str(event.reply.message)
-
-        return None
-    except Exception as e:
-        logger.debug(f"获取引用消息时出错: {e}")
-        return None
-
-
-async def get_cover_url(content_info) -> Optional[str]:
+async def get_cover_url(content_info) -> str | None:
     """从内容信息中获取封面URL"""
     if isinstance(content_info, VideoInfo):
         if hasattr(content_info, "pic") and content_info.pic:
@@ -59,14 +33,15 @@ async def get_cover_url(content_info) -> Optional[str]:
     return None
 
 
-async def download_cover_image(cover_url: str) -> Optional[bytes]:
+async def download_cover_image(cover_url: str) -> bytes | None:
     """下载封面图片"""
-    from ..utils.common import retry_async, RetryConfig
+    from ..utils.common import RetryConfig, retry_async
 
     async def _download_core():
         session = await NetworkService.get_session()
         headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+            " (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
             "Referer": "https://www.bilibili.com/",
         }
 
@@ -141,8 +116,8 @@ async def handle_bili_cover(matcher: AlconnaMatcher, bot: Bot, event: Event):
         else:
             title = "封面图片"
 
-        cover_message = UniMsg(
-            [Image(raw=image_data), f"\n{title}\n原始链接: {cover_url}"]
+        cover_message = MessageUtils.build_message(
+            [image_data, f"\n{title}\n原始链接: {cover_url}"]
         )
 
         await cover_message.send()
@@ -150,7 +125,7 @@ async def handle_bili_cover(matcher: AlconnaMatcher, bot: Bot, event: Event):
 
     except (UrlParseError, UnsupportedUrlError) as e:
         logger.warning(f"URL解析失败: {bilibili_url}, 原因: {e}")
-        await matcher.send(f"无法解析该B站链接: {str(e)}")
+        await matcher.send(f"无法解析该B站链接: {e!s}")
 
     except ResourceNotFoundError as e:
         logger.info(f"资源不存在: {bilibili_url}, 错误: {e}")
@@ -158,7 +133,7 @@ async def handle_bili_cover(matcher: AlconnaMatcher, bot: Bot, event: Event):
 
     except BilibiliBaseException as e:
         logger.error(f"B站API错误: {e}")
-        await matcher.send(f"获取B站内容失败: {str(e)}")
+        await matcher.send(f"获取B站内容失败: {e!s}")
 
     except Exception as e:
         logger.error(f"处理bili封面命令时发生错误: {e}")
