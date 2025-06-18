@@ -201,12 +201,12 @@ async def _():
 
 @add_sub.handle()
 @del_sub.handle()
-async def _(session: EventSession, state: T_State, sub_type: str, sub_msg: str):
-    gid = session.id3 or session.id2
-    if gid:
-        sub_user = f"{session.id1}:{gid}"
+async def _(session: Uninfo, state: T_State, sub_type: str, sub_msg: str):
+    group_id = session.group.id if session.group else None
+    if group_id:
+        sub_user = f"{session.user.id}:{group_id}"
     else:
-        sub_user = f"{session.id1}"
+        sub_user = f"{session.user.id}"
     state["sub_type"] = sub_type
     state["sub_user"] = sub_user
     if "http" in sub_msg:
@@ -214,21 +214,21 @@ async def _(session: EventSession, state: T_State, sub_type: str, sub_msg: str):
         sub_msg = sub_msg[:-1] if sub_msg[-1] == "/" else sub_msg
         sub_msg = sub_msg.split("/")[-1]
     sub_id = sub_msg[2:] if sub_msg.startswith("md") else sub_msg
-    if not sub_id.isdigit():
-        if sub_type in ["season", "动漫", "番剧"]:
-            rst = "*以为您找到以下番剧，请输入Id选择：*\n"
-            state["season_data"] = await get_media_id(sub_id)
-            if not state["season_data"]:
-                await MessageUtils.build_message(f"未找到番剧：{sub_msg}").finish()
-            if len(state["season_data"]) == 0:
-                await MessageUtils.build_message(f"未找到番剧：{sub_msg}").finish()
-            for i, x in enumerate(state["season_data"]):
-                rst += f"{i + 1}.{state['season_data'][x]['title']}\n----------\n"
-            await MessageUtils.build_message("\n".join(rst.split("\n")[:-1])).send()
-        else:
-            await MessageUtils.build_message("Id 必须为全数字！").finish()
-    else:
+    if sub_id.isdigit():
         state["sub_id"] = int(sub_id)
+
+    elif sub_type in {"season", "动漫", "番剧"}:
+        rst = "*以为您找到以下番剧，请输入Id选择：*\n"
+        state["season_data"] = await get_media_id(sub_id)
+        if not state["season_data"]:
+            await MessageUtils.build_message(f"未找到番剧：{sub_msg}").finish()
+        if len(state["season_data"]) == 0:
+            await MessageUtils.build_message(f"未找到番剧：{sub_msg}").finish()
+        for i, x in enumerate(state["season_data"]):
+            rst += f"{i + 1}.{state['season_data'][x]['title']}\n----------\n"
+        await MessageUtils.build_message("\n".join(rst.split("\n")[:-1])).send()
+    else:
+        await MessageUtils.build_message("Id 必须为全数字！").finish()
 
 
 @add_sub.got("sub_type")
@@ -303,15 +303,15 @@ async def _(session: EventSession):
             live_rst += (
                 f"\t直播间id：{x.sub_id}\n\t名称：{x.uname}\n------------------\n"
             )
-        if x.sub_type == "up":
-            up_rst += f"\tUP：{x.uname}\n\tuid：{x.uid}\n------------------\n"
-        if x.sub_type == "season":
+        elif x.sub_type == "season":
             season_rst += (
                 f"\t番剧id：{x.sub_id}\n"
                 f"\t番名：{x.season_name}\n"
                 f"\t当前集数：{x.season_current_episode}\n"
                 f"------------------\n"
             )
+        elif x.sub_type == "up":
+            up_rst += f"\tUP：{x.uname}\n\tuid：{x.uid}\n------------------\n"
     live_rst = "当前订阅的直播：\n" + live_rst if live_rst else live_rst
     up_rst = "当前订阅的UP：\n" + up_rst if up_rst else up_rst
     season_rst = "当前订阅的番剧：\n" + season_rst if season_rst else season_rst
@@ -396,9 +396,8 @@ async def check_subscriptions():
     if not sub_manager:
         return
     async with semaphore:  # 限制并发任务数
-        if base_config.get("ENABLE_SLEEP_MODE"):
-            if not should_run():
-                return
+        if base_config.get("ENABLE_SLEEP_MODE") and not should_run():
+            return
 
         bots = nonebot.get_bots()
         if not bots:
@@ -452,44 +451,45 @@ async def send_sub_msg(msg_list: list, sub: BilibiliSub, bot: Bot):
         sub: BilibiliSub
         bot: Bot
     """
+    if not msg_list:
+        return
     temp_group = []
-    if msg_list:
-        for x in sub.sub_users.split(",")[:-1]:
-            try:
-                if ":" in x and x.split(":")[1] not in temp_group:
-                    group_id = x.split(":")[1]
-                    temp_group.append(group_id)
-                    if (
-                        await bot.get_group_member_info(
-                            group_id=int(group_id),
-                            user_id=int(bot.self_id),
-                            no_cache=True,
-                        )
-                    )["role"] in ["owner", "admin"]:
-                        if (
-                            sub.sub_type == "live"
-                            and Config.get_config("bilibili_sub", "LIVE_MSG_AT_ALL")
-                        ) or (
-                            sub.sub_type == "up"
-                            and Config.get_config("bilibili_sub", "UP_MSG_AT_ALL")
-                        ):
-                            msg_list.insert(0, UniMessage.at_all() + "\n")
-                    if not await GroupConsole.is_block_plugin(group_id, "bilibili_sub"):
-                        await PlatformUtils.send_message(
-                            bot,
-                            user_id=None,
-                            group_id=group_id,
-                            message=MessageUtils.build_message(msg_list),
-                        )
-
-                else:
+    for x in sub.sub_users.split(",")[:-1]:
+        try:
+            if ":" in x and x.split(":")[1] not in temp_group:
+                group_id = x.split(":")[1]
+                temp_group.append(group_id)
+                if (
+                    await bot.get_group_member_info(
+                        group_id=int(group_id),
+                        user_id=int(bot.self_id),
+                        no_cache=True,
+                    )
+                )["role"] in ["owner", "admin"] and (
+                    (
+                        sub.sub_type == "live"
+                        and Config.get_config("bilibili_sub", "LIVE_MSG_AT_ALL")
+                    )
+                    or (
+                        sub.sub_type == "up"
+                        and Config.get_config("bilibili_sub", "UP_MSG_AT_ALL")
+                    )
+                ):
+                    msg_list.insert(0, UniMessage.at_all() + "\n")
+                if not await GroupConsole.is_block_plugin(group_id, "bilibili_sub"):
                     await PlatformUtils.send_message(
                         bot,
-                        user_id=x,
-                        group_id=None,
+                        user_id=None,
+                        group_id=group_id,
                         message=MessageUtils.build_message(msg_list),
                     )
-            except Exception as e:
-                logger.error(
-                    f"B站订阅推送发生错误 sub_id：{sub.sub_id}", LOG_COMMAND, e=e
+
+            else:
+                await PlatformUtils.send_message(
+                    bot,
+                    user_id=x,
+                    group_id=None,
+                    message=MessageUtils.build_message(msg_list),
                 )
+        except Exception as e:
+            logger.error(f"B站订阅推送发生错误 sub_id：{sub.sub_id}", LOG_COMMAND, e=e)

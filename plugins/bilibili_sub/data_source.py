@@ -63,45 +63,43 @@ async def add_live_sub(session: Uninfo, live_id: int, sub_user: str) -> str:
     返回:
         str: 订阅结果
     """
+    # try:
     try:
-        try:
-            """bilibili_api.live库的LiveRoom类中get_room_info改为bilireq.live库的get_room_info_by_id方法"""
-            live_info = await get_room_info_by_id(live_id)
-        except ResponseCodeError:
-            return f"未找到房间号Id：{live_id} 的信息，请检查Id是否正确"
-        uid = live_info["uid"]
-        room_id = live_info["room_id"]
-        short_id = live_info["short_id"]
-        title = live_info["title"]
-        live_status = live_info["live_status"]
-        if await BilibiliSub.sub_handle(
-            room_id,
-            "live",
-            sub_user,
-            uid=uid,
-            live_short_id=short_id,
-            live_status=live_status,
-        ):
-            await _get_up_status(session, room_id)
-            sub_data = await BilibiliSub.get_or_none(sub_id=room_id)
-            if not sub_data:
-                logger.debug(
-                    f"未找到sub_id为{room_id}的数据", LOG_COMMAND, session=session
-                )
-                return "添加订阅失败..."
-            return (
-                "订阅成功！🎉\n"
-                f"主播名称：{sub_data.uname}\n"
-                f"直播标题：{title}\n"
-                f"直播间ID：{room_id}\n"
-                f"用户UID：{uid}"
-            )
-        else:
-            return "数据添加失败，添加订阅失败..."
-    except Exception as e:
-        logger.error(
-            f"订阅主播live_id：{live_id} 发生了错误", LOG_COMMAND, session=session, e=e
+        """bilibili_api.live库的LiveRoom类中get_room_info改为bilireq.live库的get_room_info_by_id方法"""
+        live_info = await get_room_info_by_id(live_id)
+    except ResponseCodeError:
+        return f"未找到房间号Id：{live_id} 的信息，请检查Id是否正确"
+    uid = live_info["uid"]
+    room_id = live_info["room_id"]
+    short_id = live_info["short_id"]
+    title = live_info["title"]
+    live_status = live_info["live_status"]
+    if await BilibiliSub.sub_handle(
+        room_id,
+        "live",
+        sub_user,
+        uid=uid,
+        live_short_id=short_id,
+        live_status=live_status,
+    ):
+        await _get_up_status(session, room_id)
+        sub_data = await BilibiliSub.get_or_none(sub_id=room_id)
+        if not sub_data:
+            logger.debug(f"未找到sub_id为{room_id}的数据", LOG_COMMAND, session=session)
+            return "添加订阅失败..."
+        return (
+            "订阅成功！🎉\n"
+            f"主播名称：{sub_data.uname}\n"
+            f"直播标题：{title}\n"
+            f"直播间ID：{room_id}\n"
+            f"用户UID：{uid}"
         )
+    else:
+        return "数据添加失败，添加订阅失败..."
+    # except Exception as e:
+    #     logger.error(
+    #         f"订阅主播live_id：{live_id} 发生了错误", LOG_COMMAND, session=session, e=e
+    #     )
     return "添加订阅失败..."
 
 
@@ -379,12 +377,13 @@ async def _get_up_status(session: Uninfo | None, sub_id: int) -> list:
     video = None
     if video_info["list"].get("vlist"):
         video = video_info["list"]["vlist"][0]
-        latest_video_created = video.get("created", "")
+        latest_video_created = video.get("created", 0)
+        sub_latest_video_created = sub_data.latest_video_created or 0
 
         # 视频时效性检查
         if (
             latest_video_created
-            and sub_data.latest_video_created < latest_video_created
+            and sub_latest_video_created < latest_video_created
             and datetime.fromtimestamp(latest_video_created) > time_threshold
         ):
             # 检查视频链接是否被拦截
@@ -426,9 +425,7 @@ async def _get_up_status(session: Uninfo | None, sub_id: int) -> list:
                 sub_id, latest_video_created=latest_video_created
             )
 
-        elif (
-            latest_video_created > sub_data.latest_video_created
-        ):  # 超时视频仍更新时间戳
+        elif latest_video_created > sub_latest_video_created:  # 超时视频仍更新时间戳
             await BilibiliSub.sub_handle(
                 sub_id, latest_video_created=latest_video_created
             )
