@@ -8,5 +8,5 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: |
-          git remote add gitee https://${{ secrets.GITEE_TOKEN }}@gitee.com/two_Dimension/zhenxun_bot_plugins.git
+          git remote add gitee https://two_Dimension:${{ secrets.GITEE_TOKEN }}@gitee.com/two_Dimension/zhenxun_bot_plugins.git
           git push gitee HEAD:main -f
