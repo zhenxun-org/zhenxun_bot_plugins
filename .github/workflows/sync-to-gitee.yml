@@ -1,12 +1,27 @@
 name: Sync to Gitee
 on:
   push:
-    branches: ["main"] # 仅同步 main 分支的推送
+    branches: ["main"]
 jobs:
   sync:
     runs-on: ubuntu-latest
+    timeout-minutes: 15 # 防止卡死
     steps:
-      - uses: actions/checkout@v4
-      - run: |
-          git remote add gitee https://two_Dimension:${{ secrets.GITEE_TOKEN }}@gitee.com/two_Dimension/zhenxun_bot_plugins.git
-          git push --force gitee HEAD:main
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Configure Git
+        run: |
+          git config --global http.postBuffer 524288000 
+          git config --global core.compression 9
+
+      - name: Add Gitee remote
+        run: git remote add gitee https://two_Dimension:${{ secrets.GITEE_TOKEN }}@gitee.com/two_Dimension/zhenxun_bot_plugins.git
+
+      - name: Force push to Gitee
+        run: git push --progress --force-with-lease gitee HEAD:main
+        env:
+          GIT_CURL_VERBOSE: 1
+          GIT_TRACE: 1
