@@ -1,0 +1,12 @@
+name: Sync to Gitee
+on:
+  push:
+    branches: ["main"] # 仅同步 main 分支的推送
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          git remote add gitee https://${{ secrets.GITEE_TOKEN }}@gitee.com/two_Dimension/zhenxun_bot_plugins.git
+          git push gitee HEAD:main -f
