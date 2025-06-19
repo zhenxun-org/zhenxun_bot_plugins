@@ -36,16 +36,16 @@ class SixDataTo(BaseModel):
     """新闻"""
     tip: str
     """tip"""
-    updated: int
+    updated: str
     """更新日期"""
-    url: str
+    link: str
     """链接"""
     cover: str
     """图片"""
 
 
 class SixData(BaseModel):
-    status: int
+    code: int
     """状态码"""
     message: str
     """返回内容"""

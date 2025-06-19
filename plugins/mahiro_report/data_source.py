@@ -1,3 +1,4 @@
+import asyncio
 from datetime import datetime
 from pathlib import Path
 import xml.etree.ElementTree as ET
@@ -42,13 +43,22 @@ class Report:
         for f in REPORT_PATH.iterdir():
             f.unlink()
         zhdata = ZhDate.from_datetime(now)
+        hitokoto, bili, six, it, anime = await asyncio.gather(
+            *[
+                cls.get_hitokoto(),
+                cls.get_bili(),
+                cls.get_six(),
+                cls.get_it(),
+                cls.get_anime(),
+            ]
+        )
         data = {
             "data_festival": get_festivals_dates(),
-            "data_hitokoto": await cls.get_hitokoto(),
-            "data_bili": await cls.get_bili(),
-            "data_six": await cls.get_six(),
-            "data_anime": await cls.get_anime(),
-            "data_it": await cls.get_it(),
+            "data_hitokoto": hitokoto,
+            "data_bili": bili,
+            "data_six": six,
+            "data_anime": anime,
+            "data_it": it,
             "week": cls.week[now.weekday()],
             "date": now.date(),
             "zh_date": zhdata.chinese().split()[0][5:],
