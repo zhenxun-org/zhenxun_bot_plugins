@@ -19,7 +19,7 @@ jobs:
 
       - name: Add Gitee remote
         run: |
-          git remote add gitee https://two_Dimension:${{ secrets.GITEE_TOKEN }}@gitee.com/two_Dimension/zhenxun_bot_plugins.git
+          git remote add gitee https://zhenxun-org:${{ secrets.GITEE_TOKEN }}@gitee.com/zhenxun-org/zhenxun_bot_plugins.git
           git fetch gitee main --force  # 强制更新本地引用
 
       - name: Force push
