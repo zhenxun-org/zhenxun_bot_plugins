@@ -439,7 +439,7 @@ async def render_video_info_to_image(info: VideoInfo) -> Optional[bytes]:
         "dm_count": RenderHelper.format_number(info.stat.danmaku),
         "reply_count": RenderHelper.format_number(info.stat.reply),
         "upload_date": time.strftime("%Y-%m-%d", time.localtime(info.pubdate)),
-        "av_number": f"av{info.aid}",
+        "id_number": f"{info.bvid}" if info.bvid else f"av{info.aid}",
         "video_summary": info.desc or "UP主没有填写简介",
         "like_count": RenderHelper.format_number(info.stat.like),
         "coin_count": RenderHelper.format_number(info.stat.coin),
