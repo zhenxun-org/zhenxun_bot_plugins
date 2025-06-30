@@ -1,0 +1,7 @@
+name: Sequential Lint and Type Check
+
+on: [push, pull_request]
+
+jobs:
+  ruff-call:
+    uses: ./.github/workflows/ruff.yml

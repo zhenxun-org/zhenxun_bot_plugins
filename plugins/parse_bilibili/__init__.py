@@ -11,7 +11,6 @@ from nonebot_plugin_uninfo import Uninfo
 from zhenxun.configs.utils import PluginExtraData, RegisterConfig, Task
 from zhenxun.services.log import logger
 from zhenxun.utils.common_utils import CommonUtils
-from zhenxun.utils.depends import OneCommand
 from zhenxun.utils.enum import PluginType
 from zhenxun.utils.message import MessageUtils
 
@@ -225,10 +224,11 @@ __plugin_meta__ = PluginMetadata(
 )
 
 
-async def _rule(uninfo: Uninfo, message: UniMsg, cmd: str = OneCommand()) -> bool:
+async def _rule(uninfo: Uninfo, message: UniMsg) -> bool:
+    plain_text = message.extract_plain_text().strip()
     if await CommonUtils.task_is_block(uninfo, "parse_bilibili"):
         return False
-    if cmd and cmd in {"bili下载", "b站下载"}:
+    if plain_text.startswith(("bili下载", "b站下载")):
         logger.debug("消息被识别为 bili下载 命令，被动解析跳过", "B站解析")
         return False
 
