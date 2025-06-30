@@ -5,11 +5,14 @@ import os
 import random
 import re
 import time
+import uuid
+import base64
 from typing import ClassVar, Literal
+from pathlib import Path
 
-from nonebot.adapters import Bot
+from nonebot.adapters import Bot, MessageSegment
 from nonebot.compat import model_dump
-from nonebot_plugin_alconna import Text, UniMessage, UniMsg
+from nonebot_plugin_alconna import Text, Image, Reply, UniMessage, UniMsg
 from nonebot_plugin_uninfo import Uninfo
 
 from zhenxun.builtin_plugins.sign_in.utils import (
@@ -17,7 +20,7 @@ from zhenxun.builtin_plugins.sign_in.utils import (
     level2attitude,
 )
 from zhenxun.configs.config import BotConfig, Config
-from zhenxun.configs.path_config import IMAGE_PATH
+from zhenxun.configs.path_config import IMAGE_PATH, TEMP_PATH
 from zhenxun.configs.utils import AICallableTag
 from zhenxun.models.sign_user import SignUser
 from zhenxun.services.log import logger
@@ -46,12 +49,14 @@ from .config import (
 from .exception import CallApiParamException, NotResultException
 from .models.bym_chat import BymChat
 from .models.bym_gift_log import GiftLog
+from .storage_strategy.storage_strategy_factory import StorageStrategyFactory
 
 semaphore = asyncio.Semaphore(3)
 
 
 GROUP_NAME_CACHE = {}
 
+image_cache_path = TEMP_PATH / 'bym_ai' / 'image_cache'
 
 def split_text(text: str) -> list[tuple[str, float]]:
     """文本切割"""
@@ -377,6 +382,7 @@ class CallApi:
             },
             json=send_json,
             verify=False,
+            timeout=120.0
         )
 
         if response.status_code == 429:
@@ -441,39 +447,88 @@ class ChatManager:
 
     @classmethod
     def format(
-        cls, type: Literal["system", "user", "text"], data: str
-    ) -> dict[str, str]:
+        cls, type: Literal["system", "user", "text", "image_url"], data: str
+    ) -> dict[str, str | dict[str, str]]:
         """格式化数据
 
         参数:
-            data: 文本
+            data: 数据
 
         返回:
             dict[str, str]: 格式化字典文本
         """
-        return {
-            "type": type,
-            "text": data,
-        }
+
+        if type == 'image_url':
+            return {
+                "type": type,
+                "image_url": {
+                    "url": data
+                }
+            }
+        else:
+            return {
+                "type": type,
+                "text": data,
+            }
+        
+    @classmethod
+    async def _process_image_content(cls, path: Path) -> str | None:
+        submit_strategy = base_config.get("IMAGE_UNDERSTANDING_DATA_SUBMIT_STRATEGY")
+        
+        if submit_strategy == 'base64':
+            base64_str = base64.b64encode(path.read_bytes()).decode('utf-8')
+            return f"data:image/jpeg;base64,{base64_str}"
+        elif submit_strategy == 'image_url':
+            upload_strategy = StorageStrategyFactory.create_strategy(api_key = token_counter.get_token())
+            if upload_strategy:
+                return await upload_strategy.upload(path)
+        else:
+            return None
+
 
     @classmethod
-    def __build_content(cls, message: UniMsg) -> list[dict[str, str]]:
-        """获取消息文本内容
+    async def __build_content(cls, message: UniMsg) -> list[dict[str, str | dict[str, str]]]:
+        """获取消息内容
 
         参数:
             message: 消息内容
 
         返回:
-            list[dict[str, str]]: 文本列表
+            list[dict[str, str | dict[str, str]]]: 消息列表
         """
-        return [
-            cls.format("text", seg.text) for seg in message if isinstance(seg, Text)
-        ]
+        # return [
+        #     cls.format("text", seg.text) for seg in message if isinstance(seg, Text)
+        # ]
+        res: list[dict[str, str | dict[str, str]]] = []
+        for seg in message:
+            if isinstance(seg, Text):
+                res.append(cls.format("text", seg.text))
+            if isinstance(seg, Image) and seg.url:
+                uid = str(uuid.uuid4()) + '.jpg'
+                path = image_cache_path / uid
+                if not await AsyncHttpx.download_file(url=seg.url, path=path):
+                    logger.error("图片下载失败", "BYM_AI")
+                url = await cls._process_image_content(path=path)
+                if url:
+                    res.append(cls.format("image_url", url))
+            if isinstance(seg, Reply) and seg.msg:
+                for s in seg.msg:
+                    if isinstance(s, MessageSegment) and s.type == 'image':
+                        uid = str(uuid.uuid4()) + '.jpg'
+                        path = image_cache_path / uid
+                        if not await AsyncHttpx.download_file(url=s.data['url'], path=path):
+                            logger.error("图片下载失败", "BYM_AI")
+                        url = await cls._process_image_content(path=path)
+                        if url:
+                            res.append(cls.format("image_url", url))
+
+        return res
+
 
     @classmethod
     async def __get_normal_content(
         cls, user_id: str, group_id: str | None, nickname: str, message: UniMsg
-    ) -> list[dict[str, str]]:
+    ) -> list[dict[str, str | dict[str, str]]]:
         """获取普通回答文本内容
 
         参数:
@@ -484,7 +539,7 @@ class ChatManager:
         返回:
             list[dict[str, str]]: 文本序列
         """
-        content = cls.__build_content(message)
+        content = await cls.__build_content(message)
         if user_id not in cls.user_impression:
             sign_user = await SignUser.get_user(user_id)
             cls.user_impression[user_id] = float(sign_user.impression)
@@ -525,9 +580,9 @@ class ChatManager:
         return content
 
     @classmethod
-    def __get_bym_content(
+    async def __get_bym_content(
         cls, bot: Bot, user_id: str, group_id: str | None, nickname: str
-    ) -> list[dict[str, str]]:
+    ) -> list[dict[str, str | dict[str, str]]]:
         """获取伪人回答文本内容
 
         参数:
@@ -559,7 +614,7 @@ class ChatManager:
                         f"用户昵称：{message.nickname} 用户ID：{message.user_id}",
                     )
                 )
-                content.extend(cls.__build_content(message.message))
+                content.extend(await cls.__build_content(message.message))
         content.append(cls.format("text", TIP_CONTENT))
         return content
 
@@ -621,7 +676,7 @@ class ChatManager:
         user_id = session.user.id
         cls.add_cache(user_id, group_id, nickname, message)
         if is_bym:
-            content = cls.__get_bym_content(bot, user_id, group_id, nickname)
+            content = await cls.__get_bym_content(bot, user_id, group_id, nickname)
             conversation = await Conversation.get_conversation(None, group_id)
         else:
             content = await cls.__get_normal_content(

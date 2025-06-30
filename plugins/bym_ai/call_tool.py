@@ -80,6 +80,7 @@ class AiCallTool:
                     tool_result = tool.func(**func_params)
                 if not tool_result:
                     tool_result = "success"
+                logger.info(f"调用Ai智能工具:{func.name}\n 参数:{func_params}\n 结果:{tool_result}", "BYM_AI")
             except Exception as e:
                 logger.error(f"调用Ai智能工具 {func.name}", "BYM_AI", e=e)
                 tool_result = str(e)
@@ -97,6 +98,8 @@ class AiCallTool:
 def _():
     if base_config.get("BYM_AI_CHAT_SMART"):
         AiCallTool.load_tool()
+        for name, tool in AiCallTool.tools.items():
+            logger.info(f"成功加载Ai智能工具[{name}] [{tool.description}]")
         logger.info(
             f"加载Ai智能工具完成, 成功加载 {len(AiCallTool.tools)} 个AI智能工具"
         )
