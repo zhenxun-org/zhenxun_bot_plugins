@@ -4,7 +4,6 @@ from pathlib import Path
 from PIL import Image
 from urllib.parse import urlparse, urlunparse
 
-from zhenxun.services.llm import api
 
 from .storage_strategy import StorageStrategy
 
@@ -16,11 +15,14 @@ from ..config import (
     base_config,
 )
 
-image_cache_path = TEMP_PATH / 'bym_ai' / 'image_cache'
+image_cache_path = TEMP_PATH / "bym_ai" / "image_cache"
+
 
 class GeminiStorageStrategy(StorageStrategy):
     def __init__(self, api_key: str):
-        self.proxy_host = base_config.get("IMAGE_UNDERSTANDING_DATA_STORAGE_STRATEGY_GEMINI_PROXY")
+        self.proxy_host = base_config.get(
+            "IMAGE_UNDERSTANDING_DATA_STORAGE_STRATEGY_GEMINI_PROXY"
+        )
         self.api_key = api_key
         self.base_url = f"https://{self.proxy_host}/upload/v1beta/files"
 
@@ -40,43 +42,42 @@ class GeminiStorageStrategy(StorageStrategy):
 
         if not (mime_type and mime_type.startswith("image/") and file_size > max_size):
             return file_path
-    
-        
+
         temp_path: Path | None = None
         image_cache_path.mkdir(parents=True, exist_ok=True)
-        
+
         img = Image.open(file_path)
 
         if img.mode in ("RGBA", "P"):
             img = img.convert("RGB")
 
         with tempfile.NamedTemporaryFile(
-            suffix=".jpg", 
+            suffix=".jpg",
             delete=False,
             dir=image_cache_path,
-            prefix=f"{file_path.stem}_"
+            prefix=f"{file_path.stem}_",
         ) as temp_file:
             temp_path = Path(temp_file.name)
 
         # 压缩循环保持不变
         current_quality = 85
         scale_factor = 0.9
-        
+
         img.save(temp_path, "jpeg", quality=current_quality, optimize=True)
-        
+
         while temp_path.stat().st_size > max_size:
             new_width = int(img.width * scale_factor)
             new_height = int(img.height * scale_factor)
-            
+
             if new_width < 1 or new_height < 1:
                 temp_path.unlink()
                 return file_path
 
             img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
             img.save(temp_path, "jpeg", quality=current_quality, optimize=True)
-        
+
         return temp_path
-        
+
     async def upload(self, file_path: Path) -> str | None:
         """
         使用两步可续传协议上传单个文件，并适配代理。
@@ -87,7 +88,7 @@ class GeminiStorageStrategy(StorageStrategy):
         """
         if not file_path.is_file():
             return None
-        
+
         # 检查并压缩文件
         path_for_upload = self._compress_image_if_needed(file_path, 4 * 1024 * 1024)
 
@@ -96,9 +97,9 @@ class GeminiStorageStrategy(StorageStrategy):
         mime_type, _ = mimetypes.guess_type(path_for_upload)
         if not mime_type:
             mime_type = "application/octet-stream"
-        
+
         display_name = file_path.name
-    
+
         # 初始化上传
         start_headers = {
             "X-Goog-Upload-Protocol": "resumable",
@@ -108,20 +109,19 @@ class GeminiStorageStrategy(StorageStrategy):
             "Content-Type": "application/json",
         }
         metadata = {"file": {"display_name": display_name}}
-        
-        
+
         response_start = await AsyncHttpx.post(
             f"{self.base_url}?key={self.api_key}",
             headers=start_headers,
             json=metadata,
-            timeout=30
+            timeout=30,
         )
         response_start.raise_for_status()
-        
+
         original_upload_url = response_start.headers.get("x-goog-upload-url")
         if not original_upload_url:
             return None
-        
+
         # 替换为代理 URL
         parsed_url = urlparse(original_upload_url)
         proxied_url_parts = parsed_url._replace(netloc=self.proxy_host)
@@ -139,13 +139,13 @@ class GeminiStorageStrategy(StorageStrategy):
                 str(proxied_upload_url),
                 headers=upload_headers,
                 data=path_for_upload.read_bytes(),
-                timeout=120
+                timeout=120,
             )
             response_upload.raise_for_status()
 
             file_info = response_upload.json()
-                
-            return file_info['file']['uri']
+
+            return file_info["file"]["uri"]
 
         except Exception as e:
             logger.error("gemini 图片存储策略上传失败", "BYM_AI", e=e)

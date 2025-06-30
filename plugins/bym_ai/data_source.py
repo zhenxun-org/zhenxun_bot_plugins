@@ -56,7 +56,8 @@ semaphore = asyncio.Semaphore(3)
 
 GROUP_NAME_CACHE = {}
 
-image_cache_path = TEMP_PATH / 'bym_ai' / 'image_cache'
+image_cache_path = TEMP_PATH / "bym_ai" / "image_cache"
+
 
 def split_text(text: str) -> list[tuple[str, float]]:
     """文本切割"""
@@ -382,7 +383,7 @@ class CallApi:
             },
             json=send_json,
             verify=False,
-            timeout=120.0
+            timeout=120.0,
         )
 
         if response.status_code == 429:
@@ -458,36 +459,34 @@ class ChatManager:
             dict[str, str]: 格式化字典文本
         """
 
-        if type == 'image_url':
-            return {
-                "type": type,
-                "image_url": {
-                    "url": data
-                }
-            }
+        if type == "image_url":
+            return {"type": type, "image_url": {"url": data}}
         else:
             return {
                 "type": type,
                 "text": data,
             }
-        
+
     @classmethod
     async def _process_image_content(cls, path: Path) -> str | None:
         submit_strategy = base_config.get("IMAGE_UNDERSTANDING_DATA_SUBMIT_STRATEGY")
-        
-        if submit_strategy == 'base64':
-            base64_str = base64.b64encode(path.read_bytes()).decode('utf-8')
+
+        if submit_strategy == "base64":
+            base64_str = base64.b64encode(path.read_bytes()).decode("utf-8")
             return f"data:image/jpeg;base64,{base64_str}"
-        elif submit_strategy == 'image_url':
-            upload_strategy = StorageStrategyFactory.create_strategy(api_key = token_counter.get_token())
+        elif submit_strategy == "image_url":
+            upload_strategy = StorageStrategyFactory.create_strategy(
+                api_key=token_counter.get_token()
+            )
             if upload_strategy:
                 return await upload_strategy.upload(path)
         else:
             return None
 
-
     @classmethod
-    async def __build_content(cls, message: UniMsg) -> list[dict[str, str | dict[str, str]]]:
+    async def __build_content(
+        cls, message: UniMsg
+    ) -> list[dict[str, str | dict[str, str]]]:
         """获取消息内容
 
         参数:
@@ -504,7 +503,7 @@ class ChatManager:
             if isinstance(seg, Text):
                 res.append(cls.format("text", seg.text))
             if isinstance(seg, Image) and seg.url:
-                uid = str(uuid.uuid4()) + '.jpg'
+                uid = str(uuid.uuid4()) + ".jpg"
                 path = image_cache_path / uid
                 if not await AsyncHttpx.download_file(url=seg.url, path=path):
                     logger.error("图片下载失败", "BYM_AI")
@@ -513,17 +512,18 @@ class ChatManager:
                     res.append(cls.format("image_url", url))
             if isinstance(seg, Reply) and seg.msg:
                 for s in seg.msg:
-                    if isinstance(s, MessageSegment) and s.type == 'image':
-                        uid = str(uuid.uuid4()) + '.jpg'
+                    if isinstance(s, MessageSegment) and s.type == "image":
+                        uid = str(uuid.uuid4()) + ".jpg"
                         path = image_cache_path / uid
-                        if not await AsyncHttpx.download_file(url=s.data['url'], path=path):
+                        if not await AsyncHttpx.download_file(
+                            url=s.data["url"], path=path
+                        ):
                             logger.error("图片下载失败", "BYM_AI")
                         url = await cls._process_image_content(path=path)
                         if url:
                             res.append(cls.format("image_url", url))
 
         return res
-
 
     @classmethod
     async def __get_normal_content(
