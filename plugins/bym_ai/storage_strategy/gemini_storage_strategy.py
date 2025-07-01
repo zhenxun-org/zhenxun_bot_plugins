@@ -1,19 +1,16 @@
 import mimetypes
-import tempfile
 from pathlib import Path
-from PIL import Image
+import tempfile
 from urllib.parse import urlparse, urlunparse
 
+from PIL import Image
 
-from .storage_strategy import StorageStrategy
-
-from zhenxun.utils.http_utils import AsyncHttpx
 from zhenxun.configs.path_config import TEMP_PATH
 from zhenxun.services.log import logger
+from zhenxun.utils.http_utils import AsyncHttpx
 
-from ..config import (
-    base_config,
-)
+from ..config import base_config
+from .storage_strategy import StorageStrategy
 
 image_cache_path = TEMP_PATH / "bym_ai" / "image_cache"
 
@@ -27,11 +24,11 @@ class GeminiStorageStrategy(StorageStrategy):
         self.base_url = f"https://{self.proxy_host}/upload/v1beta/files"
 
     def _compress_image_if_needed(self, file_path: Path, max_size: int) -> Path:
-        """
-        检查图片大小，如果超过限制则进行压缩。
+        """检查图片大小，如果超过限制则进行压缩。
 
-        :param file_path: 原始文件的 Path 对象。
-        :param max_size: 允许的最大文件大小（单位：字节）。
+        参数:
+            file_path: 原始文件的 Path 对象。
+            max_size: 允许的最大文件大小（单位：字节）。
         """
         # 初始检查保持不变
         if not file_path.is_file():
@@ -79,12 +76,14 @@ class GeminiStorageStrategy(StorageStrategy):
         return temp_path
 
     async def upload(self, file_path: Path) -> str | None:
-        """
-        使用两步可续传协议上传单个文件，并适配代理。
+        """使用两步可续传协议上传单个文件，并适配代理。
         如果文件是图片且大于指定大小，会先进行压缩。
 
-        :param file_path: 要上传的文件的 Path 对象。
-        :return: 图片上传成功后的地址，或在失败时返回 None。
+        参数:
+            file_path: 要上传的文件的 Path 对象。
+
+        返回:
+            图片上传成功后的地址，或在失败时返回 None。
         """
         if not file_path.is_file():
             return None

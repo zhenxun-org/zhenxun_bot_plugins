@@ -1,18 +1,18 @@
 import asyncio
+import base64
 from collections.abc import Sequence
 from datetime import datetime
 import os
+from pathlib import Path
 import random
 import re
 import time
-import uuid
-import base64
 from typing import ClassVar, Literal
-from pathlib import Path
+import uuid
 
 from nonebot.adapters import Bot, MessageSegment
 from nonebot.compat import model_dump
-from nonebot_plugin_alconna import Text, Image, Reply, UniMessage, UniMsg
+from nonebot_plugin_alconna import Image, Reply, Text, UniMessage, UniMsg
 from nonebot_plugin_uninfo import Uninfo
 
 from zhenxun.builtin_plugins.sign_in.utils import (
@@ -125,21 +125,11 @@ def remove_deep_seek(text: str, is_tool: bool) -> str:
     elif "Response text:" in text:
         match_text = re.split("Response text[:,：]", text)[-1]
     if match_text:
-        match_text = re.sub(r"```tool_code([\s\S]*?)```", "", match_text).strip()
-        match_text = re.sub(r"```json([\s\S]*?)```", "", match_text).strip()
-        match_text = re.sub(
-            r"</?思考过程>([\s\S]*?)</?思考过程>", "", match_text
-        ).strip()
-        match_text = re.sub(
-            r"\[\/?instruction\]([\s\S]*?)\[\/?instruction\]", "", match_text
-        ).strip()
-        match_text = re.sub(r"</?thought>([\s\S]*?)</?thought>", "", match_text).strip()
-        return re.sub(r"<\/?content>", "", match_text)
-    else:
-        text = re.sub(r"```tool_code([\s\S]*?)```", "", text).strip()
-        text = re.sub(r"```json([\s\S]*?)```", "", text).strip()
-        text = re.sub(r"</?思考过程>([\s\S]*?)</?思考过程>", "", text).strip()
-        text = re.sub(r"</?thought>([\s\S]*?)</?thought>", "", text).strip()
+        return _extracted_from_remove_deep_seek_30(match_text)
+    text = re.sub(r"```tool_code([\s\S]*?)```", "", text).strip()
+    text = re.sub(r"```json([\s\S]*?)```", "", text).strip()
+    text = re.sub(r"</?思考过程>([\s\S]*?)</?思考过程>", "", text).strip()
+    text = re.sub(r"</?thought>([\s\S]*?)</?thought>", "", text).strip()
     if is_tool:
         if DEEP_SEEK_SPLIT in text:
             return text.split(DEEP_SEEK_SPLIT, 1)[-1].strip()
@@ -171,6 +161,17 @@ def remove_deep_seek(text: str, is_tool: bool) -> str:
         text = text.strip().split("\n")[-1]
         text = re.sub(r"^[\s\S]*?结果[:,：]\n", "", text)
     return re.sub(r"<\/?content>", "", text).replace("深度思考结束。", "").strip()
+
+
+def _extracted_from_remove_deep_seek_30(match_text):
+    match_text = re.sub(r"```tool_code([\s\S]*?)```", "", match_text).strip()
+    match_text = re.sub(r"```json([\s\S]*?)```", "", match_text).strip()
+    match_text = re.sub(r"</?思考过程>([\s\S]*?)</?思考过程>", "", match_text).strip()
+    match_text = re.sub(
+        r"\[\/?instruction\]([\s\S]*?)\[\/?instruction\]", "", match_text
+    ).strip()
+    match_text = re.sub(r"</?thought>([\s\S]*?)</?thought>", "", match_text).strip()
+    return re.sub(r"<\/?content>", "", match_text)
 
 
 class TokenCounter:
@@ -333,7 +334,7 @@ class CallApi:
     def __init__(self):
         url = {
             "gemini": "https://generativelanguage.googleapis.com/v1beta/chat/completions",
-            "DeepSeek": "https://api.deepseek.com",
+            "DeepSeek": "https://api.deepseek.com/v1/chat/completions",
             "硅基流动": "https://api.siliconflow.cn/v1",
             "阿里云百炼": "https://dashscope.aliyuncs.com/compatible-mode/v1",
             "百度智能云": "https://qianfan.baidubce.com/v2",
@@ -475,10 +476,9 @@ class ChatManager:
             base64_str = base64.b64encode(path.read_bytes()).decode("utf-8")
             return f"data:image/jpeg;base64,{base64_str}"
         elif submit_strategy == "image_url":
-            upload_strategy = StorageStrategyFactory.create_strategy(
+            if upload_strategy := StorageStrategyFactory.create_strategy(
                 api_key=token_counter.get_token()
-            )
-            if upload_strategy:
+            ):
                 return await upload_strategy.upload(path)
         else:
             return None
@@ -503,7 +503,7 @@ class ChatManager:
             if isinstance(seg, Text):
                 res.append(cls.format("text", seg.text))
             if isinstance(seg, Image) and seg.url:
-                uid = str(uuid.uuid4()) + ".jpg"
+                uid = f"{uuid.uuid4()!s}.jpg"
                 path = image_cache_path / uid
                 if not await AsyncHttpx.download_file(url=seg.url, path=path):
                     logger.error("图片下载失败", "BYM_AI")
@@ -513,7 +513,7 @@ class ChatManager:
             if isinstance(seg, Reply) and seg.msg:
                 for s in seg.msg:
                     if isinstance(s, MessageSegment) and s.type == "image":
-                        uid = str(uuid.uuid4()) + ".jpg"
+                        uid = f"{uuid.uuid4()!s}.jpg"
                         path = image_cache_path / uid
                         if not await AsyncHttpx.download_file(
                             url=s.data["url"], path=path
@@ -646,9 +646,11 @@ class ChatManager:
     def check_is_call_tool(cls, result: OpenAiResult) -> bool:
         if not base_config.get("BYM_AI_TOOL_MODEL"):
             return False
-        if result.choices and (msg := result.choices[0].message):
-            return bool(msg.tool_calls)
-        return False
+        choices = result.choices
+        if not choices or not choices[0].message:
+            return False
+        msg = choices[0].message
+        return bool(msg.tool_calls) if msg else False
 
     @classmethod
     async def get_result(

@@ -147,7 +147,7 @@ class ChatMessage(BaseModel):
 
 class Choices(BaseModel):
     index: int
-    message: Message
+    message: Message | None
     logprobs: Any | None = None
     finish_reason: str | None
 
