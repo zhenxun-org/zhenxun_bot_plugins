@@ -131,6 +131,23 @@ __plugin_meta__ = PluginMetadata(
                 default_value=True,
                 type=bool,
             ),
+            RegisterConfig(
+                key="IMAGE_UNDERSTANDING_DATA_SUBMIT_STRATEGY",
+                value=None,
+                help="图片理解数据提交策略，可选 base64 | image_url 为空时不进行图片理解",
+                default_value=None,
+            ),
+            RegisterConfig(
+                key="IMAGE_UNDERSTANDING_DATA_STORAGE_STRATEGY",
+                value=None,
+                help="图片理解数据存储策略，只在 image_url 模式生效",
+            ),
+            RegisterConfig(
+                key="IMAGE_UNDERSTANDING_DATA_STORAGE_STRATEGY_GEMINI_PROXY",
+                value=None,
+                help="gemini 文件上传策略代理地址，只在图片理解数据存储策略为 gemini 时有效",
+                default_value="generativelanguage.googleapis.com",
+            ),
         ],
         smart_tools=[
             AICallableTag(
