@@ -184,8 +184,6 @@ class TokenCounter:
     def get_token(self) -> str:
         """获取token，将时间最小的token返回"""
         token_list = sorted(self.tokens.keys(), key=lambda x: self.tokens[x])
-        result_token = token_list[0]
-        self.tokens[result_token] = int(time.time())
         return token_list[0]
 
     def delay(self, token: str):
@@ -351,7 +349,6 @@ class CallApi:
         self.tts_token = Config.get_config("bym_ai", "BYM_AI_TTS_TOKEN")
         self.tts_voice = Config.get_config("bym_ai", "BYM_AI_TTS_VOICE")
 
-    @Retry.api(exception=(NotResultException,))
     async def fetch_chat(
         self,
         user_id: str,
@@ -482,12 +479,28 @@ class ChatManager:
                 return await upload_strategy.upload(path)
         else:
             return None
+        
+    @classmethod
+    async def _process_image(cls, message: MessageSegment | None) -> str | None:
+        if isinstance(message, MessageSegment) and message.type == "image":
+            file_name = message.data.get("file")
+            if not file_name:
+                file_name = f"{uuid.uuid4()!s}.jpg"
+            
+            path = image_cache_path / file_name
+            if not path.exists():
+                if not await AsyncHttpx.download_file(
+                    url=message.data["url"], path=path
+                ):
+                    logger.error("图片下载失败", "BYM_AI")
+            return await cls._process_image_content(path=path)
 
     @classmethod
     async def __build_content(
         cls, message: UniMsg
     ) -> list[dict[str, str | dict[str, str]]]:
-        """获取消息内容
+        """
+        获取消息内容
 
         参数:
             message: 消息内容
@@ -495,33 +508,31 @@ class ChatManager:
         返回:
             list[dict[str, str | dict[str, str]]]: 消息列表
         """
-        # return [
-        #     cls.format("text", seg.text) for seg in message if isinstance(seg, Text)
-        # ]
+        tasks = []
+        all_parts = [] 
+
+        def process_segments(segments):
+            for seg in segments:
+                if isinstance(seg, Text):
+                    all_parts.append(('text', cls.format("text", seg.text)))
+                elif isinstance(seg, Image) and seg.url:
+                    image_task = asyncio.create_task(cls._process_image(seg.origin))
+                    tasks.append(image_task)
+                    all_parts.append(('image_task', image_task))
+                elif isinstance(seg, Reply) and seg.msg:
+                    process_segments(seg.msg)
+
+        process_segments(message)
+
+        await asyncio.gather(*tasks)
+
         res: list[dict[str, str | dict[str, str]]] = []
-        for seg in message:
-            if isinstance(seg, Text):
-                res.append(cls.format("text", seg.text))
-            if isinstance(seg, Image) and seg.url:
-                uid = f"{uuid.uuid4()!s}.jpg"
-                path = image_cache_path / uid
-                if not await AsyncHttpx.download_file(url=seg.url, path=path):
-                    logger.error("图片下载失败", "BYM_AI")
-                url = await cls._process_image_content(path=path)
-                if url:
+        for part_type, content in all_parts:
+            if part_type == 'text':
+                res.append(content)
+            elif part_type == 'image_task':
+                if url := content.result(): 
                     res.append(cls.format("image_url", url))
-            if isinstance(seg, Reply) and seg.msg:
-                for s in seg.msg:
-                    if isinstance(s, MessageSegment) and s.type == "image":
-                        uid = f"{uuid.uuid4()!s}.jpg"
-                        path = image_cache_path / uid
-                        if not await AsyncHttpx.download_file(
-                            url=s.data["url"], path=path
-                        ):
-                            logger.error("图片下载失败", "BYM_AI")
-                        url = await cls._process_image_content(path=path)
-                        if url:
-                            res.append(cls.format("image_url", url))
 
         return res
 
@@ -653,6 +664,7 @@ class ChatManager:
         return bool(msg.tool_calls) if msg else False
 
     @classmethod
+    @Retry.api(exception=(NotResultException,))
     async def get_result(
         cls,
         bot: Bot,
