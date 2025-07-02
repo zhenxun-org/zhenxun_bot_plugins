@@ -349,6 +349,7 @@ class CallApi:
         self.tts_token = Config.get_config("bym_ai", "BYM_AI_TTS_TOKEN")
         self.tts_voice = Config.get_config("bym_ai", "BYM_AI_TTS_VOICE")
 
+    @Retry.api(exception=(NotResultException,))
     async def fetch_chat(
         self,
         user_id: str,
@@ -402,6 +403,7 @@ class CallApi:
             raise NotResultException()
         return result
 
+    @Retry.api(exception=(NotResultException,))
     async def fetch_tts(
         self, content: str, retry_count: int = 3, delay: int = 5
     ) -> bytes | None:
