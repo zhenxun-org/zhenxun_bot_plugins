@@ -385,7 +385,7 @@ class CallApi:
         )
 
         if response.status_code == 429:
-            logger.debug(
+            logger.info(
                 f"fetch_chat 请求失败: 限速, token: {self.chat_token} 延迟 15 分钟",
                 "BYM_AI",
                 session=user_id,
@@ -402,7 +402,6 @@ class CallApi:
             raise NotResultException()
         return result
 
-    @Retry.api(exception=(NotResultException,))
     async def fetch_tts(
         self, content: str, retry_count: int = 3, delay: int = 5
     ) -> bytes | None:
@@ -532,6 +531,7 @@ class ChatManager:
                 res.append(content)
             elif part_type == 'image_task':
                 if url := content.result(): 
+                    res.append(cls.format("text", f"下面图片的源为: {url}, 该源为图片的base64编码或图片地址，可用于网络搜索"))
                     res.append(cls.format("image_url", url))
 
         return res
@@ -675,20 +675,11 @@ class ChatManager:
         is_bym: bool,
         func_param: FunctionParam,
     ) -> str:
-        """获取回答结果
-
-        参数:
-            user_id: 用户id
-            group_id: 群组id
-            nickname: 用户昵称
-            message: 消息内容
-            is_bym: 是否伪人
-
-        返回:
-            str | None: 消息内容
-        """
+        """获取回答结果（模型智能切换优化版）"""
         user_id = session.user.id
         cls.add_cache(user_id, group_id, nickname, message)
+
+        # 构建通用上下文
         if is_bym:
             content = await cls.__get_bym_content(bot, user_id, group_id, nickname)
             conversation = await Conversation.get_conversation(None, group_id)
@@ -698,27 +689,58 @@ class ChatManager:
             )
             conversation = await Conversation.get_conversation(user_id, group_id)
         conversation.append(ChatMessage(role="user", content=content))
+        
         tools = list(AiCallTool.tools.values())
-        # 首次调用，查看是否是调用工具
+        final_result_text = ""
+
+        tool_model = base_config.get("BYM_AI_TOOL_MODEL")
+        chat_model = base_config.get("BYM_AI_CHAT_MODEL")
+
+        # 检查是否启用智能模式
         if (
-            base_config.get("BYM_AI_CHAT_SMART")
-            and base_config.get("BYM_AI_TOOL_MODEL")
+            tool_model
+            and chat_model
             and tools
         ):
-            try:
-                result = await CallApi().fetch_chat(user_id, conversation, tools)
-                if cls.check_is_call_tool(result):
-                    result = await cls._tool_handle(
-                        bot, session, conversation, result, tools, func_param
-                    ) or await cls._chat_handle(session, conversation)
-                else:
-                    result = await cls._chat_handle(session, conversation)
-            except CallApiParamException:
-                logger.warning("尝试调用工具函数失败 code: 400", "BYM_AI")
-                result = await cls._chat_handle(session, conversation)
+            if tool_model == chat_model:
+                # 模型相同，采用单次请求流程
+                logger.debug(f"工具与对话模型相同 ({tool_model})，采用单次请求优化方案", "BYM_AI")
+                try:
+                    # 统一使用 tool_model 进行一次请求
+                    result = await CallApi().fetch_chat(user_id, conversation, tools)
+                    
+                    if cls.check_is_call_tool(result):
+                        final_result_text = await cls._tool_handle(
+                            bot, session, conversation, result, tools, func_param
+                        )
+                    else:
+                        group_id_from_session, assistant_reply, _ = cls._get_base_data(session, result, False)
+                        conversation.append(ChatMessage(role="assistant", content=assistant_reply))
+                        Conversation.set_history(session.user.id, group_id_from_session, conversation)
+                        final_result_text = assistant_reply
+                except CallApiParamException:
+                    logger.warning(f"模型 ({tool_model}) 调用工具失败，回退到普通聊天", "BYM_AI")
+                    final_result_text = await cls._chat_handle(session, conversation)
+            else:
+                # 模型不同，采用chat和tool分模型请求方案
+                logger.debug(f"工具模型 ({tool_model}) 与对话模型 ({chat_model}) 不同，采用分离请求方案", "BYM_AI")
+                try:
+                    result = await CallApi().fetch_chat(user_id, conversation, tools)
+
+                    if cls.check_is_call_tool(result):
+                        final_result_text = await cls._tool_handle(
+                            bot, session, conversation, result, tools, func_param
+                        )
+                    else:
+                        logger.debug("工具模型未调用工具，切换到对话模型生成回复", "BYM_AI")
+                        final_result_text = await cls._chat_handle(session, conversation)
+                except CallApiParamException:
+                    logger.warning(f"工具模型 ({tool_model}) 调用失败，回退到普通聊天", "BYM_AI")
+                    final_result_text = await cls._chat_handle(session, conversation)
         else:
-            result = await cls._chat_handle(session, conversation)
-        if res := _filter_result(result):
+            final_result_text = await cls._chat_handle(session, conversation)
+
+        if res := _filter_result(final_result_text):
             cls.add_cache(
                 bot.self_id,
                 group_id,
