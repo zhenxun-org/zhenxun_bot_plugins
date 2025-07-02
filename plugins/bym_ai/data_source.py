@@ -478,14 +478,14 @@ class ChatManager:
                 return await upload_strategy.upload(path)
         else:
             return None
-        
+
     @classmethod
     async def _process_image(cls, message: MessageSegment | None) -> str | None:
         if isinstance(message, MessageSegment) and message.type == "image":
             file_name = message.data.get("file")
             if not file_name:
                 file_name = f"{uuid.uuid4()!s}.jpg"
-            
+
             path = image_cache_path / file_name
             if not path.exists():
                 if not await AsyncHttpx.download_file(
@@ -508,16 +508,16 @@ class ChatManager:
             list[dict[str, str | dict[str, str]]]: 消息列表
         """
         tasks = []
-        all_parts = [] 
+        all_parts = []
 
         def process_segments(segments):
             for seg in segments:
                 if isinstance(seg, Text):
-                    all_parts.append(('text', cls.format("text", seg.text)))
+                    all_parts.append(("text", cls.format("text", seg.text)))
                 elif isinstance(seg, Image) and seg.url:
                     image_task = asyncio.create_task(cls._process_image(seg.origin))
                     tasks.append(image_task)
-                    all_parts.append(('image_task', image_task))
+                    all_parts.append(("image_task", image_task))
                 elif isinstance(seg, Reply) and seg.msg:
                     process_segments(seg.msg)
 
@@ -527,11 +527,16 @@ class ChatManager:
 
         res: list[dict[str, str | dict[str, str]]] = []
         for part_type, content in all_parts:
-            if part_type == 'text':
+            if part_type == "text":
                 res.append(content)
-            elif part_type == 'image_task':
-                if url := content.result(): 
-                    res.append(cls.format("text", f"下面图片的源为: {url}, 该源为图片的base64编码或图片地址，可用于网络搜索"))
+            elif part_type == "image_task":
+                if url := content.result():
+                    res.append(
+                        cls.format(
+                            "text",
+                            f"下面图片的源为: {url}, 该源为图片的base64编码或图片地址，可用于网络搜索",
+                        )
+                    )
                     res.append(cls.format("image_url", url))
 
         return res
@@ -689,7 +694,7 @@ class ChatManager:
             )
             conversation = await Conversation.get_conversation(user_id, group_id)
         conversation.append(ChatMessage(role="user", content=content))
-        
+
         tools = list(AiCallTool.tools.values())
         final_result_text = ""
 
@@ -697,33 +702,42 @@ class ChatManager:
         chat_model = base_config.get("BYM_AI_CHAT_MODEL")
 
         # 检查是否启用智能模式
-        if (
-            tool_model
-            and chat_model
-            and tools
-        ):
+        if tool_model and chat_model and tools:
             if tool_model == chat_model:
                 # 模型相同，采用单次请求流程
-                logger.debug(f"工具与对话模型相同 ({tool_model})，采用单次请求优化方案", "BYM_AI")
+                logger.debug(
+                    f"工具与对话模型相同 ({tool_model})，采用单次请求优化方案", "BYM_AI"
+                )
                 try:
                     # 统一使用 tool_model 进行一次请求
                     result = await CallApi().fetch_chat(user_id, conversation, tools)
-                    
+
                     if cls.check_is_call_tool(result):
                         final_result_text = await cls._tool_handle(
                             bot, session, conversation, result, tools, func_param
                         )
                     else:
-                        group_id_from_session, assistant_reply, _ = cls._get_base_data(session, result, False)
-                        conversation.append(ChatMessage(role="assistant", content=assistant_reply))
-                        Conversation.set_history(session.user.id, group_id_from_session, conversation)
+                        group_id_from_session, assistant_reply, _ = cls._get_base_data(
+                            session, result, False
+                        )
+                        conversation.append(
+                            ChatMessage(role="assistant", content=assistant_reply)
+                        )
+                        Conversation.set_history(
+                            session.user.id, group_id_from_session, conversation
+                        )
                         final_result_text = assistant_reply
                 except CallApiParamException:
-                    logger.warning(f"模型 ({tool_model}) 调用工具失败，回退到普通聊天", "BYM_AI")
+                    logger.warning(
+                        f"模型 ({tool_model}) 调用工具失败，回退到普通聊天", "BYM_AI"
+                    )
                     final_result_text = await cls._chat_handle(session, conversation)
             else:
                 # 模型不同，采用chat和tool分模型请求方案
-                logger.debug(f"工具模型 ({tool_model}) 与对话模型 ({chat_model}) 不同，采用分离请求方案", "BYM_AI")
+                logger.debug(
+                    f"工具模型 ({tool_model}) 与对话模型 ({chat_model}) 不同，采用分离请求方案",
+                    "BYM_AI",
+                )
                 try:
                     result = await CallApi().fetch_chat(user_id, conversation, tools)
 
@@ -732,10 +746,16 @@ class ChatManager:
                             bot, session, conversation, result, tools, func_param
                         )
                     else:
-                        logger.debug("工具模型未调用工具，切换到对话模型生成回复", "BYM_AI")
-                        final_result_text = await cls._chat_handle(session, conversation)
+                        logger.debug(
+                            "工具模型未调用工具，切换到对话模型生成回复", "BYM_AI"
+                        )
+                        final_result_text = await cls._chat_handle(
+                            session, conversation
+                        )
                 except CallApiParamException:
-                    logger.warning(f"工具模型 ({tool_model}) 调用失败，回退到普通聊天", "BYM_AI")
+                    logger.warning(
+                        f"工具模型 ({tool_model}) 调用失败，回退到普通聊天", "BYM_AI"
+                    )
                     final_result_text = await cls._chat_handle(session, conversation)
         else:
             final_result_text = await cls._chat_handle(session, conversation)
