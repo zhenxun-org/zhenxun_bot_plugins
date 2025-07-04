@@ -1,5 +1,5 @@
-import random
 from pathlib import Path
+import random
 
 from zhenxun.configs.config import Config
 from zhenxun.configs.path_config import TEMP_PATH
@@ -16,8 +16,9 @@ headers = {
 }
 
 
-class PixManage:
+class PixManager:
     @classmethod
+    @Retry.api()
     async def get_pix(
         cls,
         tags: tuple[str, ...],

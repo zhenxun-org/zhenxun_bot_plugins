@@ -18,6 +18,7 @@ from nonebot_plugin_alconna import (
 from nonebot_plugin_alconna.uniseg import Receipt
 from nonebot_plugin_alconna.uniseg.tools import reply_fetch
 from nonebot_plugin_uninfo import Uninfo
+
 from zhenxun.configs.config import BotConfig
 from zhenxun.configs.utils import BaseBlock, Command, PluginExtraData
 from zhenxun.services.log import logger
@@ -25,18 +26,21 @@ from zhenxun.utils.depends import CheckConfig
 from zhenxun.utils.message import MessageUtils
 
 from .._config import InfoManage
-from .data_source import PixManage, base_config
+from .data_source import PixManager, base_config
 
 __plugin_meta__ = PluginMetadata(
     name="PIX",
     description="这里是PIX图库！",
-    usage="""
+    usage=r"""
     指令：
         pix ?*[tags] ?[-n 1] ?*[--nsfw [0, 1, 2]] ?[--ratio r1,r2]
                 : 通过 tag 获取相似图片，不含tag时随机抽取,
                 -n表示数量, -r表示查看r18, -noai表示过滤ai
                 --nsfw 表示获取的 nsfw-tag，0: 普通, 1: 色图, 2: R18
                 --ratio 表示获取的图片比例，示例: 0.5,1.5 表示长宽比大于0.5小于1.5
+                
+            特别的，当tag中包含 >\d 时，会获取P站收藏数大于该数字的图片
+            示例：pix 萝莉 白丝 >1000
 
             示例：pix 萝莉 白丝
             示例：pix 萝莉 白丝 -n 10  （10为数量）
@@ -179,7 +183,7 @@ async def _(
                     "nsfw_tag格式错误，请输入0,1,2"
                 ).finish()
     try:
-        result = await PixManage.get_pix(
+        result = await PixManager.get_pix(
             tags.result,
             num.result,
             is_r18,
@@ -194,9 +198,12 @@ async def _(
         await MessageUtils.build_message(
             f"pix图库API出错啦！code: {e.response.status_code}"
         ).finish()
+    except Exception as e:
+        logger.error("pix图库API出错...", arparma.header_result, session=session, e=e)
+        await MessageUtils.build_message("pix图库API出错啦，请稍后再试...").finish()
     if not result.data:
         await MessageUtils.build_message("没有找到相关tag/pix/uid的图片...").finish()
-    task_list = [asyncio.create_task(PixManage.get_pix_result(r)) for r in result.data]
+    task_list = [asyncio.create_task(PixManager.get_pix_result(r)) for r in result.data]
     result_list = await asyncio.gather(*task_list)
     max_once_num2forward = base_config.get("MAX_ONCE_NUM2FORWARD")
     if (
@@ -224,7 +231,7 @@ async def _(bot: Bot, event: Event, arparma: Arparma, session: Uninfo):
     reply: Reply | None = await reply_fetch(event, bot)
     if reply and (pix_model := InfoManage.get(str(reply.id))):
         try:
-            result = await PixManage.get_image(pix_model, True)
+            result = await PixManager.get_image(pix_model, True)
             if not result:
                 await MessageUtils.build_message("下载图片数据失败...").finish()
         except HTTPStatusError as e:
