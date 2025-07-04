@@ -41,7 +41,7 @@ __plugin_meta__ = PluginMetadata(
     """.strip(),
     extra=PluginExtraData(
         author="Chtholly & HibiKier",
-        version="0.3",
+        version="0.4",
         ignore_prompt=True,
         configs=[
             RegisterConfig(

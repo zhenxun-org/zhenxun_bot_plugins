@@ -95,7 +95,8 @@ class GeminiStorageStrategy(StorageStrategy):
         file_size = path_for_upload.stat().st_size
         mime_type, _ = mimetypes.guess_type(path_for_upload)
         if not mime_type:
-            mime_type = "application/octet-stream"
+            logger.error(f"gemini 图片存储策略上传失败 不支持的mime_type {path_for_upload}", "BYM_AI")
+            return None
 
         display_name = file_path.name
 

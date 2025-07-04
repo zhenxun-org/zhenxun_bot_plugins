@@ -349,7 +349,6 @@ class CallApi:
         self.tts_token = Config.get_config("bym_ai", "BYM_AI_TTS_TOKEN")
         self.tts_voice = Config.get_config("bym_ai", "BYM_AI_TTS_VOICE")
 
-    @Retry.api(exception=(NotResultException,))
     async def fetch_chat(
         self,
         user_id: str,
@@ -393,7 +392,7 @@ class CallApi:
             )
             token_counter.delay(self.chat_token)
         if response.status_code == 400:
-            logger.warning("请求接口错误 code: 400", "BYM_AI")
+            logger.warning(f"请求接口错误 code: 400 {response.json()}", "BYM_AI")
             raise CallApiParamException()
 
         response.raise_for_status()
@@ -512,7 +511,7 @@ class ChatManager:
         tasks = []
         all_parts = []
 
-        def process_segments(segments):
+        async def process_segments(segments):
             for seg in segments:
                 if isinstance(seg, Text):
                     all_parts.append(("text", cls.format("text", seg.text)))
@@ -521,9 +520,9 @@ class ChatManager:
                     tasks.append(image_task)
                     all_parts.append(("image_task", image_task))
                 elif isinstance(seg, Reply) and seg.msg:
-                    process_segments(seg.msg)
+                    await process_segments(await UniMessage.generate(message=seg.msg))  # type: ignore
 
-        process_segments(message)
+        await process_segments(message)
 
         await asyncio.gather(*tasks)
 
