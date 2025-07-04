@@ -1,6 +1,6 @@
 import asyncio
-import random
 from pathlib import Path
+import random
 
 from zhenxun.configs.config import Config
 from zhenxun.configs.path_config import TEMP_PATH
@@ -38,7 +38,9 @@ class StarManage:
         headers = None
         if token := base_config.get("token"):
             headers = {"Authorization": token}
-        res = await AsyncHttpx.post(api, json=json_data, headers=headers)
+        res = await AsyncHttpx.post(
+            api, json=json_data, headers=headers, timeout=base_config.get("timeout")
+        )
         res.raise_for_status()
         return f"⭐{PixResult(**res.json()).info}"
 
@@ -59,7 +61,9 @@ class StarManage:
         headers = None
         if token := base_config.get("token"):
             headers = {"Authorization": token}
-        res = await AsyncHttpx.get(api, params=json_data, headers=headers)
+        res = await AsyncHttpx.get(
+            api, params=json_data, headers=headers, timeout=base_config.get("timeout")
+        )
         res.raise_for_status()
         data = PixResult(**res.json())
         return ("当前收藏:\n" + "，".join(data.data))[:-1] if data.suc else data.info
@@ -82,7 +86,9 @@ class StarManage:
         headers = None
         if token := base_config.get("token"):
             headers = {"Authorization": token}
-        res = await AsyncHttpx.post(api, json=json_data, headers=headers)
+        res = await AsyncHttpx.post(
+            api, json=json_data, headers=headers, timeout=base_config.get("timeout")
+        )
         res.raise_for_status()
         data: PixResult = PixResult(**res.json())
         if not data.suc:
@@ -122,13 +128,12 @@ class StarManage:
             elif "img-original" in url:
                 url = "img-original" + url.split("img-original")[-1]
             url = f"https://{small_url}/{url}"
-        timeout = base_config.get("timeout")
         file = TEMP_PATH / f"pix_{pix.pid}_{random.randint(1, 1000)}.png"
         try:
             return (
                 file
                 if await AsyncHttpx.download_file(
-                    url, file, headers=headers, timeout=timeout
+                    url, file, headers=headers, timeout=base_config.get("timeout")
                 )
                 else None
             )
