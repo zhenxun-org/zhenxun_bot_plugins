@@ -43,6 +43,7 @@ async def call_music(session: Uninfo, arparma: Arparma, name: str):
         await build_normal(meta_data)
     logger.info(f"点歌 :{name}", arparma.header_result, session=session)
 
+
 async def build_zhenxun(meta_data: MusicMetaData):
     data = {
         "self_nickname": BotConfig.self_nickname,
@@ -64,8 +65,10 @@ async def build_zhenxun(meta_data: MusicMetaData):
     ]
     await MessageUtils.build_message(message).send()
 
+
 async def build_normal(meta_data: MusicMetaData):
     await _matcher.send(MessageSegment.music(meta_data.type_, int(meta_data.id)))
+
 
 __plugin_meta__ = PluginMetadata(
     name="点歌",
