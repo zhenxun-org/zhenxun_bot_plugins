@@ -117,10 +117,10 @@ async def _(bot: Bot, session: Uninfo, arparma: Arparma, pid: str):
         if len(image_list) == 1:
             img_url = f"https://{pixiv_nginx}/{model.id}.{img_type}"
         else:
-            img_url = f"https://{pixiv_nginx}/{model.id}-{i+1}.{img_type}"
+            img_url = f"https://{pixiv_nginx}/{model.id}-{i + 1}.{img_type}"
         file = TEMP_PATH / f"pid_search_{session.user.id}_{i}.{img_type}"
         if not await AsyncHttpx.download_file(img_url, file, headers=headers):
-            file_list.append(f"图片{model.id}-{i+1}下载失败了...")
+            file_list.append(f"图片{model.id}-{i + 1}下载失败了...")
             continue
         file_list.append(file)
     tmp = "\n【注】将在30后撤回......" if session.group else ""

@@ -67,13 +67,13 @@ async def update_old_setu_data():
                         else:
                             index += 1
                         logger.info(
-                            f'添加旧色图数据成功 PID：{data[x]["pid"]} index：{idx}....'
+                            f"添加旧色图数据成功 PID：{data[x]['pid']} index：{idx}...."
                         )
                     except UniqueViolationError:
                         fail_count += 1
                         logger.info(
                             "添加旧色图数据失败，"
-                            f'色图重复 PID：{data[x]["pid"]} index：{idx}...'
+                            f"色图重复 PID：{data[x]['pid']} index：{idx}..."
                         )
                 file.unlink()
         setu_url_path = path / "setu_url.json"
@@ -181,7 +181,7 @@ async def update_setu_img(flag: bool = False) -> str | None:
             logger.info(f"更新色图 {image.local_id}.jpg 已存在")
     if _success or error_info or flag:
         text = (
-            f'{str(datetime.now()).split(".")[0]} 更新 色图 完成，本地存在 {count} 张，'
+            f"{str(datetime.now()).split('.')[0]} 更新 色图 完成，本地存在 {count} 张，"
         )
         return f"{text}实际更新 {_success} 张，以下为更新时未知错误：\n" + "\n".join(
             error_info
