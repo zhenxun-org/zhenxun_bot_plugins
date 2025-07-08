@@ -211,7 +211,7 @@ class SetuManage:
         file = base_path / file_name
         download_success = False
         for i in range(3):
-            logger.debug(f"尝试在线下载第 {i+1} 次", "色图")
+            logger.debug(f"尝试在线下载第 {i + 1} 次", "色图")
             try:
                 if await AsyncHttpx.download_file(
                     url,
@@ -255,7 +255,7 @@ class SetuManage:
             "size": ["original"],
         }
         for count in range(3):
-            logger.debug(f"尝试获取图片URL第 {count+1} 次", "色图")
+            logger.debug(f"尝试获取图片URL第 {count + 1} 次", "色图")
             try:
                 response = await AsyncHttpx.get(
                     cls.URL, timeout=base_config.get("TIMEOUT"), params=params

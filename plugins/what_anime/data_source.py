@@ -12,12 +12,12 @@ async def get_anime(anime: str) -> str | list:
         if anime_json == "Error reading imagenull":
             return "图像源错误，注意必须是静态图片哦"
         if anime_json["error"]:
-            return f'访问错误 error：{anime_json["error"]}'
+            return f"访问错误 error：{anime_json['error']}"
         return [
             [
                 f"名称: {anime['filename'].rsplit('.')[0]}\n"
                 f"集数: {anime['episode']}\n"
-                f"相似度: {float(anime['similarity']*100):.2f}%\n"
+                f"相似度: {float(anime['similarity'] * 100):.2f}%\n"
                 f"图片:",
                 Image(url=anime["image"]),
                 "----------\n",

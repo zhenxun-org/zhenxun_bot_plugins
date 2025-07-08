@@ -31,6 +31,6 @@ _matcher = on_alconna(Alconna("语录"), aliases={"二次元"}, priority=5, bloc
 @_matcher.handle()
 async def _(session: EventSession, arparma: Arparma):
     data = (await AsyncHttpx.get(URL, timeout=5)).json()
-    result = f'{data["hitokoto"]}\t——{data["from"]}'
+    result = f"{data['hitokoto']}\t——{data['from']}"
     await MessageUtils.build_message(result).send()
     logger.info(" 发送语录:" + result, arparma.header_result, session=session)

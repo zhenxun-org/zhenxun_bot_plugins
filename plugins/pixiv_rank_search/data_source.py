@@ -123,7 +123,7 @@ async def parser_data(
             url_list.append(img_url)
         else:
             for i, _ in enumerate(urls):
-                img_url = f"https://{pixiv_nginx}/{x['id']}-{i+1}.{img_type}"
+                img_url = f"https://{pixiv_nginx}/{x['id']}-{i + 1}.{img_type}"
                 url_list.append(img_url)
         info_list.append((title, author, url_list))
     return info_list, 200
