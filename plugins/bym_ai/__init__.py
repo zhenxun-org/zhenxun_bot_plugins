@@ -5,8 +5,10 @@ import random
 from httpx import HTTPStatusError
 from nonebot import on_message
 from nonebot.adapters import Bot, Event
+from nonebot.permission import SUPERUSER
 from nonebot.plugin import PluginMetadata
-from nonebot_plugin_alconna import UniMsg, Voice
+from nonebot.rule import to_me
+from nonebot_plugin_alconna import Alconna, UniMsg, Voice, on_alconna
 from nonebot_plugin_uninfo import Uninfo
 
 from zhenxun.configs.config import BotConfig
@@ -27,7 +29,7 @@ from .bym_gift import ICON_PATH
 from .bym_gift.data_source import send_gift
 from .bym_gift.gift_reg import driver as gift_driver  # noqa: F401
 from .config import Arparma, FunctionParam
-from .data_source import ChatManager, base_config, split_text
+from .data_source import ChatManager, Conversation, base_config, split_text
 from .exception import GiftRepeatSendException, NotResultException
 from .goods_register import driver as goods_driver  # noqa: F401
 from .models.bym_chat import BymChat
@@ -41,7 +43,8 @@ __plugin_meta__ = PluginMetadata(
     """.strip(),
     extra=PluginExtraData(
         author="Chtholly & HibiKier",
-        version="0.4",
+        version="0.5",
+        superuser_help="重置所有会话\n重载prompt",
         ignore_prompt=True,
         configs=[
             RegisterConfig(
@@ -183,6 +186,45 @@ async def rule(event: Event, session: Uninfo) -> bool:
 
 
 _matcher = on_message(priority=998, rule=rule)
+
+
+_reset_matcher = on_alconna(
+    Alconna("重置所有会话"),
+    permission=SUPERUSER,
+    block=True,
+    priority=1,
+    rule=to_me(),
+)
+
+_reload_matcher = on_alconna(
+    Alconna("重载prompt"),
+    permission=SUPERUSER,
+    block=True,
+    priority=1,
+    rule=to_me(),
+)
+
+
+@_reset_matcher.handle()
+async def _():
+    try:
+        count = await Conversation.reset_all()
+        await MessageUtils.build_message(
+            f"重置所有会话成功，共重置{count}条会话"
+        ).send()
+    except Exception as e:
+        logger.error("重置所有会话失败", "BYM_AI", e=e)
+        await MessageUtils.build_message("重置所有会话失败").send()
+
+
+@_reload_matcher.handle()
+async def _():
+    try:
+        await Conversation.reload_prompt()
+        await MessageUtils.build_message("重载prompt成功").send()
+    except Exception as e:
+        logger.error("重载prompt失败", "BYM_AI", e=e)
+        await MessageUtils.build_message("重载prompt失败").send()
 
 
 @_matcher.handle(parameterless=[CheckConfig(config="BYM_AI_CHAT_TOKEN")])

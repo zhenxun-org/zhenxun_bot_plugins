@@ -204,6 +204,11 @@ class Conversation:
     chat_prompt: str = ""
 
     @classmethod
+    async def reload_prompt(cls):
+        """重载prompt"""
+        cls.chat_prompt = PROMPT_FILE.open(encoding="utf8").read()
+
+    @classmethod
     def add_system(cls) -> ChatMessage:
         """添加系统预设"""
         if not cls.chat_prompt:
@@ -296,6 +301,28 @@ class Conversation:
             cls.history_data[group_id] = conversation
         else:
             cls.history_data[user_id] = conversation
+
+    @classmethod
+    async def reset_all(cls) -> int:
+        """重置所有会话"""
+        update_list = []
+        distinct_pairs = await BymChat.all().distinct().values("user_id", "group_id")
+        for pair in distinct_pairs:
+            user_id = pair["user_id"]
+            group_id = pair["group_id"]
+
+            # 查找该组合的最新记录
+            latest_chat = (
+                await BymChat.filter(user_id=user_id, group_id=group_id)
+                .order_by("-create_time")
+                .first()
+            )
+
+            if latest_chat and not latest_chat.is_reset:
+                latest_chat.is_reset = True
+                update_list.append(latest_chat)
+        await BymChat.bulk_update(update_list, ["is_reset"])
+        return len(update_list)
 
     @classmethod
     async def reset(cls, user_id: str, group_id: str | None):
