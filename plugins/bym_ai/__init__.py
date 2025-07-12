@@ -208,23 +208,24 @@ _reload_matcher = on_alconna(
 @_reset_matcher.handle()
 async def _():
     try:
+        await MessageUtils.build_message("正在重置所有会话...").send()
         count = await Conversation.reset_all()
         await MessageUtils.build_message(
-            f"重置所有会话成功，共重置{count}条会话"
-        ).send()
+            f"重置所有会话成功，共重置{count}条会话！"
+        ).send(reply_to=True)
     except Exception as e:
         logger.error("重置所有会话失败", "BYM_AI", e=e)
-        await MessageUtils.build_message("重置所有会话失败").send()
+        await MessageUtils.build_message("重置所有会话失败...").send(reply_to=True)
 
 
 @_reload_matcher.handle()
 async def _():
     try:
         await Conversation.reload_prompt()
-        await MessageUtils.build_message("重载prompt成功").send()
+        await MessageUtils.build_message("重载prompt成功！").send(reply_to=True)
     except Exception as e:
         logger.error("重载prompt失败", "BYM_AI", e=e)
-        await MessageUtils.build_message("重载prompt失败").send()
+        await MessageUtils.build_message("重载prompt失败...").send(reply_to=True)
 
 
 @_matcher.handle(parameterless=[CheckConfig(config="BYM_AI_CHAT_TOKEN")])
@@ -248,6 +249,7 @@ async def _(
     )
     group_id = session.group.id if session.group else None
     is_bym = not event.is_tome()
+    result = None
     try:
         try:
             result = await ChatManager.get_result(
@@ -255,13 +257,15 @@ async def _(
             )
         except HTTPStatusError as e:
             logger.error("BYM AI 请求失败", "BYM_AI", session=session, e=e)
-            return await MessageUtils.build_message(
-                f"请求失败了哦，code: {e.response.status_code}"
-            ).send(reply_to=True)
+            if not is_bym:
+                return await MessageUtils.build_message(
+                    f"请求失败了哦，code: {e.response.status_code}"
+                ).send(reply_to=True)
         except NotResultException:
-            return await MessageUtils.build_message("请求没有结果呢...").send(
-                reply_to=True
-            )
+            if not is_bym:
+                return await MessageUtils.build_message("请求没有结果呢...").send(
+                    reply_to=True
+                )
         if is_bym:
             """伪人回复，切割文本"""
             if result:
