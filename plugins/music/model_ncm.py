@@ -2,7 +2,7 @@ import json
 
 from zhenxun.utils.http_utils import AsyncHttpx
 
-from .model import *
+from .model import MusicMetaData, MusicHelper
 
 
 @staticmethod

@@ -1,5 +1,3 @@
-from ast import alias
-from email import message
 from pathlib import Path
 from nonebot.adapters.onebot.v11 import MessageSegment
 from nonebot.plugin import PluginMetadata
@@ -18,7 +16,7 @@ from zhenxun.configs.utils import (
 from zhenxun.services.log import logger
 from zhenxun.utils.message import MessageUtils
 
-from .model_ncm import *
+from .model_ncm import MusicHelper163, MusicMetaData
 
 _matcher = on_alconna(
     Alconna("点歌", Args["name?", str] / "\n"), priority=5, block=True
