@@ -69,8 +69,9 @@ class CreateZip:
         logger.info(f"ZIP 文件已创建并加密: {self.zip_path}", "jmcomic")
 
     def create(self) -> Path:
-        self.encrypt_pdf()
-        self.create_password_protected_zip()
+        if self.pdf_path.exists():
+            self.encrypt_pdf()
+            self.create_password_protected_zip()
         return self.zip_path
 
 
