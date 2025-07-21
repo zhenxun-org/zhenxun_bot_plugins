@@ -1,6 +1,5 @@
-from typing import Any
-
 from pydantic import BaseModel
+from typing import Optional, Dict, Any
 
 
 class Owner(BaseModel):
@@ -21,8 +20,8 @@ class Stat(BaseModel):
     his_rank: int
     like: int
     dislike: int
-    vt: int | None = None
-    vv: int | None = None
+    vt: Optional[int] = None
+    vv: Optional[int] = None
 
 
 class VideoInfo(BaseModel):
@@ -39,18 +38,18 @@ class VideoInfo(BaseModel):
     desc: str
     state: int
     duration: int
-    mission_id: int | None = None
+    mission_id: Optional[int] = None
     rights: dict
     owner: Owner
     stat: Stat
     dynamic: str
     cid: int
     dimension: dict
-    short_link_v2: str | None = None
-    up_from_v2: int | None = None
-    first_frame: str | None = None
-    pub_location: str | None = None
-    pages: list | None = None
+    short_link_v2: Optional[str] = None
+    up_from_v2: Optional[int] = None
+    first_frame: Optional[str] = None
+    pub_location: Optional[str] = None
+    pages: Optional[list] = None
     parsed_url: str
 
 
@@ -67,12 +66,12 @@ class LiveInfo(BaseModel):
     parent_area_id: int
     parent_area_name: str
     description: str
-    keyframe_url: str | None = None
+    keyframe_url: Optional[str] = None
     parsed_url: str
-    uname: str | None = None
-    face: str | None = None
-    room_url: str | None = None
-    space_url: str | None = None
+    uname: Optional[str] = None
+    face: Optional[str] = None
+    room_url: Optional[str] = None
+    space_url: Optional[str] = None
 
 
 class ArticleInfo(BaseModel):
@@ -83,7 +82,7 @@ class ArticleInfo(BaseModel):
     author: str | None = None
     screenshot_path: str | None = None
     screenshot_bytes: bytes | None = None
-    markdown_content: str | None = None
+    markdown_content: Optional[str] = None
 
 
 class UserStat(BaseModel):
@@ -137,7 +136,7 @@ class SeasonInfo(BaseModel):
     type_name: str = ""
     areas: str = ""
     styles: str = ""
-    publish: dict[str, Any] = {}
+    publish: Dict[str, Any] = {}
     rating_score: float = 0.0
     rating_count: int = 0
     stat: SeasonStat
@@ -145,7 +144,7 @@ class SeasonInfo(BaseModel):
     status: int = 0
     parsed_url: str
 
-    target_ep_id: int | None = None
-    target_ep_title: str | None = None
-    target_ep_long_title: str | None = None
-    target_ep_cover: str | None = None
+    target_ep_id: Optional[int] = None
+    target_ep_title: Optional[str] = None
+    target_ep_long_title: Optional[str] = None
+    target_ep_cover: Optional[str] = None

@@ -1,124 +1,24 @@
 import asyncio
-import aiofiles
-import httpx
 from pathlib import Path
-from typing import Optional, Dict
+from typing import Optional, Tuple
 
 from zhenxun.services.log import logger
 
 from ..config import PLUGIN_TEMP_DIR
-from ..services.network_service import async_handle_errors
 
 
-async def _download_file_core(
-    url: str,
-    file_path: Path,
-    headers: Optional[Dict[str, str]] = None,
-    proxies: Optional[Dict[str, str]] = None,
-    chunk_size: int = 8192,
-    timeout: int = 60,
-) -> bool:
-    """核心下载逻辑，不包含重试机制"""
-    file_path.parent.mkdir(parents=True, exist_ok=True)
-    download_timeout = httpx.Timeout(timeout)
-
-    current_size = 0
-    if file_path.exists():
-        current_size = file_path.stat().st_size
-        if current_size > 0:
-            logger.info(
-                f"文件已存在，尝试断点续传: {file_path.name}, 已下载: {current_size / 1024 / 1024:.2f}MB"
-            )
-            if headers is None:
-                headers = {}
-            headers["Range"] = f"bytes={current_size}-"
-
-    async with httpx.AsyncClient(
-        headers=headers,
-        proxies=proxies,
-        timeout=download_timeout,
-        follow_redirects=True,
-    ) as client:
-        async with client.stream("GET", url) as resp:
-            resp.raise_for_status()
-
-            if current_size > 0 and resp.status_code == 206:
-                logger.debug(f"服务器支持断点续传，从 {current_size} 字节继续下载")
-            elif current_size > 0 and resp.status_code == 200:
-                logger.warning("服务器不支持断点续传，将重新下载完整文件")
-                current_size = 0
-
-            total_len = int(resp.headers.get("content-length", 0))
-            if resp.status_code == 206:
-                total_len += current_size
-
-            mode = "ab" if current_size > 0 and resp.status_code == 206 else "wb"
-            downloaded_size = current_size
-
-            async with aiofiles.open(file_path, mode) as f:
-                async for chunk in resp.aiter_bytes(chunk_size=chunk_size):
-                    await f.write(chunk)
-                    downloaded_size += len(chunk)
-
-            if total_len == 0 or downloaded_size == total_len:
-                logger.debug(
-                    f"文件流下载完成: {file_path.name}, 大小: {downloaded_size / 1024 / 1024:.2f}MB"
-                )
-                return True
-            else:
-                logger.warning(
-                    f"文件下载不完整: {file_path.name}, {downloaded_size}/{total_len} ({downloaded_size / total_len * 100:.1f}%)"
-                )
-                raise Exception(f"文件下载不完整: {downloaded_size}/{total_len}")
-
-
-async def download_file(
-    url: str,
-    file_path: Path,
-    headers: Optional[Dict[str, str]] = None,
-    proxies: Optional[Dict[str, str]] = None,
-    chunk_size: int = 8192,
-    timeout: int = 60,
-    max_retries: int = 3,
-) -> bool:
-    """下载文件（使用统一重试机制）"""
-    from .common import retry_async, RetryConfig
-
-    async def _download_wrapper():
-        return await _download_file_core(
-            url, file_path, headers, proxies, chunk_size, timeout
-        )
-
-    config = RetryConfig.download_default()
-    config.max_attempts = max_retries
-    config.exceptions = (
-        httpx.HTTPError,
-        httpx.RequestError,
-        asyncio.TimeoutError,
-        Exception,
-    )
-
-    try:
-        return await retry_async(_download_wrapper, config=config)
-    except Exception as e:
-        logger.error(f"下载失败: {file_path.name}, 错误: {e}")
-        return False
-
-
-@async_handle_errors(
-    error_msg="音视频合并失败",
-    log_level="error",
-    reraise=False,
-    default_return=False,
-)
 async def merge_media_files(
     video_path: Path,
     audio_path: Optional[Path],
     output_path: Path,
-    use_copy_codec: bool = False,
     log_output: bool = False,
 ) -> bool:
-    """合并音视频文件"""
+    """
+    合并音视频文件，并确保 FFmpeg 进程在任何情况下都能被正确终止。
+    - 优先尝试直接复制所有流。
+    - 如果失败，则回退到仅重新编码音频流的模式，以解决兼容性问题并保持性能。
+    - 完成后自动清理临时文件。
+    """
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     if not video_path.exists():
@@ -129,104 +29,96 @@ async def merge_media_files(
         logger.error(f"音频文件不存在: {audio_path}")
         return False
 
-    actual_use_copy_codec = use_copy_codec
+    async def _run_ffmpeg(vcodec: str, acodec: str) -> Tuple[bool, str]:
+        """运行FFmpeg命令并确保其进程被管理"""
+        command = ["ffmpeg", "-y", "-i", str(video_path.resolve())]
+        if audio_path:
+            command.extend(["-i", str(audio_path.resolve())])
 
-    if audio_path:
-        if actual_use_copy_codec:
-            logger.info(f"开始快速合并音视频 (copy codec) 到: {output_path.name}")
-            command = [
-                "ffmpeg",
-                "-y",
-                "-i",
-                str(video_path.resolve()),
-                "-i",
-                str(audio_path.resolve()),
-                "-c",
-                "copy",
-                "-loglevel",
-                "error" if not log_output else "info",
-                str(output_path.resolve()),
-            ]
-        else:
-            logger.info(
-                f"开始合并音视频并编码为 H.264 (可能耗时较长) 到: {output_path.name}"
+        command.extend(["-c:v", vcodec])
+        if audio_path:
+            command.extend(["-c:a", acodec])
+
+        command.extend(["-nostdin", "-loglevel", "error", str(output_path.resolve())])
+
+        logger.info(f"执行FFmpeg命令: {' '.join(command)}")
+
+        process = None
+        try:
+            process = await asyncio.create_subprocess_exec(
+                *command,
+                stdout=asyncio.subprocess.PIPE
+                if log_output
+                else asyncio.subprocess.DEVNULL,
+                stderr=asyncio.subprocess.PIPE,
             )
-            command = [
-                "ffmpeg",
-                "-y",
-                "-i",
-                str(video_path.resolve()),
-                "-i",
-                str(audio_path.resolve()),
-                "-c:v",
-                "libx264",
-                "-preset",
-                "veryfast",
-                "-crf",
-                "23",
-                "-pix_fmt",
-                "yuv420p",
-                "-c:a",
-                "copy",
-                "-loglevel",
-                "error" if not log_output else "info",
-                str(output_path.resolve()),
-            ]
-    else:
-        if actual_use_copy_codec:
-            logger.info(f"开始转换视频文件 (copy codec) 到: {output_path.name}")
-            command = [
-                "ffmpeg",
-                "-y",
-                "-i",
-                str(video_path.resolve()),
-                "-c",
-                "copy",
-                "-loglevel",
-                "error" if not log_output else "info",
-                str(output_path.resolve()),
-            ]
+            _, stderr = await process.communicate()
+
+            error_msg = stderr.decode("utf-8", errors="ignore") if stderr else ""
+
+            if process.returncode != 0:
+                logger.error(
+                    f"FFmpeg执行失败 (vcodec={vcodec}, acodec={acodec}): {error_msg}"
+                )
+                return False, error_msg
+
+            if not output_path.exists() or output_path.stat().st_size == 0:
+                logger.error(f"FFmpeg执行后文件不存在或为空: {output_path}")
+                return False, "输出文件为空"
+
+            return True, ""
+
+        finally:
+            if process and process.returncode is None:
+                logger.warning(f"FFmpeg 进程 ({process.pid}) 未正常结束，将强制终止。")
+                try:
+                    process.terminate()
+                    await asyncio.wait_for(process.wait(), timeout=2.0)
+                except asyncio.TimeoutError:
+                    logger.warning(
+                        f"终止 FFmpeg 进程 ({process.pid}) 超时，将强制杀死。"
+                    )
+                    process.kill()
+                except Exception as e:
+                    logger.error(f"终止/杀死 FFmpeg 进程时出错: {e}")
+
+    try:
+        logger.info("尝试快速合并 (stream copy)...")
+        success, error_log = await _run_ffmpeg("copy", "copy" if audio_path else "")
+
+        if not success:
+            logger.warning(
+                f"快速合并失败，回退到音频重编码模式。失败原因: {error_log[:200]}..."
+            )
+            success, error_log = await _run_ffmpeg("copy", "aac" if audio_path else "")
+
+        if success:
+            logger.info(f"媒体文件处理成功: {output_path.name}")
         else:
-            logger.info(f"开始转换视频文件并编码为 H.264 到: {output_path.name}")
-            command = [
-                "ffmpeg",
-                "-y",
-                "-i",
-                str(video_path.resolve()),
-                "-c:v",
-                "libx264",
-                "-preset",
-                "veryfast",
-                "-crf",
-                "23",
-                "-pix_fmt",
-                "yuv420p",
-                "-loglevel",
-                "error" if not log_output else "info",
-                str(output_path.resolve()),
-            ]
+            logger.error(f"所有合并策略均失败。最终错误: {error_log[:200]}")
 
-    process = await asyncio.create_subprocess_exec(
-        *command,
-        stdout=asyncio.subprocess.PIPE if log_output else asyncio.subprocess.DEVNULL,
-        stderr=asyncio.subprocess.PIPE,
-    )
-    _, stderr = await process.communicate()
+        return success
 
-    if process.returncode != 0:
-        error_msg = stderr.decode("utf-8", errors="ignore") if stderr else "未知错误"
-        logger.error(f"FFmpeg合并失败: {error_msg}")
-        return False
+    finally:
+        for path_to_delete in (video_path, audio_path):
+            if not (path_to_delete and path_to_delete.exists()):
+                continue
 
-    if not output_path.exists() or output_path.stat().st_size == 0:
-        logger.error(f"FFmpeg合并后文件不存在或为空: {output_path}")
-        return False
-
-    if audio_path:
-        logger.info(f"音视频合并成功: {output_path.name}")
-    else:
-        logger.info(f"视频转换成功: {output_path.name}")
-    return True
+            for attempt in range(3):
+                try:
+                    path_to_delete.unlink()
+                    logger.debug(f"成功清理临时文件: {path_to_delete.name}")
+                    break
+                except PermissionError:
+                    if attempt < 2:
+                        await asyncio.sleep(0.1 * (attempt + 1))
+                    else:
+                        logger.warning(
+                            f"清理临时文件失败 (文件被占用): {path_to_delete.name}"
+                        )
+                except Exception as e:
+                    logger.warning(f"清理临时文件时发生未知错误: {e}")
+                    break
 
 
 def get_temp_file_path(
@@ -240,12 +132,6 @@ def get_temp_file_path(
     return PLUGIN_TEMP_DIR / filename
 
 
-@async_handle_errors(
-    error_msg="检查FFmpeg可用性失败",
-    log_level="debug",
-    reraise=False,
-    default_return=False,
-)
 async def check_ffmpeg_available() -> bool:
     """检查FFmpeg是否可用"""
     try:
@@ -268,4 +154,7 @@ async def check_ffmpeg_available() -> bool:
         logger.warning(
             "FFmpeg未找到，请确保已安装FFmpeg并添加到PATH环境变量", "B站解析"
         )
+        return False
+    except Exception as e:
+        logger.debug(f"检查FFmpeg可用性失败: {e}", e=e)
         return False
