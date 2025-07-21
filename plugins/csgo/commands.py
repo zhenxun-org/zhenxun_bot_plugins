@@ -22,7 +22,6 @@ __all__ = [
     "_user_data_matcher",
     "_video_download_matcher",
     "_video_matcher",
-    "_watch_play_matcher",
     "_weapon_data_matcher",
 ]
 
@@ -53,12 +52,6 @@ _map_rate_matcher = on_alconna(
 
 _user_data_matcher = on_alconna(
     Alconna("完美数据", Args["target?", At | str]["season?", str]),
-    priority=5,
-    block=True,
-)
-
-_watch_play_matcher = on_alconna(
-    Alconna("完美监控", Args["target?", At | str]),
     priority=5,
     block=True,
 )

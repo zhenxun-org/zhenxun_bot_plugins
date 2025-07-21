@@ -2,16 +2,12 @@ import asyncio
 import math
 import time
 
-from aiowebsocket.converses import AioWebSocket
-from nonebot.adapters import Bot
 from nonebot_plugin_uninfo import Uninfo
 from tortoise.transactions import atomic
-import ujson as json
 
 from zhenxun.configs.config import Config
 from zhenxun.services.log import logger
 from zhenxun.utils.http_utils import AsyncHttpx
-from zhenxun.utils.platform import PlatformUtils
 
 from .config import (
     LOG_COMMAND,
@@ -21,7 +17,6 @@ from .config import (
     PERFECT_WORLD_USER_OFFICIAL_DATA_API_URL,
     PERFECT_WORLD_USER_PLATFORM_DATA_URL,
     PERFECT_WORLD_VIDEO_URL,
-    PERFECT_WORLD_WWS,
     SAVE_PATH,
     BaseResponse,
     PerfectWorldMapRate,
@@ -854,48 +849,3 @@ class CsgoManager:
 
         except Exception as e:
             logger.error("保存玩家官方数据时发生错误", e=e)
-
-    @classmethod
-    async def watch_play(
-        cls, bot: Bot, user_id: str, steam_id: str | None, group_id: str | None
-    ) -> str:
-        if not steam_id:
-            steam_id = await cls.get_steam_id_by_user_id(user_id)
-        if not steam_id:
-            raise SteamIdNotBoundException()
-        user, _ = await CsgoUser.get_or_create(steam_id=steam_id)
-        async with AioWebSocket(PERFECT_WORLD_WWS) as aws:
-            converse = aws.manipulator
-            if not converse:
-                return "连接数据失败..."
-            message = (
-                f'{{"messageType":10001,"messageData":{{"steam_id": "{steam_id}"}}}}'
-            )
-            await converse.send(message)
-            while True:
-                mes = await converse.receive()
-                if not mes:
-                    continue
-                try:
-                    string_mes = mes.decode("utf-8")
-                    data: dict = json.loads(string_mes)
-                    message_type = data.get("messageType")
-                    # message_data = data.get("messageData")
-                    if user.watch_type != message_type:
-                        user.watch_type = int(message_type or 0)
-                        await user.save(update_fields=["watch_type"])
-                    if message_type == 10003:
-                        if user.start_watch:
-                            # 监控行为，不退出ws
-                            await PlatformUtils.send_message(
-                                bot, user_id, group_id, "没有正在进行的对局..."
-                            )
-                        else:
-                            return "没有正在进行的对局..."
-                    # if message_type == 10002:
-
-                except Exception:
-                    logger.error(
-                        f"Steam ID: {steam_id} 监控解析消息失败: {mes}",
-                        LOG_COMMAND,
-                    )
