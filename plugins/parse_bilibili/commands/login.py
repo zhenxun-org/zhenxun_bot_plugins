@@ -12,7 +12,9 @@ from zhenxun.services.log import logger
 from ..config import save_credential_to_file, get_credential
 
 login_matcher = on_command("bili登录", permission=SUPERUSER, priority=5, block=True)
-credential_status_matcher = on_command("bili状态", permission=SUPERUSER, priority=5, block=True)
+credential_status_matcher = on_command(
+    "bili状态", permission=SUPERUSER, priority=5, block=True
+)
 
 login_sessions: Dict[str, login_v2.QrCodeLogin] = {}
 
@@ -36,8 +38,12 @@ async def handle_login_start(bot: Bot, event: Event, matcher: Matcher):
             await login_instance.generate_qrcode()
             logger.debug("generate_qrcode 调用完成")
         except BiliExceptions.ApiException as api_err:
-            logger.error(f"调用 generate_qrcode 时发生 BiliApiException: {api_err.code} - {api_err.message}")
-            await matcher.finish(f"连接 B站 API 失败，请稍后再试 (错误: {api_err.message})。")
+            logger.error(
+                f"调用 generate_qrcode 时发生 BiliApiException: {api_err.code} - {api_err.message}"
+            )
+            await matcher.finish(
+                f"连接 B站 API 失败，请稍后再试 (错误: {api_err.message})。"
+            )
             return
         except Exception as gen_err:
             logger.error("调用 generate_qrcode 时发生未知错误", e=gen_err)
@@ -108,7 +114,11 @@ async def check_login_status(org_matcher: Matcher, user_id: str):
 
     while True:
         login = login_sessions.get(user_id)
-        if not login or login.has_done() or asyncio.get_running_loop().time() - start_time > timeout:
+        if (
+            not login
+            or login.has_done()
+            or asyncio.get_running_loop().time() - start_time > timeout
+        ):
             if not login:
                 logger.warning(f"用户 {user_id} 登录会话中途丢失")
             elif login.has_done() and not login_succeed:
@@ -157,7 +167,9 @@ async def check_login_status(org_matcher: Matcher, user_id: str):
                             if hasattr(session, "cookie_jar") and session.cookie_jar:
                                 for cookie in session.cookie_jar:
                                     if cookie.key == "buvid3":
-                                        logger.info(f"通过刷新获取到 buvid3: {cookie.value}")
+                                        logger.info(
+                                            f"通过刷新获取到 buvid3: {cookie.value}"
+                                        )
                                         credential.buvid3 = cookie.value
                                         break
                         except Exception as refresh_error:

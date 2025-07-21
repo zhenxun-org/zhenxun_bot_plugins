@@ -40,7 +40,6 @@ RETRYABLE_EXCEPTIONS = (
 )
 
 
-
 class BilibiliApiService:
     """B站API服务"""
 
@@ -171,11 +170,19 @@ class BilibiliApiService:
         # 新增的异常捕获块，用于处理无效的视频ID
         except BiliExceptions.ArgsException as e:
             logger.error(f"Bilibili-api参数错误 ({vid}): {e}", "B站解析")
-            raise UrlParseError(f"视频ID格式错误: {vid}", cause=e, context={"vid": vid, "url": parsed_url})
+            raise UrlParseError(
+                f"视频ID格式错误: {vid}",
+                cause=e,
+                context={"vid": vid, "url": parsed_url},
+            )
         except ResourceNotFoundError:
-            raise ResourceNotFoundError(f"视频未找到: {vid}", context={"vid": vid, "url": parsed_url})
+            raise ResourceNotFoundError(
+                f"视频未找到: {vid}", context={"vid": vid, "url": parsed_url}
+            )
         except BiliExceptions.ApiException as e:
-            logger.error(f"B站API错误 ({vid}): 代码 {e.code}, 消息: {e.message}", "B站解析")
+            logger.error(
+                f"B站API错误 ({vid}): 代码 {e.code}, 消息: {e.message}", "B站解析"
+            )
 
             if e.code == -403:
                 raise ResourceForbiddenError(
@@ -313,7 +320,9 @@ class BilibiliApiService:
             logger.debug(f"获取专栏基础信息: cv{article_id_int}", "B站解析")
             info_data = await art.get_info()
             if not info_data:
-                raise ResourceNotFoundError(f"获取专栏基础信息失败或为空: {cv_id}", context=context)
+                raise ResourceNotFoundError(
+                    f"获取专栏基础信息失败或为空: {cv_id}", context=context
+                )
 
             title = info_data.get("title", "")
             author_name = info_data.get("author_name", "")
@@ -340,15 +349,23 @@ class BilibiliApiService:
             )
             context["code"] = e.code
             if e.code == -404 or "获取信息失败" in str(e):
-                raise ResourceNotFoundError(f"专栏未找到: {cv_id}", cause=e, context=context)
+                raise ResourceNotFoundError(
+                    f"专栏未找到: {cv_id}", cause=e, context=context
+                )
             else:
-                raise BilibiliResponseError(f"B站API错误: {e.message}", cause=e, context=context)
+                raise BilibiliResponseError(
+                    f"B站API错误: {e.message}", cause=e, context=context
+                )
         except BiliExceptions.NetworkException as e:
             logger.error(f"获取专栏信息网络错误 ({cv_id}): {e}", "B站解析")
-            raise BilibiliRequestError(f"获取专栏信息网络错误: {e}", cause=e, context=context)
+            raise BilibiliRequestError(
+                f"获取专栏信息网络错误: {e}", cause=e, context=context
+            )
         except Exception as e:
             logger.error(f"获取专栏信息失败 ({cv_id}): {e}", "B站解析")
-            raise BilibiliResponseError(f"获取专栏信息意外错误: {e}", cause=e, context=context)
+            raise BilibiliResponseError(
+                f"获取专栏信息意外错误: {e}", cause=e, context=context
+            )
 
     @staticmethod
     @Retry.api(exception=RETRYABLE_EXCEPTIONS)
@@ -406,10 +423,18 @@ class BilibiliApiService:
                 )
 
             stat = UserStat(
-                following=relation_info_data.get("following", 0) if relation_info_data else 0,
-                follower=relation_info_data.get("follower", 0) if relation_info_data else 0,
-                archive_view=up_stat_data.get("archive", {}).get("view", 0) if up_stat_data else 0,
-                article_view=up_stat_data.get("article", {}).get("view", 0) if up_stat_data else 0,
+                following=relation_info_data.get("following", 0)
+                if relation_info_data
+                else 0,
+                follower=relation_info_data.get("follower", 0)
+                if relation_info_data
+                else 0,
+                archive_view=up_stat_data.get("archive", {}).get("view", 0)
+                if up_stat_data
+                else 0,
+                article_view=up_stat_data.get("article", {}).get("view", 0)
+                if up_stat_data
+                else 0,
                 likes=up_stat_data.get("likes", 0) if up_stat_data else 0,
             )
 
@@ -424,7 +449,9 @@ class BilibiliApiService:
                 birthday=user_info_data.get("birthday", ""),
                 top_photo=user_info_data.get("top_photo", ""),
                 live_room_status=live_room_info.get("liveStatus", 0),
-                live_room_url="https:" + live_room_info.get("url", "") if live_room_info.get("url") else "",
+                live_room_url="https:" + live_room_info.get("url", "")
+                if live_room_info.get("url")
+                else "",
                 live_room_title=live_room_info.get("title", ""),
                 stat=stat,
                 parsed_url=parsed_url,
@@ -483,7 +510,11 @@ class BilibiliApiService:
             desc=result.get("evaluate", ""),
             type_name=result.get("type_name", ""),
             areas=", ".join(
-                [area.get("name", "") for area in result.get("areas", []) if isinstance(area, dict)]
+                [
+                    area.get("name", "")
+                    for area in result.get("areas", [])
+                    if isinstance(area, dict)
+                ]
             ),
             styles=styles_str,
             publish=result.get("publish", {}),
@@ -498,7 +529,10 @@ class BilibiliApiService:
         if target_ep_id:
             episodes: List[Dict[str, Any]] = result.get("episodes", [])
             for episode in episodes:
-                if episode.get("ep_id") == target_ep_id or episode.get("id") == target_ep_id:
+                if (
+                    episode.get("ep_id") == target_ep_id
+                    or episode.get("id") == target_ep_id
+                ):
                     season_model.target_ep_id = target_ep_id
                     season_model.target_ep_title = episode.get("title", "")
                     season_model.target_ep_long_title = episode.get("long_title", "")
@@ -535,17 +569,22 @@ class BilibiliApiService:
 
             # 使用 AsyncHttpx 替代 NetworkService.get_json
             from ..utils.headers import get_bilibili_headers
+
             cred = get_credential()
             headers = get_bilibili_headers()
             cookies = cred.get_cookies() if cred else None
 
-            response = await AsyncHttpx.get(season_url, headers=headers, cookies=cookies)
+            response = await AsyncHttpx.get(
+                season_url, headers=headers, cookies=cookies
+            )
             response.raise_for_status()  # 检查HTTP状态码
             season_resp = response.json()
 
             if not isinstance(season_resp, dict):
                 logger.error(f"番剧API响应不是字典类型: {type(season_resp)}", "B站解析")
-                raise BilibiliResponseError(f"番剧API响应格式错误: {type(season_resp)}", context=context)
+                raise BilibiliResponseError(
+                    f"番剧API响应格式错误: {type(season_resp)}", context=context
+                )
 
             if season_resp.get("code") != 0 or "result" not in season_resp:
                 if season_resp.get("code") == -412:
@@ -562,7 +601,9 @@ class BilibiliApiService:
                         context={**context, "code": season_resp.get("code")},
                     )
                 else:
-                    logger.warning(f"番剧信息获取失败: {log_id}, 响应: {season_resp}", "B站解析")
+                    logger.warning(
+                        f"番剧信息获取失败: {log_id}, 响应: {season_resp}", "B站解析"
+                    )
                     raise BilibiliResponseError(
                         f"番剧信息获取失败: {log_id}, 响应码: {season_resp.get('code')}",
                         context={**context, "response": season_resp},

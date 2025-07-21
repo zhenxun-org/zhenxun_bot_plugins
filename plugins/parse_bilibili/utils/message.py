@@ -29,10 +29,9 @@ from ..config import (
     SEND_VIDEO_TIMEOUT,
     IMAGE_CACHE_DIR,
     base_config,
-    bili_credential
+    bili_credential,
 )
 from ..utils.exceptions import DownloadError
-
 
 
 TEMPLATE_DIR = Path(__file__).parent.parent / "templates"
@@ -331,22 +330,22 @@ class MessageBuilder:
 async def render_html_to_image(
     template_name: str, template_data: Dict[str, Any], viewport_width: int = 780
 ) -> Optional[bytes]:
-        """渲染HTML模板为图片"""
-        try:
-            template = template_env.get_template(template_name)
-            html_content = await template.render_async(template_data)
+    """渲染HTML模板为图片"""
+    try:
+        template = template_env.get_template(template_name)
+        html_content = await template.render_async(template_data)
 
-            return await html_to_pic(
-                html=html_content,
-                viewport={"width": viewport_width, "height": 10},
-                wait=0,
-            )
-        except jinja2.TemplateNotFound:
-            logger.error(f"找不到HTML模板: {TEMPLATE_DIR / template_name}")
-            return None
-        except Exception as e:
-            logger.error(f"渲染HTML模板失败: {template_name}", e=e)
-            return None
+        return await html_to_pic(
+            html=html_content,
+            viewport={"width": viewport_width, "height": 10},
+            wait=0,
+        )
+    except jinja2.TemplateNotFound:
+        logger.error(f"找不到HTML模板: {TEMPLATE_DIR / template_name}")
+        return None
+    except Exception as e:
+        logger.error(f"渲染HTML模板失败: {template_name}", e=e)
+        return None
 
 
 async def render_video_info_to_image(info: VideoInfo) -> Optional[bytes]:
@@ -596,8 +595,6 @@ def _get_user_friendly_error_message(exception: Exception) -> str:
         return "权限不足，请检查机器人权限设置"
     else:
         return "发送失败，请稍后重试"
-
-
 
 
 @Retry.api(

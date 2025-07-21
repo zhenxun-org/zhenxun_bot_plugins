@@ -63,9 +63,7 @@ async def _handle_auto_download(bot: Bot, event: Event, video_info: VideoInfo):
     session_id = event.get_session_id()
     logger.info(f"为会话 {session_id} 触发自动下载: {video_info.title}")
 
-    task = DownloadTask(
-        bot=bot, event=event, info_model=video_info, is_manual=False
-    )
+    task = DownloadTask(bot=bot, event=event, info_model=video_info, is_manual=False)
     await download_manager.add_task(task)
 
 
@@ -221,7 +219,6 @@ __plugin_meta__ = PluginMetadata(
                 help="视频下载质量(16=360P, 32=480P, 64=720P, 80=1080P)",
                 type=int,
             ),
-
             RegisterConfig(
                 module="BiliBili",
                 key="COOKIES",
