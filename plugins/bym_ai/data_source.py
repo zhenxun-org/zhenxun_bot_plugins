@@ -322,6 +322,7 @@ class Conversation:
                 latest_chat.is_reset = True
                 update_list.append(latest_chat)
         await BymChat.bulk_update(update_list, ["is_reset"])
+        cls.history_data = {}
         return len(update_list)
 
     @classmethod
