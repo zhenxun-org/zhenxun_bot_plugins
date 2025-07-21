@@ -526,5 +526,16 @@
     "version": "0.1",
     "plugin_type": "NORMAL",
     "is_dir": true
+  },
+  {
+    "name": "CSGO查询",
+    "module": "csgo",
+    "module_path": "plugins.csgo",
+    "description": "CSGO查询",
+    "usage": "多插件",
+    "author": "HibiKier",
+    "version": "0.1",
+    "plugin_type": "NORMAL",
+    "is_dir": true
   }
 ]

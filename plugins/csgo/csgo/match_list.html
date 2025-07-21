@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSGO完美战绩 - {{ player_name }}</title>
+    <!-- 引入自定义字体，请确保 .ttf 文件路径正确 -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap">
+    <style>
+        /* 声明自定义字体，请确保路径正确 */
+        @font-face {
+            font-family: AlibabaHealthFont2;
+            src: url("path/to/font/AlibabaHealthFont2.0CN-85B.ttf");
+        }
+
+        @font-face {
+            font-family: fzrzFont;
+            src: url("path/to/font/fzrzFont.ttf");
+        }
+
+        :root {
+            --primary-bg: #fff5f7;
+            --card-bg: white;
+            --border-color-light: #f3868c;
+            --shadow-color-light: rgba(247, 123, 142, 0.15);
+            --gradient-start: #f67186;
+            --gradient-end: #f7889c;
+            --text-dark: #333333;
+            --text-highlight: #f67186;
+            --section-title-bar: #f67186;
+            --section-title-bar-end: #f7889c;
+            --csgo-t-side-color: #ffc107;
+            --csgo-ct-side-color: #2196f3;
+            --csgo-win-color: #4CAF50;
+            --csgo-lose-color: #F44336;
+            --rating-good-color: #4CAF50;
+            --rating-bad-color: #F44336;
+            --we-good-color: #4CAF50;
+            --we-bad-color: #F44336;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--primary-bg);
+            background-image: linear-gradient(45deg, rgba(247, 123, 142, 0.05) 25%, transparent 25%, transparent 75%, rgba(247, 123, 142, 0.05) 75%, rgba(247, 123, 142, 0.05)),
+                linear-gradient(45deg, rgba(247, 123, 142, 0.05) 25%, transparent 25%, transparent 75%, rgba(247, 123, 142, 0.05) 75%, rgba(247, 123, 142, 0.05));
+            background-size: 60px 60px;
+            background-position: 0 0, 30px 30px;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            font-family: "AlibabaHealthFont2", "Inter", sans-serif;
+        }
+
+        .wrapper {
+            width: 900px;
+            background: var(--card-bg);
+            border-radius: 20px;
+            padding: 35px 30px;
+            box-sizing: border-box;
+            box-shadow: 0 15px 40px var(--shadow-color-light);
+            margin: 40px 0;
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .wrapper::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 6px;
+            background: linear-gradient(to right, var(--gradient-start), var(--gradient-end));
+        }
+
+        .app-header {
+            text-align: center;
+            position: relative;
+            padding-bottom: 25px;
+        }
+
+        .app-title {
+            font-size: 38px;
+            background: linear-gradient(to right, var(--gradient-start), var(--gradient-end));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            margin: 10px 0;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            text-shadow: 0 2px 10px rgba(247, 123, 142, 0.2);
+        }
+
+        .app-subtitle {
+            font-size: 16px;
+            color: var(--gradient-end);
+            margin: 0;
+            font-weight: 500;
+            letter-spacing: 1px;
+        }
+
+        .info-box {
+            position: relative;
+            background: var(--card-bg);
+            border: 2px solid var(--border-color-light);
+            border-radius: 16px;
+            padding: 25px;
+            box-shadow: 0 8px 16px var(--shadow-color-light);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .section-title {
+            font-family: "fzrzFont", "Inter", sans-serif;
+            font-size: 24px;
+            color: var(--text-highlight);
+            margin: 0 0 20px 0;
+            display: flex;
+            align-items: center;
+            font-weight: bold;
+        }
+
+        .section-title:before {
+            content: "";
+            display: inline-block;
+            width: 8px;
+            height: 24px;
+            background: linear-gradient(to bottom, var(--section-title-bar), var(--section-title-bar-end));
+            margin-right: 12px;
+            border-radius: 4px;
+        }
+
+        .section-title .page-info {
+            margin-left: auto;
+            font-size: 16px;
+            font-weight: normal;
+            color: #888;
+            background-color: rgba(247, 123, 142, 0.1);
+            padding: 4px 12px;
+            border-radius: 20px;
+        }
+
+        .player-info-panel {
+            display: flex;
+            align-items: center;
+            padding-bottom: 25px;
+            border-bottom: 1px dashed rgba(247, 123, 142, 0.3);
+            margin-bottom: 25px;
+        }
+
+        .player-avatar {
+            width: 110px;
+            height: 110px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 4px solid var(--gradient-start);
+            margin-right: 25px;
+            box-shadow: 0 5px 15px rgba(247, 123, 142, 0.3);
+        }
+
+        .player-details {
+            flex-grow: 1;
+        }
+
+        .player-name {
+            font-size: 28px;
+            font-weight: 800;
+            margin: 0 0 8px 0;
+            background: linear-gradient(to right, var(--gradient-start), var(--gradient-end));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            letter-spacing: -0.5px;
+        }
+
+        .steam-id {
+            font-size: 15px;
+            color: #888;
+            margin: 0;
+            display: flex;
+            align-items: center;
+        }
+
+        .steam-id::before {
+            content: "";
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><path fill="%23888" d="M496 256c0 137-111.2 248-248.4 248-113.8 0-209.6-76.3-239-180.4l95.2 39.3c6.4 32.1 34.9 56.4 68.9 56.4 39.2 0 71.9-32.4 70.2-73.5l84.5-60.2c52.1 1.3 95.8-40.9 95.8-93.5 0-51.6-42-93.5-93.7-93.5s-93.7 42-93.7 93.5v1.2L176.6 279c-15.5-.9-30.7 3.4-43.5 12.1L0 236.1C10.2 108.4 117.1 8 247.6 8 384.8 8 496 119 496 256zM155.7 384.3l-30.5-12.6a52.79 52.79 0 0 0 27.2 25.8c26.9 11.2 57.8-1.6 69-28.4 5.4-13 5.5-27.3.1-40.3-5.4-13-15.5-23.2-28.5-28.6-12.9-5.4-26.7-5.2-38.9-.6l31.5 13c19.8 8.2 29.2 30.9 20.9 50.7-8.3 19.9-31 29.2-50.8 21zm173.8-129.9c-34.4 0-62.4-28-62.4-62.3s28-62.3 62.4-62.3 62.4 28 62.4 62.3-27.9 62.3-62.4 62.3zm.1-15.6c25.9 0 46.9-21 46.9-46.8 0-25.9-21-46.8-46.9-46.8s-46.9 21-46.9 46.8c.1 25.8 21.1 46.8 46.9 46.8z"/></svg>');
+            background-repeat: no-repeat;
+            background-position: center;
+            margin-right: 6px;
+        }
+
+        .meta-container {
+            position: relative;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 30px;
+            background: var(--card-bg);
+            border: 2px solid var(--border-color-light);
+            border-radius: 12px;
+            padding: 15px;
+            box-shadow: 0 4px 8px var(--shadow-color-light);
+            margin-bottom: 25px;
+        }
+
+        .meta-item {
+            text-align: center;
+            flex-basis: auto;
+            min-width: 120px;
+        }
+
+        .meta-label {
+            font-size: 14px;
+            color: var(--text-highlight);
+            margin-bottom: 5px;
+        }
+
+        .meta-value {
+            font-size: 16px;
+            color: var(--text-dark);
+            font-weight: bold;
+        }
+
+        .divider {
+            height: 1px;
+            background: linear-gradient(to right, transparent, var(--gradient-end), transparent);
+            margin: 0;
+        }
+
+        /* 比赛列表样式 */
+        .match-list {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            font-size: 14px;
+        }
+
+        .match-list th {
+            background: linear-gradient(to right, var(--gradient-start), var(--gradient-end));
+            color: white;
+            padding: 12px 15px;
+            text-align: left;
+            font-weight: bold;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .match-list tr {
+            border-bottom: 1px solid rgba(247, 123, 142, 0.1);
+            transition: all 0.2s ease;
+        }
+
+        .match-list tr:hover {
+            background-color: rgba(247, 123, 142, 0.05);
+        }
+
+        .match-list td {
+            padding: 12px 15px;
+            vertical-align: middle;
+        }
+
+        .map-cell {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .map-logo {
+            width: 30px;
+            height: 30px;
+            border-radius: 4px;
+            object-fit: cover;
+        }
+
+        .map-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .map-name {
+            font-weight: bold;
+        }
+
+        .map-details {
+            display: flex;
+            gap: 8px;
+            font-size: 12px;
+            color: #888;
+        }
+
+        .match-id {
+            background-color: rgba(247, 123, 142, 0.1);
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
+        .mode {
+            background-color: rgba(33, 150, 243, 0.1);
+            color: #0c7cd5;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
+        .score-cell {
+            font-weight: bold;
+        }
+
+        .win {
+            color: var(--csgo-win-color);
+        }
+
+        .lose {
+            color: var(--csgo-lose-color);
+        }
+
+        .kda-cell {
+            white-space: nowrap;
+        }
+
+        .rating-cell {
+            font-weight: bold;
+            white-space: nowrap;
+        }
+
+        .rating-good {
+            color: var(--rating-good-color);
+        }
+
+        .rating-bad {
+            color: var(--rating-bad-color);
+        }
+
+        .we-cell {
+            font-weight: bold;
+            white-space: nowrap;
+        }
+
+        .we-good {
+            color: var(--we-good-color);
+        }
+
+        .we-bad {
+            color: var(--we-bad-color);
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: bold;
+            margin-right: 4px;
+        }
+
+        .badge.mvp {
+            background-color: rgba(156, 39, 176, 0.2);
+            color: #7b1fa2;
+        }
+
+        .badge.k4 {
+            background-color: rgba(255, 87, 34, 0.2);
+            color: #e64a19;
+        }
+
+        .badge.k5 {
+            background-color: rgba(233, 30, 99, 0.2);
+            color: #c2185b;
+        }
+
+        .date-cell {
+            color: #888;
+            font-size: 12px;
+            white-space: nowrap;
+        }
+
+        .download-tip {
+            margin-top: 30px;
+            padding: 16px;
+            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            border-radius: 12px;
+            text-align: center;
+            font-size: 15px;
+            color: white;
+            font-weight: bold;
+            box-shadow: 0 5px 15px rgba(247, 123, 142, 0.25);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .download-tip::before {
+            content: "";
+            position: absolute;
+            top: -10px;
+            left: -10px;
+            right: -10px;
+            bottom: -10px;
+            background: linear-gradient(45deg, rgba(255, 255, 255, 0.1) 25%, transparent 25%, transparent 50%, rgba(255, 255, 255, 0.1) 50%, rgba(255, 255, 255, 0.1) 75%, transparent 75%, transparent);
+            background-size: 20px 20px;
+            z-index: 1;
+            opacity: 0.3;
+        }
+
+        .download-tip strong {
+            background-color: rgba(255, 255, 255, 0.2);
+            padding: 3px 8px;
+            border-radius: 6px;
+            margin: 0 3px;
+            position: relative;
+            z-index: 2;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 20px 0 10px;
+            font-size: 13px;
+            color: #888;
+            border-top: 1px solid rgba(247, 123, 142, 0.1);
+            margin-top: 10px;
+            position: relative;
+        }
+
+        .footer::after {
+            content: "";
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100px;
+            height: 3px;
+            background: linear-gradient(to right, var(--gradient-start), var(--gradient-end));
+            border-radius: 3px;
+        }
+
+        @media (max-width: 768px) {
+            .wrapper {
+                width: 95%;
+                padding: 20px 15px;
+            }
+
+            .match-list {
+                display: block;
+                overflow-x: auto;
+                white-space: nowrap;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="wrapper">
+        <div class="app-header">
+            <h1 class="app-title">完美CSGO战绩</h1>
+            <p class="app-subtitle">CSGO PERFECT WORLD MATCH HISTORY</p>
+        </div>
+
+        <!-- 玩家信息 -->
+        <div class="info-box">
+            <h3 class="section-title">玩家概览</h3>
+            <div class="player-info-panel">
+                <img src="{{ avatar_url }}" alt="用户头像" class="player-avatar">
+                <div class="player-details">
+                    <h2 class="player-name">{{ player_name }}</h2>
+                    <p class="steam-id">{{ steam_id }}</p>
+                </div>
+            </div>
+
+            <div class="meta-container">
+                <div class="meta-item">
+                    <div class="meta-label">比赛总数</div>
+                    <div class="meta-value">{{ total_matches }}</div>
+                </div>
+                <div class="meta-item">
+                    <div class="meta-label">胜场</div>
+                    <div class="meta-value">{{ win_count }}</div>
+                </div>
+                <div class="meta-item">
+                    <div class="meta-label">胜率</div>
+                    <div class="meta-value">{{ win_rate }}%</div>
+                </div>
+                <div class="meta-item">
+                    <div class="meta-label">K/D比</div>
+                    <div class="meta-value">{{ kd_ratio }}</div>
+                </div>
+                <div class="meta-item">
+                    <div class="meta-label">Rating PRO</div>
+                    <div class="meta-value {% if avg_rating >= 1.0 %}rating-good{% else %}rating-bad{% endif %}">
+                        {{ "%.2f"|format(avg_rating) }}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- 比赛列表 -->
+        <div class="info-box">
+            <h3 class="section-title">
+                比赛历史
+                <span class="page-info">第 {{ current_page }} 页</span>
+            </h3>
+
+            <table class="match-list">
+                <thead>
+                    <tr>
+                        <th>地图</th>
+                        <th>比分</th>
+                        <th>KDA</th>
+                        <th>Rating PRO</th>
+                        <th>WE</th>
+                        <th>荣誉</th>
+                        <th>时间</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for match in match_list %}
+                    <tr>
+                        <td class="map-cell">
+                            <img src="{{ match.map_logo }}" alt="{{ match.map_name }}" class="map-logo">
+                            <div class="map-info">
+                                <div class="map-name">{{ match.map_name }}</div>
+                                <div class="map-details">
+                                    <span class="match-id">ID: {{ match.match_id[-4:] }}</span>
+                                    <span class="mode">{{ match.mode }}</span>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="score-cell {% if match.team == match.win_team %}win{% else %}lose{% endif %}">
+                            {{ match.score1 }} : {{ match.score2 }}
+                        </td>
+                        <td class="kda-cell">
+                            {{ match.kill }}/{{ match.death }}/{{ match.assist }}
+                        </td>
+                        <td class="rating-cell {% if match.rating >= 1.0 %}rating-good{% else %}rating-bad{% endif %}">
+                            {{ "%.2f"|format(match.rating) }}
+                        </td>
+                        <td class="we-cell {% if match.we >= 8.0 %}we-good{% else %}we-bad{% endif %}">
+                            {{ "%.2f"|format(match.we) }}
+                        </td>
+                        <td>
+                            {% if match.mvp %}
+                            <span class="badge mvp">MVP</span>
+                            {% endif %}
+
+                            {% if match.k4 > 0 %}
+                            <span class="badge k4">四杀</span>
+                            {% endif %}
+
+                            {% if match.k5 > 0 %}
+                            <span class="badge k5">五杀</span>
+                            {% endif %}
+                        </td>
+                        <td class="date-cell">
+                            {{ match.start_time }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="download-tip">
+            使用 <strong>完美战绩详情 比赛ID</strong> 指令可查看对应比赛详情
+        </div>
+
+        <div class="footer">
+            完美CSGO战绩查询 | Zhenxun Bot
+        </div>
+    </div>
+</body>
+
+</html>
