@@ -599,6 +599,7 @@ class ChatManager:
                 nickname=nickname,
                 user_id=user_id,
                 impression=cls.user_impression[user_id],
+                max_impression=cls.user_impression[user_id] + 30,
                 attitude=level2attitude[level],
                 gift_count=gift_count,
             )
