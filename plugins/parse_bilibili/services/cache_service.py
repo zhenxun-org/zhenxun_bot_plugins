@@ -1,17 +1,15 @@
-import asyncio
-from collections import OrderedDict
-import contextlib
-import json
-from pathlib import Path
-import shutil
 import time
-from typing import Any, ClassVar
-
+import json
+import asyncio
+import shutil
+from pathlib import Path
+from typing import Optional, Dict, Any
+from collections import OrderedDict
 from nonebot_plugin_session import EventSession
 
 from zhenxun.services.log import logger
 
-from ..config import IMAGE_CACHE_DIR, PLUGIN_CACHE_DIR, PLUGIN_TEMP_DIR, base_config
+from ..config import base_config, PLUGIN_TEMP_DIR, PLUGIN_CACHE_DIR, IMAGE_CACHE_DIR
 
 VIDEO_CACHE_DIR = PLUGIN_TEMP_DIR / "video_cache"
 VIDEO_CACHE_DIR.mkdir(parents=True, exist_ok=True)
@@ -23,8 +21,8 @@ _video_cache_lock = asyncio.Lock()
 _url_cache_lock = asyncio.Lock()
 _clean_lock = asyncio.Lock()
 
-_video_cache_index: dict[str, dict[str, Any]] = {}
-_url_context_caches: dict[str, OrderedDict[str, float]] = {}
+_video_cache_index: Dict[str, Dict[str, Any]] = {}
+_url_context_caches: Dict[str, OrderedDict[str, float]] = {}
 _URL_CONTEXT_CACHE_CAPACITY = 100
 
 _video_cache_initialized = False
@@ -34,7 +32,7 @@ _url_cache_initialized = False
 class CacheService:
     """统一缓存管理服务"""
 
-    FILE_EXPIRY: ClassVar[dict[str, int | float]] = {
+    FILE_EXPIRY = {
         "bili_video_cover_": 1,
         "bili_avatar_": 7,
         "bili_live_cover_": 1,
@@ -126,7 +124,7 @@ class CacheService:
         _url_cache_initialized = True
 
     @classmethod
-    async def get_video_cache(cls, video_id: str, page_num: int = 0) -> Path | None:
+    async def get_video_cache(cls, video_id: str, page_num: int = 0) -> Optional[Path]:
         """获取视频缓存文件路径"""
         if not _video_cache_initialized:
             await cls._init_video_cache()
@@ -230,25 +228,26 @@ class CacheService:
                 f"URL '{url}' 在上下文 '{context_key}' 的缓存中未找到", "B站解析"
             )
             if len(context_cache) >= _URL_CONTEXT_CACHE_CAPACITY:
-                with contextlib.suppress(KeyError):
+                try:
                     removed_url, _ = context_cache.popitem(last=False)
                     logger.debug(
                         f"上下文 '{context_key}' 缓存已满，移除最旧条目: {removed_url}",
                         "B站解析",
                     )
+                except KeyError:
+                    pass
             context_cache[url] = current_time
-            asyncio.create_task(cls._save_url_cache_to_disk())  # noqa: RUF006
+            asyncio.create_task(cls._save_url_cache_to_disk())
             return True
         else:
             if current_time - timestamp > cache_ttl_seconds:
                 logger.debug(
-                    f"URL '{url}' 在上下文 '{context_key}'"
-                    f" 的缓存已过期 (TTL={cache_ttl_minutes}分钟)",
+                    f"URL '{url}' 在上下文 '{context_key}' 的缓存已过期 (TTL={cache_ttl_minutes}分钟)",
                     "B站解析",
                 )
                 context_cache[url] = current_time
                 context_cache.move_to_end(url)
-                asyncio.create_task(cls._save_url_cache_to_disk())  # noqa: RUF006
+                asyncio.create_task(cls._save_url_cache_to_disk())
                 return True
             else:
                 logger.debug(
@@ -278,17 +277,19 @@ class CacheService:
         if url in context_cache:
             context_cache.move_to_end(url)
         elif len(context_cache) >= _URL_CONTEXT_CACHE_CAPACITY:
-            with contextlib.suppress(KeyError):
+            try:
                 context_cache.popitem(last=False)
+            except KeyError:
+                pass
         context_cache[url] = current_time
         logger.debug(
             f"手动添加/更新 URL '{url}' 到上下文 '{context_key}' 的缓存", "B站解析"
         )
 
-        asyncio.create_task(cls._save_url_cache_to_disk())  # noqa: RUF006
+        asyncio.create_task(cls._save_url_cache_to_disk())
 
     @classmethod
-    async def clear_url_cache(cls, context_key: str | None = None):
+    async def clear_url_cache(cls, context_key: Optional[str] = None):
         """清空URL缓存"""
         if not _url_cache_initialized:
             await cls._init_url_cache()
@@ -303,7 +304,7 @@ class CacheService:
             _url_context_caches.clear()
             logger.info("已清空所有上下文的缓存", "B站解析")
 
-        asyncio.create_task(cls._save_url_cache_to_disk())  # noqa: RUF006
+        asyncio.create_task(cls._save_url_cache_to_disk())
 
     @classmethod
     async def clean_expired_cache(cls, force: bool = False) -> int:
@@ -369,7 +370,8 @@ class CacheService:
 
             cleaned_count = 0
             for cache_key, cache_info in to_clean:
-                if file_path_str := cache_info.get("file_path", ""):
+                file_path_str = cache_info.get("file_path", "")
+                if file_path_str:
                     file_path = Path(file_path_str)
                     if file_path.exists():
                         try:
@@ -381,7 +383,8 @@ class CacheService:
                                 f"删除缓存文件失败: {file_path}, 错误: {e}", "B站解析"
                             )
 
-                _video_cache_index.pop(cache_key, None)
+                if cache_key in _video_cache_index:
+                    del _video_cache_index[cache_key]
 
             if to_clean:
                 await cls._save_video_cache_index()
@@ -400,19 +403,18 @@ class CacheService:
         temp_files = []
 
         if IMAGE_CACHE_DIR.exists():
-            temp_files.extend(
-                file for file in IMAGE_CACHE_DIR.glob("*") if file.is_file()
-            )
+            for file in IMAGE_CACHE_DIR.glob("*"):
+                if file.is_file():
+                    temp_files.append(file)
             logger.debug(
                 f"扫描图片缓存目录: {IMAGE_CACHE_DIR}，找到 {len(temp_files)} 个文件",
                 "B站解析",
             )
 
-        temp_files.extend(
-            file
-            for file in PLUGIN_TEMP_DIR.glob("*")
-            if file.is_file() and file.parent == PLUGIN_TEMP_DIR
-        )
+        for file in PLUGIN_TEMP_DIR.glob("*"):
+            if file.is_file() and file.parent == PLUGIN_TEMP_DIR:
+                temp_files.append(file)
+
         files_by_prefix = {}
         for file in temp_files:
             for prefix in cls.FILE_EXPIRY.keys():
@@ -428,7 +430,7 @@ class CacheService:
             expiry_seconds = expiry_days * 86400
 
             logger.debug(
-                f"文件类型 {prefix} 的过期时间为 {expiry_days} 天({expiry_seconds} 秒)",
+                f"文件类型 {prefix} 的过期时间为 {expiry_days} 天 ({expiry_seconds} 秒)",
                 "B站解析",
             )
 
@@ -440,8 +442,7 @@ class CacheService:
 
                     if file_age_seconds > expiry_seconds:
                         logger.debug(
-                            f"文件 {file.name} 已存在 {file_age_days:.2f} 天，"
-                            f"超过过期时间 {expiry_days} 天",
+                            f"文件 {file.name} 已存在 {file_age_days:.2f} 天，超过过期时间 {expiry_days} 天",
                             "B站解析",
                         )
                         file.unlink()
@@ -466,8 +467,7 @@ class CacheService:
             try:
                 cleaned = await cls.clean_expired_cache(force=True)
                 logger.info(
-                    f"缓存自动清理完成，清理了 {cleaned} 个文件，"
-                    f"下次清理将在 {clean_interval_hours} 小时后进行",
+                    f"缓存自动清理完成，清理了 {cleaned} 个文件，下次清理将在 {clean_interval_hours} 小时后进行",
                     "B站解析",
                 )
 
@@ -547,10 +547,10 @@ class CacheService:
         """将URL缓存数据保存到磁盘"""
         try:
             async with _url_cache_lock:
-                cache_data = {
-                    context_key: dict(ordered_dict)
-                    for context_key, ordered_dict in _url_context_caches.items()
-                }
+                cache_data = {}
+                for context_key, ordered_dict in _url_context_caches.items():
+                    cache_data[context_key] = dict(ordered_dict)
+
                 URL_CACHE_FILE.write_text(
                     json.dumps(cache_data, ensure_ascii=False), encoding="utf-8"
                 )

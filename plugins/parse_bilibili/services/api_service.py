@@ -1,39 +1,36 @@
 import asyncio
-from typing import Any
+from typing import Dict, Any, Optional, List
 
 import aiohttp
-from bilibili_api import article, live, user, video
 from bilibili_api import exceptions as BiliExceptions
-from tenacity import (
-    retry,
-    retry_if_exception_type,
-    stop_after_attempt,
-    wait_exponential,
-)
+from bilibili_api import live, video, article, user
 
 from zhenxun.services.log import logger
+from zhenxun.utils.decorator.retry import Retry
+from zhenxun.utils.http_utils import AsyncHttpx
 
 from ..config import get_credential
 from ..model import (
-    ArticleInfo,
-    LiveInfo,
     Owner,
-    SeasonInfo,
-    SeasonStat,
     Stat,
+    VideoInfo,
+    LiveInfo,
     UserInfo,
     UserStat,
-    VideoInfo,
+    SeasonInfo,
+    SeasonStat,
+    ArticleInfo,
 )
+
 from ..utils.exceptions import (
     BilibiliRequestError,
     BilibiliResponseError,
-    RateLimitError,
-    ResourceForbiddenError,
     ResourceNotFoundError,
+    ResourceForbiddenError,
     UrlParseError,
+    RateLimitError,
 )
-from .network_service import NetworkService
+
 
 RETRYABLE_EXCEPTIONS = (
     BiliExceptions.NetworkException,
@@ -61,7 +58,7 @@ class BilibiliApiService:
             raise UrlParseError(f"无效的视频ID格式: {vid}")
 
     @staticmethod
-    def _map_video_info_to_model(info: dict[str, Any], parsed_url: str) -> VideoInfo:
+    def _map_video_info_to_model(info: Dict[str, Any], parsed_url: str) -> VideoInfo:
         """将API返回的视频信息映射到VideoInfo模型"""
         owner = Owner(
             mid=info["owner"]["mid"],
@@ -116,7 +113,7 @@ class BilibiliApiService:
         return video_model
 
     @staticmethod
-    def _map_live_info_to_model(info: dict[str, Any], parsed_url: str) -> LiveInfo:
+    def _map_live_info_to_model(info: Dict[str, Any], parsed_url: str) -> LiveInfo:
         """将API返回的直播间信息映射到LiveInfo模型"""
         room_info = info["room_info"]
         anchor_info = info.get("anchor_info", {}).get("base_info", {})
@@ -170,6 +167,14 @@ class BilibiliApiService:
             logger.debug(f"视频信息获取成功: {video_model.title}", "B站解析")
             return video_model
 
+        # 新增的异常捕获块，用于处理无效的视频ID
+        except BiliExceptions.ArgsException as e:
+            logger.error(f"Bilibili-api参数错误 ({vid}): {e}", "B站解析")
+            raise UrlParseError(
+                f"视频ID格式错误: {vid}",
+                cause=e,
+                context={"vid": vid, "url": parsed_url},
+            )
         except ResourceNotFoundError:
             raise ResourceNotFoundError(
                 f"视频未找到: {vid}", context={"vid": vid, "url": parsed_url}
@@ -294,11 +299,7 @@ class BilibiliApiService:
             )
 
     @staticmethod
-    @retry(
-        stop=stop_after_attempt(3),
-        wait=wait_exponential(multiplier=1, min=1, max=5),
-        retry=retry_if_exception_type(RETRYABLE_EXCEPTIONS),
-    )
+    @Retry.api(exception=RETRYABLE_EXCEPTIONS)
     async def get_article_info(cv_id: str, parsed_url: str) -> ArticleInfo:
         """获取专栏文章信息"""
         logger.debug(f"获取专栏信息: {cv_id}", "B站解析")
@@ -306,15 +307,14 @@ class BilibiliApiService:
 
         try:
             article_id_int: int
-            if not cv_id.lower().startswith("cv"):
+            if cv_id.lower().startswith("cv"):
+                try:
+                    article_id_int = int(cv_id[2:])
+                except ValueError:
+                    raise UrlParseError(f"无效的专栏ID格式: {cv_id}", context=context)
+            else:
                 raise UrlParseError(f"专栏ID必须以 'cv' 开头: {cv_id}", context=context)
 
-            try:
-                article_id_int = int(cv_id[2:])
-            except ValueError as e:
-                raise UrlParseError(
-                    f"无效的专栏ID格式: {cv_id}", context=context
-                ) from e
             art = article.Article(cvid=article_id_int, credential=get_credential())
 
             logger.debug(f"获取专栏基础信息: cv{article_id_int}", "B站解析")
@@ -351,16 +351,16 @@ class BilibiliApiService:
             if e.code == -404 or "获取信息失败" in str(e):
                 raise ResourceNotFoundError(
                     f"专栏未找到: {cv_id}", cause=e, context=context
-                ) from e
+                )
             else:
                 raise BilibiliResponseError(
                     f"B站API错误: {e.message}", cause=e, context=context
-                ) from e
+                )
         except BiliExceptions.NetworkException as e:
             logger.error(f"获取专栏信息网络错误 ({cv_id}): {e}", "B站解析")
             raise BilibiliRequestError(
                 f"获取专栏信息网络错误: {e}", cause=e, context=context
-            ) from e
+            )
         except Exception as e:
             logger.error(f"获取专栏信息失败 ({cv_id}): {e}", "B站解析")
             raise BilibiliResponseError(
@@ -368,11 +368,7 @@ class BilibiliApiService:
             )
 
     @staticmethod
-    @retry(
-        stop=stop_after_attempt(3),
-        wait=wait_exponential(multiplier=1, min=1, max=5),
-        retry=retry_if_exception_type(RETRYABLE_EXCEPTIONS),  # type: ignore
-    )
+    @Retry.api(exception=RETRYABLE_EXCEPTIONS)
     async def get_user_info(uid: int, parsed_url: str) -> UserInfo:
         """获取用户空间信息"""
         logger.debug(f"获取用户信息: {uid}", "B站解析")
@@ -389,9 +385,9 @@ class BilibiliApiService:
                 return_exceptions=True,
             )
 
-            user_info_data: dict[str, Any] | None = None
-            relation_info_data: dict[str, Any] | None = None
-            up_stat_data: dict[str, Any] | None = None
+            user_info_data: Optional[Dict[str, Any]] = None
+            relation_info_data: Optional[Dict[str, Any]] = None
+            up_stat_data: Optional[Dict[str, Any]] = None
             errors = []
 
             if isinstance(results[0], Exception):
@@ -485,7 +481,7 @@ class BilibiliApiService:
 
     @staticmethod
     def _map_season_info_to_model(
-        result: dict[str, Any], parsed_url: str, target_ep_id: int | None = None
+        result: Dict[str, Any], parsed_url: str, target_ep_id: Optional[int] = None
     ) -> SeasonInfo:
         """将API返回的番剧信息映射到SeasonInfo模型"""
         stat_data = result.get("stat", {})
@@ -531,7 +527,7 @@ class BilibiliApiService:
         )
 
         if target_ep_id:
-            episodes: list[dict[str, Any]] = result.get("episodes", [])
+            episodes: List[Dict[str, Any]] = result.get("episodes", [])
             for episode in episodes:
                 if (
                     episode.get("ep_id") == target_ep_id
@@ -549,13 +545,9 @@ class BilibiliApiService:
         return season_model
 
     @staticmethod
-    @retry(
-        stop=stop_after_attempt(3),
-        wait=wait_exponential(multiplier=2, min=2, max=20),
-        retry=retry_if_exception_type(RETRYABLE_EXCEPTIONS),
-    )
+    @Retry.api(exception=RETRYABLE_EXCEPTIONS)
     async def get_bangumi_info(
-        parsed_url: str, season_id: int | None = None, ep_id: int | None = None
+        parsed_url: str, season_id: Optional[int] = None, ep_id: Optional[int] = None
     ) -> SeasonInfo:
         """获取番剧/电影信息"""
         if not season_id and not ep_id:
@@ -574,7 +566,19 @@ class BilibiliApiService:
 
             season_url = f"https://api.bilibili.com/pgc/view/web/season?{api_param}"
             logger.debug(f"请求番剧API: {season_url}", "B站解析")
-            season_resp = await NetworkService.get_json(season_url)
+
+            # 使用 AsyncHttpx 替代 NetworkService.get_json
+            from ..utils.headers import get_bilibili_headers
+
+            cred = get_credential()
+            headers = get_bilibili_headers()
+            cookies = cred.get_cookies() if cred else None
+
+            response = await AsyncHttpx.get(
+                season_url, headers=headers, cookies=cookies
+            )
+            response.raise_for_status()  # 检查HTTP状态码
+            season_resp = response.json()
 
             if not isinstance(season_resp, dict):
                 logger.error(f"番剧API响应不是字典类型: {type(season_resp)}", "B站解析")

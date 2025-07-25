@@ -3,6 +3,7 @@ from pathlib import Path
 import re
 import time
 from typing import Optional, Dict, Any
+from .common import format_number, format_duration
 
 import aiofiles
 
@@ -11,13 +12,27 @@ import jinja2
 from nonebot_plugin_alconna import Image, Text, UniMsg
 from nonebot_plugin_htmlrender import html_to_pic
 
+from zhenxun.utils.http_utils import AsyncHttpx
+
 from bilibili_api import comment
 from bilibili_api.comment import CommentResourceType, OrderType
 
 from zhenxun.services.log import logger
 
 from ..model import ArticleInfo, LiveInfo, VideoInfo, SeasonInfo, UserInfo
-from ..config import base_config, bili_credential, IMAGE_CACHE_DIR
+import asyncio
+from nonebot.adapters.onebot.v11 import MessageSegment as V11MessageSegment
+from zhenxun.utils.decorator.retry import Retry
+from ..config import (
+    SEND_VIDEO_MAX_RETRIES,
+    SEND_VIDEO_RETRY_DELAY,
+    SEND_VIDEO_TIMEOUT,
+    IMAGE_CACHE_DIR,
+    base_config,
+    bili_credential,
+)
+from ..utils.exceptions import DownloadError
+
 
 TEMPLATE_DIR = Path(__file__).parent.parent / "templates"
 FONT_FILE = TEMPLATE_DIR / "vanfont.ttf"
@@ -42,14 +57,14 @@ class ImageHelper:
     @staticmethod
     async def download_image(url: str, save_path: Path) -> bool:
         """下载图片"""
-        from .file_utils import download_file
-
         try:
             headers = {
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
                 "Referer": "https://www.bilibili.com",
             }
-            return await download_file(url, save_path, headers=headers, timeout=30)
+            return await AsyncHttpx.download_file(
+                url=url, path=save_path, headers=headers, timeout=30
+            )
         except Exception as e:
             logger.error(f"下载图片时出错 {url}: {e}")
             return False
@@ -253,13 +268,13 @@ class MessageBuilder:
             pub_info = f"发行时间: {pub_date}{weekday}\n"
 
         stat_parts = [
-            f"播放: {RenderHelper.format_number(info.stat.views)}",
-            f"弹幕: {RenderHelper.format_number(info.stat.danmakus)}",
-            f"追番/系列: {RenderHelper.format_number(info.stat.favorites)}",
-            f"评论: {RenderHelper.format_number(info.stat.reply)}",
-            f"点赞: {RenderHelper.format_number(info.stat.likes)}",
-            f"投币: {RenderHelper.format_number(info.stat.coins)}",
-            f"分享: {RenderHelper.format_number(info.stat.share)}",
+            f"播放: {format_number(info.stat.views)}",
+            f"弹幕: {format_number(info.stat.danmakus)}",
+            f"追番/系列: {format_number(info.stat.favorites)}",
+            f"评论: {format_number(info.stat.reply)}",
+            f"点赞: {format_number(info.stat.likes)}",
+            f"投币: {format_number(info.stat.coins)}",
+            f"分享: {format_number(info.stat.share)}",
         ]
         stat_str = "，".join(stat_parts)
 
@@ -291,11 +306,11 @@ class MessageBuilder:
         birthday_str = f"生日: {info.birthday} | " if info.birthday else ""
 
         stat_parts = [
-            f"关注: {RenderHelper.format_number(info.stat.following)}",
-            f"粉丝: {RenderHelper.format_number(info.stat.follower)}",
-            f"获赞: {RenderHelper.format_number(info.stat.likes)}",
-            f"播放: {RenderHelper.format_number(info.stat.archive_view)}",
-            f"阅读: {RenderHelper.format_number(info.stat.article_view)}",
+            f"关注: {format_number(info.stat.following)}",
+            f"粉丝: {format_number(info.stat.follower)}",
+            f"获赞: {format_number(info.stat.likes)}",
+            f"播放: {format_number(info.stat.archive_view)}",
+            f"阅读: {format_number(info.stat.article_view)}",
         ]
         stat_str = " | ".join(stat_parts)
 
@@ -312,43 +327,25 @@ class MessageBuilder:
         return UniMsg(segments)
 
 
-class RenderHelper:
-    """渲染辅助类"""
+async def render_html_to_image(
+    template_name: str, template_data: Dict[str, Any], viewport_width: int = 780
+) -> Optional[bytes]:
+    """渲染HTML模板为图片"""
+    try:
+        template = template_env.get_template(template_name)
+        html_content = await template.render_async(template_data)
 
-    @staticmethod
-    def format_number(num: int) -> str:
-        """格式化数字，大数字使用万/亿单位"""
-        from .common import format_number
-
-        return format_number(num)
-
-    @staticmethod
-    def format_duration(seconds: int) -> str:
-        """格式化时间长度"""
-        from .common import format_duration
-
-        return format_duration(seconds)
-
-    @staticmethod
-    async def render_html_to_image(
-        template_name: str, template_data: Dict[str, Any], viewport_width: int = 780
-    ) -> Optional[bytes]:
-        """渲染HTML模板为图片"""
-        try:
-            template = template_env.get_template(template_name)
-            html_content = await template.render_async(template_data)
-
-            return await html_to_pic(
-                html=html_content,
-                viewport={"width": viewport_width, "height": 10},
-                wait=0,
-            )
-        except jinja2.TemplateNotFound:
-            logger.error(f"找不到HTML模板: {TEMPLATE_DIR / template_name}")
-            return None
-        except Exception as e:
-            logger.error(f"渲染HTML模板失败: {template_name}", e=e)
-            return None
+        return await html_to_pic(
+            html=html_content,
+            viewport={"width": viewport_width, "height": 10},
+            wait=0,
+        )
+    except jinja2.TemplateNotFound:
+        logger.error(f"找不到HTML模板: {TEMPLATE_DIR / template_name}")
+        return None
+    except Exception as e:
+        logger.error(f"渲染HTML模板失败: {template_name}", e=e)
+        return None
 
 
 async def render_video_info_to_image(info: VideoInfo) -> Optional[bytes]:
@@ -428,28 +425,28 @@ async def render_video_info_to_image(info: VideoInfo) -> Optional[bytes]:
     template_data = {
         "cover_image_src": cover_image_src,
         "video_category": info.tname,
-        "video_duration": RenderHelper.format_duration(info.duration),
+        "video_duration": format_duration(info.duration),
         "up_info": {
             "avatar_image": up_avatar_src,
             "name": info.owner.name,
             "name_color": "#fb7299",
         },
         "video_title": info.title,
-        "view_count": RenderHelper.format_number(info.stat.view),
-        "dm_count": RenderHelper.format_number(info.stat.danmaku),
-        "reply_count": RenderHelper.format_number(info.stat.reply),
+        "view_count": format_number(info.stat.view),
+        "dm_count": format_number(info.stat.danmaku),
+        "reply_count": format_number(info.stat.reply),
         "upload_date": time.strftime("%Y-%m-%d", time.localtime(info.pubdate)),
         "id_number": f"{info.bvid}" if info.bvid else f"av{info.aid}",
         "video_summary": info.desc or "UP主没有填写简介",
-        "like_count": RenderHelper.format_number(info.stat.like),
-        "coin_count": RenderHelper.format_number(info.stat.coin),
-        "fav_count": RenderHelper.format_number(info.stat.favorite),
-        "share_count": RenderHelper.format_number(info.stat.share),
+        "like_count": format_number(info.stat.like),
+        "coin_count": format_number(info.stat.coin),
+        "fav_count": format_number(info.stat.favorite),
+        "share_count": format_number(info.stat.share),
         "comments": comments_list,
         "font_van_base64": FONT_BASE64_CONTENT,
     }
 
-    return await RenderHelper.render_html_to_image(
+    return await render_html_to_image(
         template_name="style_blue_video.html",
         template_data=template_data,
         viewport_width=780,
@@ -494,18 +491,18 @@ async def render_season_info_to_image(info: SeasonInfo) -> Optional[bytes]:
         "rating_score": info.rating_score,
         "rating_count": info.rating_count,
         "desc": info.desc or "暂无简介",
-        "view_count": RenderHelper.format_number(stat_to_display.views),
-        "dm_count": RenderHelper.format_number(stat_to_display.danmakus),
+        "view_count": format_number(stat_to_display.views),
+        "dm_count": format_number(stat_to_display.danmakus),
         "fav_label": fav_label,
-        "fav_count": RenderHelper.format_number(stat_to_display.favorites),
-        "reply_count": RenderHelper.format_number(stat_to_display.reply),
-        "like_count": RenderHelper.format_number(stat_to_display.likes),
-        "coin_count": RenderHelper.format_number(stat_to_display.coins),
-        "share_count": RenderHelper.format_number(stat_to_display.share),
+        "fav_count": format_number(stat_to_display.favorites),
+        "reply_count": format_number(stat_to_display.reply),
+        "like_count": format_number(stat_to_display.likes),
+        "coin_count": format_number(stat_to_display.coins),
+        "share_count": format_number(stat_to_display.share),
         "font_van_base64": FONT_BASE64_CONTENT,
     }
 
-    return await RenderHelper.render_html_to_image(
+    return await render_html_to_image(
         template_name="style_blue_season.html",
         template_data=template_data,
         viewport_width=420,
@@ -569,6 +566,72 @@ async def render_unimsg_to_image(message: UniMsg) -> Optional[bytes]:
 
     template_data = {"content": "".join(html_parts)}
 
-    return await RenderHelper.render_html_to_image(
+    return await render_html_to_image(
         template_name="message.html", template_data=template_data, viewport_width=650
     )
+
+
+def _get_user_friendly_error_message(exception: Exception) -> str:
+    """将技术错误转换为用户友好的错误信息"""
+    error_str = str(exception)
+
+    if "ActionFailed" in error_str:
+        if "retcode=1200" in error_str or "rich media transfer failed" in error_str:
+            return "视频发送失败，可能是文件过大或网络不稳定，请稍后重试"
+        elif "retcode=100" in error_str:
+            return "发送权限不足，请检查机器人权限设置"
+        elif "retcode=1400" in error_str:
+            return "消息发送频率过快，请稍后重试"
+        else:
+            return "视频发送失败，请稍后重试"
+
+    if "timeout" in error_str.lower() or "TimeoutError" in error_str:
+        return "发送超时，请稍后重试"
+    elif "network" in error_str.lower() or "connection" in error_str.lower():
+        return "网络连接问题，请检查网络后重试"
+    elif "file too large" in error_str.lower() or "文件过大" in error_str:
+        return "文件过大，无法发送"
+    elif "permission" in error_str.lower() or "权限" in error_str:
+        return "权限不足，请检查机器人权限设置"
+    else:
+        return "发送失败，请稍后重试"
+
+
+@Retry.api(
+    stop_max_attempt=SEND_VIDEO_MAX_RETRIES,
+    wait_fixed_seconds=SEND_VIDEO_RETRY_DELAY,
+    exception=(asyncio.TimeoutError,),
+    log_name="发送视频文件",
+)
+async def _send_video_core(bot, event, video_segment):
+    """
+    核心的视频发送动作，被重试装饰器包裹。
+    """
+    logger.debug(f"尝试发送视频，超时: {SEND_VIDEO_TIMEOUT}s")
+    send_task = asyncio.create_task(bot.send(event=event, message=video_segment))
+    await asyncio.wait_for(send_task, timeout=SEND_VIDEO_TIMEOUT)
+
+
+async def send_video_with_retry(bot, event, video_path: Path) -> bool:
+    """发送视频文件，并带有重试逻辑"""
+    if not video_path.exists():
+        error_msg = f"尝试发送时文件不存在: {video_path}"
+        logger.error(error_msg)
+        raise DownloadError(error_msg, context={"video_path": str(video_path)})
+
+    path_str = str(video_path.resolve()).replace("\\", "/")
+    file_uri = "file:///" + path_str
+    video_segment = V11MessageSegment.video(file_uri)
+
+    try:
+        await _send_video_core(bot, event, video_segment)
+        logger.info(f"视频文件发送成功: {video_path.name}")
+        return True
+    except Exception as e:
+        user_friendly_msg = _get_user_friendly_error_message(e)
+        logger.error(f"最终发送失败: {e}", e=e)
+        raise DownloadError(
+            user_friendly_msg,
+            context={"video_path": str(video_path)},
+            cause=e,
+        ) from e
