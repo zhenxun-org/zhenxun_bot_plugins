@@ -59,7 +59,7 @@ async def _(
         result = await PixSeekManage.start_seek(st, n)  # type: ignore
         end = time.time()
         await MessageUtils.build_message(
-            f"累计耗时: {int(end-start)} 秒\n共保存 {result[0]} 条数据!"
+            f"累计耗时: {int(end - start)} 秒\n共保存 {result[0]} 条数据!"
             f"\n已存在数据: {result[1]} 条!"
         ).send()
         logger.info(f"PIX 添加结果: {result}", arparma.header_result, session=session)

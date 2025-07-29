@@ -1,5 +1,5 @@
+from typing import Optional, Dict
 import asyncio
-import contextlib
 import time
 
 try:
@@ -15,12 +15,12 @@ from zhenxun.configs.path_config import DATA_PATH, TEMP_PATH
 from zhenxun.services.log import logger
 
 
-def cookies_str_to_dict(cookies_str: str) -> dict[str, str]:
+def cookies_str_to_dict(cookies_str: str) -> Dict[str, str]:
     """将cookies字符串转换为字典"""
     cookies = {}
     if not cookies_str:
         return cookies
-    with contextlib.suppress(Exception):
+    try:
         items = cookies_str.split(";")
         for item in items:
             if "=" not in item:
@@ -28,6 +28,8 @@ def cookies_str_to_dict(cookies_str: str) -> dict[str, str]:
             item = item.strip()
             key, value = item.split("=", 1)
             cookies[key.strip()] = value.strip()
+    except Exception:
+        pass
     return cookies
 
 
@@ -38,7 +40,7 @@ base_config = Config.get(MODULE_NAME)
 HTTP_TIMEOUT = 30
 HTTP_CONNECT_TIMEOUT = 10
 
-bili_credential: Credential | None = None
+bili_credential: Optional[Credential] = None
 _credential_lock = asyncio.Lock()
 _credential_loaded = False
 _last_refresh_check_time = 0
@@ -53,7 +55,8 @@ async def load_credential_from_file():
             return
 
         try:
-            if cookies_str := Config.get_config(MODULE_NAME_BILI, "COOKIES", ""):
+            cookies_str = Config.get(MODULE_NAME_BILI).get("COOKIES", "")
+            if cookies_str:
                 cookies_dict = cookies_str_to_dict(cookies_str)
 
                 bili_credential = Credential(
@@ -104,7 +107,7 @@ async def save_credential_to_file(credential: Credential):
             logger.error("保存 Credential 失败", e=e)
 
 
-def get_credential() -> Credential | None:
+def get_credential() -> Optional[Credential]:
     """获取当前的全局 Credential 对象"""
     return bili_credential
 
@@ -154,3 +157,6 @@ DOWNLOAD_MAX_RETRIES = 3
 SEND_VIDEO_MAX_RETRIES = 3
 SEND_VIDEO_RETRY_DELAY = 5.0
 SEND_VIDEO_TIMEOUT = 120
+
+# 下载并发控制
+MAX_CONCURRENT_DOWNLOADS = 2

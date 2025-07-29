@@ -86,9 +86,30 @@ class VideoUrlParser(RegexUrlParser):
 
     PRIORITY = 20
     RESOURCE_TYPE = ResourceType.VIDEO
+    # 修改正则表达式，使其能匹配 /video/ 路径或 bvid=... 的URL参数
     PATTERN = re.compile(
-        r"(?:https?://)?(?:www\.|m\.)?bilibili\.com/video/(av\d+|BV[A-Za-z0-9]+)"
+        r"bilibili\.com/.*?(?:video/(av\d+|BV[A-Za-z0-9]+)|[?&]bvid=(BV[A-Za-z0-9]+))"
     )
+
+    @classmethod
+    def parse(cls, url: str) -> Tuple[ResourceType, str]:
+        """
+        重写 parse 方法以处理更复杂的正则表达式。
+        它可以从路径或URL参数中提取视频ID。
+        """
+        if not cls.RESOURCE_TYPE:
+            raise ValueError(f"解析器 {cls.__name__} 未定义资源类型")
+
+        match = cls.PATTERN.search(url)
+        if not match:
+            raise UrlParseError(f"URL不匹配视频模式: {url}")
+
+        # group(1) 匹配 /video/后的ID, group(2) 匹配 bvid=后的ID
+        resource_id = match.group(1) or match.group(2)
+        if not resource_id:
+            raise UrlParseError(f"无法从URL提取视频资源ID: {url}")
+
+        return cls.RESOURCE_TYPE, resource_id
 
 
 class LiveUrlParser(RegexUrlParser):
@@ -232,24 +253,13 @@ UrlParserRegistry.register(BangumiUrlParser)
 UrlParserRegistry.register(PureVideoIdParser)
 
 
-def extract_bilibili_url_from_miniprogram(raw_str: str) -> Optional[str]:
-    """从小程序消息提取B站URL"""
-    logger.debug(f"开始解析小程序消息，原始数据长度: {len(raw_str)}")
-
-    bangumi_match = re.search(
-        r"(?:https?://)?(?:www\.|m\.)?bilibili\.com/bangumi/play/(ss\d+|ep\d+)", raw_str
-    )
-    if bangumi_match:
-        bangumi_url = bangumi_match.group(0)
-        logger.info(f"通过正则从小程序消息直接提取到番剧链接: {bangumi_url}")
-        return bangumi_url
-
+def _extract_url_from_hyper_or_json(raw_str: str) -> Optional[str]:
+    """从Hyper(小程序/JSON卡片)的原始数据中提取B站URL"""
     qqdocurl_match = re.search(r'"qqdocurl"\s*:\s*"([^"]+)"', raw_str)
     if qqdocurl_match:
         qqdocurl = qqdocurl_match.group(1).replace("\\", "")
-        logger.debug(f"从小程序消息提取到 qqdocurl: {qqdocurl}")
         if "b23.tv" in qqdocurl or "bilibili.com" in qqdocurl:
-            logger.info(f"通过正则从小程序消息提取到B站链接: {qqdocurl}")
+            logger.debug(f"通过qqdocurl提取到链接: {qqdocurl}")
             return qqdocurl
 
     url_match = re.search(
@@ -257,25 +267,11 @@ def extract_bilibili_url_from_miniprogram(raw_str: str) -> Optional[str]:
     )
     if url_match:
         extracted_url = url_match.group(0)
-        logger.info(f"通过通用正则从小程序消息提取到B站链接: {extracted_url}")
+        logger.debug(f"通过通用URL正则提取到链接: {extracted_url}")
         return extracted_url
 
     try:
         data = json.loads(raw_str)
-
-        excluded_apps = [
-            "com.tencent.qun.invite",
-            "com.tencent.qqav.groupvideo",
-            "com.tencent.mobileqq.reading",
-            "com.tencent.weather",
-        ]
-
-        app_name = data.get("app") or data.get("meta", {}).get("detail_1", {}).get(
-            "appid"
-        )
-        if app_name in excluded_apps:
-            logger.debug(f"小程序 app '{app_name}' 在排除列表，跳过", "B站解析")
-            return None
 
         meta_data = data.get("meta", {})
         detail_1 = meta_data.get("detail_1", {})
@@ -293,13 +289,22 @@ def extract_bilibili_url_from_miniprogram(raw_str: str) -> Optional[str]:
 
         if jump_url and isinstance(jump_url, str):
             if "bilibili.com" in jump_url or "b23.tv" in jump_url:
-                logger.info(f"从小程序JSON数据提取到B站链接: {jump_url}")
+                logger.debug(f"从JSON数据提取到B站链接: {jump_url}")
                 return jump_url
 
     except Exception as e:
-        logger.debug(f"解析小程序JSON失败: {e}")
+        logger.debug(f"解析JSON失败: {e}")
 
     return None
+
+
+def extract_bilibili_url_from_miniprogram(raw_str: str) -> Optional[str]:
+    """从小程序消息提取B站URL（现在是_extract_url_from_hyper_or_json的包装）"""
+    logger.debug(f"开始解析小程序/卡片消息，原始数据长度: {len(raw_str)}")
+    url = _extract_url_from_hyper_or_json(raw_str)
+    if url:
+        logger.info(f"从小程序/卡片提取到B站链接: {url}")
+    return url
 
 
 def extract_bilibili_url_from_message(
@@ -312,7 +317,17 @@ def extract_bilibili_url_from_message(
         for seg in message:
             if isinstance(seg, Hyper) and seg.raw:
                 try:
-                    extracted_url = extract_bilibili_url_from_miniprogram(seg.raw)
+                    excluded_apps = [
+                        "com.tencent.qun.invite",
+                        "com.tencent.qqav.groupvideo",
+                        "com.tencent.mobileqq.reading",
+                        "com.tencent.weather",
+                    ]
+                    if any(app_name in seg.raw for app_name in excluded_apps):
+                        logger.debug("消息中的小程序/卡片在排除列表，跳过", "B站解析")
+                        continue
+
+                    extracted_url = _extract_url_from_hyper_or_json(seg.raw)
                     if extracted_url:
                         target_url = extracted_url
                         logger.debug(f"从Hyper段提取到B站链接: {target_url}")
@@ -392,7 +407,7 @@ async def extract_bilibili_url_from_reply(reply: Optional[UniMsg]) -> Optional[s
     for seg in reply.msg:
         if isinstance(seg, Hyper) and seg.raw:
             logger.debug(f"处理回复消息的 Hyper 段，raw 长度: {len(seg.raw)}")
-            extracted_url = extract_bilibili_url_from_miniprogram(seg.raw)
+            extracted_url = _extract_url_from_hyper_or_json(seg.raw)
             if extracted_url:
                 target_url = extracted_url
                 logger.info(f"从回复消息提取到B站链接: {target_url}")
@@ -461,6 +476,7 @@ async def extract_bilibili_url_from_reply(reply: Optional[UniMsg]) -> Optional[s
                                 if (
                                     potential_url.startswith("http")
                                     or "b23.tv" in potential_url
+                                    or "bilibili.com" in potential_url
                                     or key == "b23_tv"
                                 ):
                                     target_url = potential_url
@@ -485,22 +501,10 @@ async def extract_bilibili_url_from_json_data(json_data: str) -> Optional[str]:
     if not json_data:
         return None
 
-    qqdocurl_match = re.search(r'"qqdocurl"\s*:\s*"([^"]+)"', json_data)
-    if qqdocurl_match:
-        qqdocurl = qqdocurl_match.group(1).replace("\\", "")
-        if "b23.tv" in qqdocurl or "bilibili.com" in qqdocurl:
-            logger.info(f"从JSON数据中提取到B站链接: {qqdocurl}")
-            return qqdocurl
-
-    url_match = re.search(
-        r'https?://[^\s"\']+(?:bilibili\.com|b23\.tv)[^\s"\']*', json_data
-    )
-    if url_match:
-        extracted_url = url_match.group(0)
-        logger.info(f"从JSON数据中提取到B站链接: {extracted_url}")
-        return extracted_url
-
-    return None
+    url = _extract_url_from_hyper_or_json(json_data)
+    if url:
+        logger.info(f"从JSON数据中提取到B站链接: {url}")
+    return url
 
 
 async def extract_bilibili_url_from_event(bot: Bot, event: Event) -> Optional[str]:
@@ -608,7 +612,7 @@ async def extract_bilibili_url_from_event(bot: Bot, event: Event) -> Optional[st
 
         for seg in current_message:
             if isinstance(seg, Hyper) and seg.raw:
-                extracted_url = await extract_bilibili_url_from_miniprogram(seg.raw)
+                extracted_url = _extract_url_from_hyper_or_json(seg.raw)
                 if extracted_url:
                     target_url = extracted_url
                     logger.info(f"从当前消息提取到B站链接: {target_url}")

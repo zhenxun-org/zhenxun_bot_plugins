@@ -68,7 +68,7 @@ async def _():
         await MessageUtils.build_message("未发现任何图库").finish()
     text = "公开图库列表：\n"
     for i, e in enumerate(image_dir_list):
-        text += f"\t{i+1}.{e}\n"
+        text += f"\t{i + 1}.{e}\n"
     await MessageUtils.build_message(text[:-1]).send()
 
 

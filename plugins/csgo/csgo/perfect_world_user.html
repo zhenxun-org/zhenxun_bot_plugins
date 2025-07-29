@@ -1,0 +1,970 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>玩家数据概览 - {{ player_stats['name'] }}</title>
+    <style>
+        /* 声明自定义字体，请确保路径正确 */
+        @font-face {
+            font-family: AlibabaHealthFont2;
+            src: url("../../font/AlibabaHealthFont2.0CN-85B.ttf");
+            /* <-- 请替换为你的字体文件实际路径 */
+        }
+
+        :root {
+            --primary-bg: #fff5f7;
+            /* 主背景色 */
+            --card-bg: white;
+            /* 卡片背景色 */
+            --border-color-light: #f3868c;
+            /* 边框颜色 */
+            --shadow-color-light: rgba(247, 123, 142, 0.15);
+            /* 柔和阴影 */
+            --gradient-start: #f67186;
+            /* 标题渐变开始 */
+            --gradient-end: #f7889c;
+            /* 标题渐变结束 */
+            --text-dark: #333333;
+            /* 深色文本 */
+            --text-highlight: #f67186;
+            /* 突出文本色 */
+            --section-title-bar: #f67186;
+            /* 章节标题条开始 */
+            --section-title-bar-end: #f7889c;
+            /* 章节标题条结束 */
+
+            /* Chart.js 颜色，适配浅色背景 (现在为 ECharts 使用) */
+            --chart-line-rating-pro: #d84315;
+            /* 深橙色 */
+            --chart-line-rws: #424242;
+            /* 深灰色 */
+            --chart-line-elo: #00796b;
+            /* 深青色 */
+            --chart-grid-line: rgba(0, 0, 0, 0.1);
+            /* 浅色网格线 */
+            --chart-tooltip-bg: rgba(255, 255, 255, 0.9);
+            --chart-tooltip-text: var(--text-dark);
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--primary-bg);
+            background-image: linear-gradient(45deg, rgba(247, 123, 142, 0.05) 25%, transparent 25%, transparent 75%, rgba(247, 123, 142, 0.05) 75%, rgba(247, 123, 142, 0.05)),
+                linear-gradient(45deg, rgba(247, 123, 142, 0.05) 25%, transparent 25%, transparent 75%, rgba(247, 123, 142, 0.05) 75%, rgba(247, 123, 142, 0.05));
+            background-size: 60px 60px;
+            background-position: 0 0, 30px 30px;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            font-family: "AlibabaHealthFont2", "Inter", sans-serif;
+        }
+
+        .wrapper {
+            width: 900px;
+            background: var(--card-bg);
+            border-radius: 20px;
+            padding: 35px 30px;
+            box-sizing: border-box;
+            box-shadow: 0 15px 40px var(--shadow-color-light);
+            margin: 40px 0;
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .wrapper::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 6px;
+            background: linear-gradient(to right, var(--gradient-start), var(--gradient-end));
+        }
+
+        .app-header {
+            text-align: center;
+            position: relative;
+            padding-bottom: 25px;
+        }
+
+        .app-title {
+            font-size: 38px;
+            background: linear-gradient(to right, var(--gradient-start), var(--gradient-end));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            margin: 10px 0;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            text-shadow: 0 2px 10px rgba(247, 123, 142, 0.2);
+        }
+
+        .app-subtitle {
+            font-size: 16px;
+            color: var(--gradient-end);
+            margin: 0;
+            font-weight: 500;
+            letter-spacing: 1px;
+        }
+
+        .info-box {
+            position: relative;
+            background: var(--card-bg);
+            border: 2px solid var(--border-color-light);
+            border-radius: 16px;
+            padding: 25px;
+            box-shadow: 0 8px 16px var(--shadow-color-light);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .section-title {
+            font-family: "fzrzFont", "Inter", sans-serif;
+            font-size: 24px;
+            color: var(--text-highlight);
+            margin: 0 0 20px 0;
+            display: flex;
+            align-items: center;
+            font-weight: bold;
+        }
+
+        .section-title:before {
+            content: "";
+            display: inline-block;
+            width: 8px;
+            height: 24px;
+            background: linear-gradient(to bottom, var(--section-title-bar), var(--section-title-bar-end));
+            margin-right: 12px;
+            border-radius: 4px;
+        }
+
+        .section-content {
+            font-size: 15px;
+            color: var(--text-dark);
+            line-height: 1.8;
+            z-index: 2;
+            position: relative;
+        }
+
+        .meta-box {
+            position: relative;
+            display: flex;
+            flex-wrap: wrap;
+            /* 允许换行 */
+            justify-content: center;
+            gap: 30px;
+            background: var(--card-bg);
+            /* 保持白色背景 */
+            border: 2px solid var(--border-color-light);
+            border-radius: 12px;
+            padding: 15px;
+            box-shadow: 0 4px 8px var(--shadow-color-light);
+            margin-bottom: 25px;
+            /* 增加下方间距 */
+        }
+
+        .meta-item {
+            text-align: center;
+            flex-basis: auto;
+            /* 让项目自动调整宽度 */
+            min-width: 100px;
+            /* 确保最小宽度 */
+        }
+
+        .meta-label {
+            font-size: 14px;
+            color: var(--text-highlight);
+            margin-bottom: 5px;
+        }
+
+        .meta-value {
+            font-size: 16px;
+            color: var(--text-dark);
+            font-weight: bold;
+        }
+
+        .divider {
+            height: 1px;
+            background: linear-gradient(to right, transparent, var(--gradient-end), transparent);
+            margin: 15px 0;
+            /* 调整分割线间距 */
+        }
+
+        /* 玩家头部信息特别调整 */
+        .player-info-section {
+            display: flex;
+            align-items: center;
+            padding: 20px;
+            /* 内部填充 */
+            border-bottom: 1px dashed rgba(247, 123, 142, 0.3);
+            /* 柔和分割线 */
+            margin-bottom: 20px;
+        }
+
+        .player-avatar-large {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid var(--gradient-start);
+            margin-right: 20px;
+            box-shadow: 0 0 8px rgba(247, 123, 142, 0.4);
+        }
+
+        .player-text-details {
+            flex-grow: 1;
+        }
+
+        .player-name-main {
+            font-size: 28px;
+            color: var(--text-dark);
+            font-weight: 800;
+            margin: 0 0 5px 0;
+            background: linear-gradient(to right, var(--gradient-start), var(--gradient-end));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            /* 为了渐变色 */
+        }
+
+        .player-steam-id {
+            font-size: 14px;
+            color: #999;
+            margin: 0 0 10px 0;
+        }
+
+        .player-summary-text {
+            font-size: 15px;
+            color: var(--text-dark);
+            margin: 0;
+        }
+
+        /* 称号标签 - Element UI el-tag style reference (强化可见性) */
+        .tag-container {
+            margin-top: 15px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            /* 增加标签间距，el-tag默认间距较大 */
+        }
+
+        .player-tag {
+            background-color: #fef0f0;
+            /* el-tag default background for type 'danger' or similar light red */
+            border: 1px solid #fbc4c4;
+            /* el-tag default border for type 'danger' */
+            color: #f56c6c;
+            /* el-tag default text color for type 'danger' */
+            padding: 4px 10px;
+            /* Adjusted padding for el-tag feel */
+            border-radius: 4px;
+            /* Default el-tag border-radius is small */
+            font-size: 12px;
+            /* Smaller font size for tags */
+            font-weight: 500;
+            /* Medium font-weight */
+            white-space: nowrap;
+            box-shadow: none;
+            /* No box-shadow */
+            transition: background-color 0.2s, border-color 0.2s, color 0.2s;
+            line-height: 1;
+            /* Ensure single line height */
+            height: 24px;
+            /* Fixed height for consistency */
+            display: inline-flex;
+            /* Use flex to vertically center content */
+            align-items: center;
+            justify-content: center;
+            min-width: 40px;
+            /* Ensure a minimum width for short tags */
+        }
+
+        .player-tag:hover {
+            background-color: #fde2e2;
+            /* Slightly darker on hover, like el-tag */
+            border-color: #f7889c;
+            /* More prominent border on hover, matches your original highlight */
+            color: #f56c6c;
+            /* Keep text color consistent on hover */
+        }
+
+
+        /* 统计数据网格 */
+        .stats-grid-container {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            /* Changed to 4 columns per row */
+            gap: 20px;
+            /* 增加间距 */
+        }
+
+        /* 修复后的 .stat-item-small 样式 */
+        .stat-item-small {
+            background-color: var(--card-bg);
+            /* FIXED: 白色背景，与meta-box内部item保持一致 */
+            padding: 22px 18px;
+            /* 增大内边距 */
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            /* FIXED: 更柔和的阴影，与meta-box一致 */
+            border: 1px solid rgba(247, 123, 142, 0.2);
+            /* FIXED: 浅色边框，与meta-box内部item保持一致 */
+            overflow: visible;
+            /* 允许内容完整显示 */
+        }
+
+        .stat-item-small .stat-value {
+            /* 修正：匹配子元素类名 */
+            font-size: 2.1em;
+            /* 适当减小一点点，以适应更多位数 */
+            font-weight: 800;
+            /* 更粗的数值 */
+            color: var(--text-highlight);
+            /* FIXED: 使用 --text-highlight，与meta-item保持一致 */
+            margin-bottom: 6px;
+            white-space: nowrap;
+            /* 防止换行 */
+            min-height: 1.2em;
+            /* 保持高度一致 */
+            display: block;
+            /* 确保能正确应用 white-space */
+            padding: 0 2px;
+            /* 略微增加左右内边距防止与边框太近 */
+            box-sizing: border-box;
+            /* 内边距包含在宽度内 */
+            text-overflow: clip;
+            /* 确保不显示省略号，而是完整显示 */
+            overflow: visible;
+            /* 确保父元素不会因为文本过长而截断 */
+            word-break: keep-all;
+            /* 防止单词内部断行 */
+        }
+
+        .stat-item-small .stat-value.percentage {
+            /* 修正：匹配子元素类名 */
+            font-size: 1.9em;
+            /* 百分比值再小一点 */
+        }
+
+        .stat-item-small .stat-label {
+            /* 修正：匹配子元素类名 */
+            font-size: 0.95em;
+            color: var(--text-dark);
+            /* FIXED: 使用 --text-dark，与meta-item保持一致 */
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        /* 图表面板组 */
+        .chart-panels-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+            /* 适应3个图表，更大空间 */
+            gap: 30px;
+        }
+
+        /* FIXED: 增加图表容器的 grid 布局和间距 */
+        .chart-container-wrapper {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            /* 适应三个图表，在 900px 宽度下更合理 */
+            gap: 20px;
+            /* 图表间的间隔 */
+            margin-top: 15px;
+            /* 与标题保持一定距离 */
+        }
+
+        .chart-box {
+            background: var(--card-bg);
+            /* FIXED: 纯白色背景 */
+            border: 2px solid var(--border-color-light);
+            border-radius: 12px;
+            padding: 15px;
+            box-shadow: 0 4px 8px rgba(247, 123, 142, 0.1);
+        }
+
+        /* FIXED: full-width-chart 在新的 grid 布局下横跨两列 */
+        .chart-box.full-width-chart {
+            grid-column: span 2;
+        }
+
+        /* Chart.js 的 canvas 容器现在改为 ECharts 的 div 容器 */
+        .chart-canvas-container {
+            height: 250px;
+            /* 适当降低高度以适应固定宽度布局 */
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* 常用地图/武器列表 */
+        .item-list-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            /* 固定两列 */
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .item-card-small {
+            /* 修正：重命名为更具体的类名以避免冲突 */
+            background: #fff;
+            border: 1px solid rgba(247, 123, 142, 0.2);
+            border-radius: 10px;
+            padding: 15px;
+            display: flex;
+            align-items: center;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .item-card-small img {
+            /* 修正：为 stat-item-small 内部的图片定义，但这里指的是 .item-card-small 内部的图片 */
+            width: 80px;
+            /* 减小图片尺寸 */
+            height: 80px;
+            border-radius: 6px;
+            margin-right: 15px;
+            border: 1px solid var(--border-color-light);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            object-fit: contain;
+            /* 保持不裁剪 */
+            background-color: rgba(255, 240, 242, 0.3);
+            /* 图片背景 */
+        }
+
+        /* 避免冲突，为武器列表的图片使用更具体的类名 */
+        .item-card-small.weapon img {
+            width: 120px;
+            /* 武器更宽 */
+            height: 60px;
+            /* 武器高度 */
+        }
+
+        .item-card-details {
+            flex-grow: 1;
+            font-size: 14px;
+            color: var(--text-dark);
+        }
+
+        .item-card-details h4 {
+            font-size: 16px;
+            color: var(--text-highlight);
+            margin: 0 0 5px 0;
+            font-weight: bold;
+        }
+
+        .item-card-details p {
+            margin: 0;
+            line-height: 1.5;
+        }
+
+        .item-card-details .bold-highlight {
+            color: var(--text-highlight);
+            font-weight: bold;
+        }
+
+        /* 文字环绕图片（如果使用，需要配合HTML结构） */
+        .float-right {
+            float: right;
+            margin-left: 15px;
+            margin-bottom: 15px;
+        }
+
+        .float-left {
+            float: left;
+            margin-right: 15px;
+            margin-bottom: 15px;
+        }
+
+        .clearfix::after {
+            content: "";
+            display: table;
+            clear: both;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 20px 0 10px;
+            font-size: 13px;
+            color: #888;
+            border-top: 1px solid rgba(247, 123, 142, 0.1);
+            margin-top: 10px;
+            position: relative;
+        }
+
+        .footer::after {
+            content: "";
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100px;
+            height: 3px;
+            background: linear-gradient(to right, var(--gradient-start), var(--gradient-end));
+            border-radius: 3px;
+        }
+    </style>
+    <script src="../js/echarts.min.js"></script>
+</head>
+
+<body>
+    <div class="wrapper">
+        <div class="app-header">
+            <h1 class="app-title">完美CSGO用户数据</h1>
+            <p class="app-subtitle">PLAYER STATS OVERVIEW</p>
+        </div>
+
+        <div class="info-box">
+            <h3 class="section-title">玩家概览</h3>
+            <div class="player-info-section">
+                <img src="{{ avatar_url }}" alt="{{ player_stats['name'] }}" class="player-avatar-large">
+                <div class="player-text-details">
+                    <h2 class="player-name-main">{{ player_stats['name'] }}</h2>
+                    <p class="player-steam-id">Steam ID: {{ player_stats['steam_id'] }}</p>
+                    <p class="player-summary-text">{{ player_stats['summary'] }}</p>
+                </div>
+            </div>
+
+            <div class="meta-box">
+                <div class="meta-item">
+                    <div class="meta-label">当前赛季</div>
+                    <div class="meta-value">{{ season }}</div>
+                </div>
+                <div class="meta-item">
+                    <div class="meta-label">天梯排名</div>
+                    <div class="meta-value">
+                        {% if player_stats['pvp_rank'] == 0 %}未排名{% else %}{{ player_stats['pvp_rank'] }}{% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="tag-container">
+                {% if player_stats['titles'] %}
+                {% for title in player_stats['titles'] %}
+                <span class="player-tag">{{ title }}</span>
+                {% endfor %}
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="info-box">
+            <h3 class="section-title">基础数据</h3>
+            <div class="stats-grid-container">
+                <div class="stat-item-small">
+                    <div class="stat-value">
+                          {{ player_stats['pvp_score'] }}
+			{% if player_stats['pvp_score'] >= 2400 %}
+			   ({{player_stats['stars']}}★)
+			{% endif %}
+
+		    </div>
+                    <div class="stat-label">天梯分数</div>
+                </div>
+                <div class="stat-item-small">
+                    <div class="stat-value">{{ player_stats['pw_rating'] }}</div>
+                    <div class="stat-label">RATING PRO</div>
+                </div>
+                <div class="stat-item-small">
+                    <div class="stat-value">{{ player_stats['mvp_count'] }}</div>
+                    <div class="stat-label">MVP 次数</div>
+                </div>
+                <div class="stat-item-small">
+                    <div class="stat-value">{{ player_stats['cnt'] }}</div>
+                    <div class="stat-label">总场次</div>
+                </div>
+                <div class="stat-item-small">
+                    <div class="stat-value percentage">{{ (player_stats['win_rate'] * 100) | round(2) }}%</div>
+                    <div class="stat-label">胜率</div>
+                </div>
+                <div class="stat-item-small">
+                    <div class="stat-value">{{ "%.2f" | format(player_stats['kd']) }}</div>
+                    <div class="stat-label">K/D</div>
+                </div>
+                <div class="stat-item-small">
+                    <div class="stat-value">{{ "%.2f" | format(player_stats['adr']) }}</div>
+                    <div class="stat-label">ADR</div>
+                </div>
+                <div class="stat-item-small">
+                    <div class="stat-value">{{ "%.2f" | format(player_stats['rws']) }}</div>
+                    <div class="stat-label">RWS</div>
+                </div>
+                <div class="stat-item-small">
+                    <div class="stat-value">{{ "%.2f" | format(player_stats['avg_we']) }}</div>
+                    <div class="stat-label">平均WE</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="info-box">
+            <h3 class="section-title">战斗数据</h3>
+            <div class="stats-grid-container">
+                <div class="stat-item-small">
+                    <div class="stat-value">{{ player_stats['kills'] }}</div>
+                    <div class="stat-label">总击杀</div>
+                </div>
+                <div class="stat-item-small">
+                    <div class="stat-value">{{ player_stats['deaths'] }}</div>
+                    <div class="stat-label">总死亡</div>
+                </div>
+                <div class="stat-item-small">
+                    <div class="stat-value">{{ player_stats['assists'] }}</div>
+                    <div class="stat-label">总助攻</div>
+                </div>
+                <div class="stat-item-small">
+                    <div class="stat-value percentage">{{ (player_stats['head_shot_ratio'] * 100) | round(2) }}%</div>
+                    <div class="stat-label">爆头率</div>
+                </div>
+                <div class="stat-item-small">
+                    <div class="stat-value percentage">{{ (player_stats['hit_rate'] * 100) | round(2) }}%</div>
+                    <div class="stat-label">命中率</div>
+                </div>
+                <div class="stat-item-small">
+                    <div class="stat-value percentage">{{ (player_stats['entry_kill_ratio'] * 100) | round(2) }}%</div>
+                    <div class="stat-label">首杀成功率</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="info-box">
+            <h3 class="section-title">多杀残局数据</h3>
+            <div class="stats-grid-container">
+                <div class="stat-item-small">
+                    <div class="stat-value">{{ player_stats['multi_kill'] }}</div>
+                    <div class="stat-label">多杀总数</div>
+                </div>
+                <div class="stat-item-small">
+                    <div class="stat-value">{{ player_stats['k2'] }}</div>
+                    <div class="stat-label">双杀</div>
+                </div>
+                <div class="stat-item-small">
+                    <div class="stat-value">{{ player_stats['k3'] }}</div>
+                    <div class="stat-label">三杀</div>
+                </div>
+                <div class="stat-item-small">
+                    <div class="stat-value">{{ player_stats['k4'] }}</div>
+                    <div class="stat-label">四杀</div>
+                </div>
+                <div class="stat-item-small">
+                    <div class="stat-value">{{ player_stats['k5'] }}</div>
+                    <div class="stat-label">五杀</div>
+                </div>
+                <div class="stat-item-small">
+                    <div class="stat-value">{{ player_stats['ending_win'] }}</div>
+                    <div class="stat-label">残局胜利</div>
+                </div>
+                <div class="stat-item-small">
+                    <div class="stat-value">{{ player_stats['vs1'] }}</div>
+                    <div class="stat-label">1v1 胜</div>
+                </div>
+                <div class="stat-item-small">
+                    <div class="stat-value">{{ player_stats['vs2'] }}</div>
+                    <div class="stat-label">1v2 胜</div>
+                </div>
+                <div class="stat-item-small">
+                    <div class="stat-value">{{ player_stats['vs3'] }}</div>
+                    <div class="stat-label">1v3 胜</div>
+                </div>
+                <div class="stat-item-small">
+                    <div class="stat-value">{{ player_stats['vs4'] }}</div>
+                    <div class="stat-label">1v4 胜</div>
+                </div>
+                <div class="stat-item-small">
+                    <div class="stat-value">{{ player_stats['vs5'] }}</div>
+                    <div class="stat-label">1v5 胜</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="info-box">
+            <h3 class="section-title">数据趋势</h3>
+            <div class="chart-container-wrapper">
+                <div class="chart-box">
+                    <h4 class="chart-title">Rating Pro</h4>
+                    <div class="chart-canvas-container">
+                        <div id="pwRatingChart" style="width: 100%; height: 250px;"></div>
+                    </div>
+                </div>
+                <div class="chart-box">
+                    <h4 class="chart-title">RWS</h4>
+                    <div class="chart-canvas-container">
+                        <div id="rwsChart" style="width: 100%; height: 250px;"></div>
+                    </div>
+                </div>
+                <div class="chart-box full-width-chart">
+                    <h4 class="chart-title">天梯分数</h4>
+                    <div class="chart-canvas-container">
+                        <div id="recentMatchScoreChart" style="width: 100%; height: 250px;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="divider"></div>
+        {% if player_stats['hot_maps'] %}
+        <div class="info-box">
+            <h3 class="section-title">常用地图</h3>
+            <div class="item-list-grid">
+                {% for map_data in player_stats['hot_maps'] %}
+                <div class="item-card-small">
+                    <img src="{{ map_data['map_logo'] }}" alt="{{ map_data['map_name'] }}">
+                    <div class="item-card-details">
+                        <h4>{{ map_data['map_name'] }} ({{ map_data['map'] }})</h4>
+                        <p>比赛: <span class="bold-highlight">{{ map_data['total_match'] }}</span> | 胜场: <span
+                                class="bold-highlight">{{ map_data['win_count'] }}</span>
+				 | KDA: <span
+                                class="bold-highlight">{{ map_data['total_kill'] }}/{{ map_data['death_num'] }}</span>
+                 	</p>
+                        <p>RATING: <span
+                                class="bold-highlight">{{ "%.2f" | format(map_data['rating_sum']/map_data['total_match']) }}</span> |
+                            ADR: <span class="bold-highlight">{{ "%.2f" | format(map_data['total_adr']/map_data['total_match']) }}</span></p>
+                        <p>爆头: <span class="bold-highlight">{{ map_data['headshot_kill_num'] }}</span> | MVP: <span
+                                class="bold-highlight">{{ map_data['match_mvp_num'] }}</span></p>
+                        {% if map_data['rank'] %}
+                        <p>排名: <span class="bold-highlight">{{ map_data['rank'] }}</span></p>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        <div class="divider"></div>
+        {% endif %}
+
+
+        {% if player_stats['hot_weapons'] %}
+        <div class="info-box">
+            <h3 class="section-title">常用武器</h3>
+            <div class="item-list-grid">
+                {% for weapon_data in player_stats['hot_weapons'] %}
+                <div class="item-card-small item-card-small-weapon">
+                    <img src="{{ weapon_data['weapon_image'] }}" alt="{{ weapon_data['weapon_name'] }}">
+                    <div class="item-card-details">
+                        <h4>{{ weapon_data['weapon_name'] }}</h4>
+                        <p>击杀: <span class="bold-highlight">{{ weapon_data['weapon_kill'] }}</span> | 爆头: <span
+                                class="bold-highlight">{{ weapon_data['weapon_head_shot'] }}</span></p>
+                        <p>爆头率: <span class="bold-highlight">
+                                {% if weapon_data['weapon_kill'] > 0 %}
+                                {{ (weapon_data['weapon_head_shot'] / weapon_data['weapon_kill'] * 100) | round(2) }}%
+                                {% else %}
+                                0.00%
+                                {% endif %}
+                            </span> | 使用场次: <span class="bold-highlight">{{ weapon_data['total_match'] }}</span></p>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="footer">
+            完美CSGO用户数据查询 | Zhenxun Bot
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // 历史数据 - 从 Jinja2 传递过来的 player_stats 字典中获取
+            const dates = {{ player_stats['history_dates'] | tojson }};
+            const historyPwRatings = {{ player_stats['history_pw_ratings'] | tojson }};
+            const historyRws = {{ player_stats['history_rws'] | tojson }};
+
+            // 近期比赛分数 - 从 player_stats['score_list'] 中提取分数和时间
+            const rawScoreList = {{ player_stats['score_list'] | tojson }};
+            const matchScores = rawScoreList.map(item => item.score);
+            const matchDates = rawScoreList.map(item => {
+                const date = new Date(item.time * 1000);
+                // 格式化日期为 MM-DD，与原 Chart.js 行为保持一致
+                return (date.getMonth() + 1).toString().padStart(2, '0') + '-' + date.getDate().toString().padStart(2, '0');
+            });
+
+            // --- ECharts 通用配置项函数 ---
+            // 旨在尽可能模拟原 Chart.js 的默认外观和行为
+            function createEChartsOption(title, labels, data, lineColorVar, areaColorRGBA) {
+                return {
+                    backgroundColor: 'transparent', // 确保背景透明，由父容器CSS控制
+                    animation: true, // 启用动画，与 Chart.js 默认平滑效果相似
+                    tooltip: {
+                        trigger: 'axis', // 坐标轴触发
+                        backgroundColor: getComputedStyle(document.documentElement).getPropertyValue(
+                            lineColorVar.replace('--chart-line-', '--chart-tooltip-bg')), // 使用CSS变量获取背景色
+                        borderColor: getComputedStyle(document.documentElement).getPropertyValue(lineColorVar
+                            .replace('--chart-line-', '--border-color-light')), // 使用CSS变量获取边框颜色
+                        borderWidth: 1,
+                        textStyle: {
+                            color: getComputedStyle(document.documentElement).getPropertyValue(lineColorVar
+                                .replace('--chart-line-', '--chart-tooltip-text')) // 使用CSS变量获取文本颜色
+                        },
+                        // 自定义 tooltip 格式，尽可能与 Chart.js 默认相似
+                        formatter: function (params) {
+                            let label = params[0].seriesName || '';
+                            if (label) {
+                                label += ': ';
+                            }
+                            if (params[0].value !== null) {
+                                label += params[0].value.toFixed(2);
+                            }
+                            return label;
+                        }
+                    },
+                    xAxis: {
+                        type: 'category',
+                        data: labels,
+                        // X轴标签，除了天梯分数图，其他都隐藏
+                        axisLabel: {
+                            show: false,
+                            color: getComputedStyle(document.documentElement).getPropertyValue('--text-dark'),
+                            fontSize: 12
+                        },
+                        axisLine: {
+                            lineStyle: {
+                                color: getComputedStyle(document.documentElement).getPropertyValue(
+                                    '--chart-grid-line')
+                            }
+                        },
+                        axisTick: {
+                            show: false
+                        }, // 隐藏刻度线
+                        splitLine: {
+                            show: false
+                        } // 隐藏X轴网格线
+                    },
+                    yAxis: {
+                        type: 'value',
+                        axisLabel: {
+                            color: getComputedStyle(document.documentElement).getPropertyValue('--text-dark'),
+                            fontSize: 12
+                        },
+                        splitLine: {
+                            lineStyle: {
+                                color: getComputedStyle(document.documentElement).getPropertyValue(
+                                    '--chart-grid-line')
+                            }
+                        },
+                        axisLine: {
+                            show: false
+                        }, // 隐藏Y轴线
+                        axisTick: {
+                            show: false
+                        } // 隐藏Y轴刻度线
+                    },
+                    grid: { // 调整网格区域，让内容更紧凑
+                        left: '5%',
+                        right: '5%',
+                        top: '15%',
+                        bottom: '5%',
+                        containLabel: true // 包含坐标轴的刻度文字在 grid 区域内
+                    },
+                    series: [{
+                        name: title, // 用于 tooltip
+                        type: 'line',
+                        data: data,
+                        smooth: true, // 平滑曲线
+                        lineStyle: {
+                            color: getComputedStyle(document.documentElement).getPropertyValue(
+                                lineColorVar),
+                            width: 2 // 线条宽度
+                        },
+                        itemStyle: { // 数据点样式
+                            color: getComputedStyle(document.documentElement).getPropertyValue(
+                                lineColorVar)
+                        },
+                        showSymbol: true, // 显示数据点
+                        symbolSize: 6, // 数据点大小
+                        areaStyle: {
+                            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{
+                                offset: 0,
+                                color: areaColorRGBA // 渐变开始颜色
+                            }, {
+                                offset: 1,
+                                color: areaColorRGBA.replace(/,\s*0\.\d+\)/,
+                                    ', 0)') // 渐变结束颜色为透明
+                            }])
+                        }
+                    }]
+                };
+            }
+
+            // --- Rating Pro 图表 (ECharts 实现) ---
+            if (document.getElementById('pwRatingChart')) {
+                var pwRatingChart = echarts.init(document.getElementById('pwRatingChart'));
+                var pwRatingOption = createEChartsOption(
+                    'Rating', // 系列名称，用于 tooltip
+                    dates,
+                    historyPwRatings,
+                    '--chart-line-rating-pro',
+                    'rgba(216, 67, 21, 0.1)' // areaStyle 的起始颜色
+                );
+                // Chart.js 默认 X 轴标签不显示，ECharts 需要显式设置
+                pwRatingOption.xAxis.axisLabel.show = false;
+                pwRatingOption.grid.bottom = '5%'; // 底部间距更小
+
+                pwRatingChart.setOption(pwRatingOption);
+                window.addEventListener('resize', function () {
+                    pwRatingChart.resize();
+                });
+            }
+
+            // --- RWS 趋势图 (ECharts 实现) ---
+            if (document.getElementById('rwsChart')) {
+                var rwsChart = echarts.init(document.getElementById('rwsChart'));
+                var rwsOption = createEChartsOption(
+                    'RWS', // 系列名称，用于 tooltip
+                    dates,
+                    historyRws,
+                    '--chart-line-rws',
+                    'rgba(66, 66, 66, 0.1)' // areaStyle 的起始颜色
+                );
+                // Chart.js 默认 X 轴标签不显示，ECharts 需要显式设置
+                rwsOption.xAxis.axisLabel.show = false;
+                rwsOption.grid.bottom = '5%'; // 底部间距更小
+
+                rwsChart.setOption(rwsOption);
+                window.addEventListener('resize', function () {
+                    rwsChart.resize();
+                });
+            }
+
+            // --- 天梯分数图 (ECharts 实现) ---
+            if (document.getElementById('recentMatchScoreChart')) {
+                var recentMatchScoreChart = echarts.init(document.getElementById('recentMatchScoreChart'));
+                var recentMatchScoreOption = createEChartsOption(
+                    '分数', // 系列名称，用于 tooltip
+                    matchDates,
+                    matchScores,
+                    '--chart-line-elo',
+                    'rgba(0, 121, 107, 0.1)' // areaStyle 的起始颜色
+                );
+                // 天梯分数图的 X 轴标签需要显示，并且 Chart.js 默认是根据空间自动调整显示
+                recentMatchScoreOption.xAxis.axisLabel.show = true;
+                recentMatchScoreOption.xAxis.axisLabel.rotate = 45; // 旋转标签，防止重叠
+                recentMatchScoreOption.xAxis.axisLabel.interval = 0; // 强制显示所有标签（如果空间允许）
+                recentMatchScoreOption.grid.bottom = '10%'; // X轴有标签时底部留出更多空间
+
+                recentMatchScoreChart.setOption(recentMatchScoreOption);
+                window.addEventListener('resize', function () {
+                    recentMatchScoreChart.resize();
+                });
+            }
+        });
+    </script>
+</body>
+
+</html>

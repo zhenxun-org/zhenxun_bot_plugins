@@ -5,8 +5,10 @@ import random
 from httpx import HTTPStatusError
 from nonebot import on_message
 from nonebot.adapters import Bot, Event
+from nonebot.permission import SUPERUSER
 from nonebot.plugin import PluginMetadata
-from nonebot_plugin_alconna import UniMsg, Voice
+from nonebot.rule import to_me
+from nonebot_plugin_alconna import Alconna, UniMsg, Voice, on_alconna
 from nonebot_plugin_uninfo import Uninfo
 
 from zhenxun.configs.config import BotConfig
@@ -27,7 +29,7 @@ from .bym_gift import ICON_PATH
 from .bym_gift.data_source import send_gift
 from .bym_gift.gift_reg import driver as gift_driver  # noqa: F401
 from .config import Arparma, FunctionParam
-from .data_source import ChatManager, base_config, split_text
+from .data_source import ChatManager, Conversation, base_config, split_text
 from .exception import GiftRepeatSendException, NotResultException
 from .goods_register import driver as goods_driver  # noqa: F401
 from .models.bym_chat import BymChat
@@ -41,7 +43,8 @@ __plugin_meta__ = PluginMetadata(
     """.strip(),
     extra=PluginExtraData(
         author="Chtholly & HibiKier",
-        version="0.3",
+        version="0.5",
+        superuser_help="重置所有会话\n重载prompt",
         ignore_prompt=True,
         configs=[
             RegisterConfig(
@@ -131,6 +134,23 @@ __plugin_meta__ = PluginMetadata(
                 default_value=True,
                 type=bool,
             ),
+            RegisterConfig(
+                key="IMAGE_UNDERSTANDING_DATA_SUBMIT_STRATEGY",
+                value=None,
+                help="图片理解数据提交策略，可选 base64 | image_url 为空时不进行图片理解",
+                default_value=None,
+            ),
+            RegisterConfig(
+                key="IMAGE_UNDERSTANDING_DATA_STORAGE_STRATEGY",
+                value=None,
+                help="图片理解数据存储策略，只在 image_url 模式生效",
+            ),
+            RegisterConfig(
+                key="IMAGE_UNDERSTANDING_DATA_STORAGE_STRATEGY_GEMINI_PROXY",
+                value=None,
+                help="gemini 文件上传策略代理地址，只在图片理解数据存储策略为 gemini 时有效",
+                default_value="generativelanguage.googleapis.com",
+            ),
         ],
         smart_tools=[
             AICallableTag(
@@ -168,6 +188,46 @@ async def rule(event: Event, session: Uninfo) -> bool:
 _matcher = on_message(priority=998, rule=rule)
 
 
+_reset_matcher = on_alconna(
+    Alconna("重置所有会话"),
+    permission=SUPERUSER,
+    block=True,
+    priority=1,
+    rule=to_me(),
+)
+
+_reload_matcher = on_alconna(
+    Alconna("重载prompt"),
+    permission=SUPERUSER,
+    block=True,
+    priority=1,
+    rule=to_me(),
+)
+
+
+@_reset_matcher.handle()
+async def _():
+    try:
+        await MessageUtils.build_message("正在重置所有会话...").send()
+        count = await Conversation.reset_all()
+        await MessageUtils.build_message(
+            f"重置所有会话成功，共重置{count}条会话！"
+        ).send(reply_to=True)
+    except Exception as e:
+        logger.error("重置所有会话失败", "BYM_AI", e=e)
+        await MessageUtils.build_message("重置所有会话失败...").send(reply_to=True)
+
+
+@_reload_matcher.handle()
+async def _():
+    try:
+        await Conversation.reload_prompt()
+        await MessageUtils.build_message("重载prompt成功！").send(reply_to=True)
+    except Exception as e:
+        logger.error("重载prompt失败", "BYM_AI", e=e)
+        await MessageUtils.build_message("重载prompt失败...").send(reply_to=True)
+
+
 @_matcher.handle(parameterless=[CheckConfig(config="BYM_AI_CHAT_TOKEN")])
 async def _(
     bot: Bot,
@@ -189,6 +249,7 @@ async def _(
     )
     group_id = session.group.id if session.group else None
     is_bym = not event.is_tome()
+    result = None
     try:
         try:
             result = await ChatManager.get_result(
@@ -196,13 +257,15 @@ async def _(
             )
         except HTTPStatusError as e:
             logger.error("BYM AI 请求失败", "BYM_AI", session=session, e=e)
-            return await MessageUtils.build_message(
-                f"请求失败了哦，code: {e.response.status_code}"
-            ).send(reply_to=True)
+            if not is_bym:
+                return await MessageUtils.build_message(
+                    f"请求失败了哦，code: {e.response.status_code}"
+                ).send(reply_to=True)
         except NotResultException:
-            return await MessageUtils.build_message("请求没有结果呢...").send(
-                reply_to=True
-            )
+            if not is_bym:
+                return await MessageUtils.build_message("请求没有结果呢...").send(
+                    reply_to=True
+                )
         if is_bym:
             """伪人回复，切割文本"""
             if result:

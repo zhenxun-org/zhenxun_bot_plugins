@@ -55,7 +55,7 @@ async def _(session: EventSession, arparma: Arparma, text: str):
                 trans = x["trans"][0]
             elif x.get("inputting"):
                 trans = "，".join(x["inputting"])
-            tmp += f'{x["name"]} -> {trans}\n'
+            tmp += f"{x['name']} -> {trans}\n"
             result += trans
         logger.info(
             f" 发送能不能好好说话: {text} -> {result}",

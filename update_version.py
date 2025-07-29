@@ -45,7 +45,7 @@ def process_plugins(plugins, changed_files):
         .strip()
     )
 
-    for plugin_name, plugin_info in plugins.items():
+    for plugin_info in plugins:
         module_path = plugin_info["module_path"].replace(".", "/")
         is_dir = plugin_info["is_dir"]
         current_version = plugin_info["version"]

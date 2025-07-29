@@ -55,7 +55,9 @@ async def _(session: Uninfo, arparma: Arparma, num: Query[int] = Query("num", 10
     if token := base_config.get("token"):
         headers = {"Authorization": token}
     try:
-        res = await AsyncHttpx.get(api, params=json_data, headers=headers)
+        res = await AsyncHttpx.get(
+            api, params=json_data, headers=headers, timeout=base_config.get("timeout")
+        )
         res.raise_for_status()
     except HTTPStatusError as e:
         logger.error("pix图库API出错...", arparma.header_result, session=session, e=e)

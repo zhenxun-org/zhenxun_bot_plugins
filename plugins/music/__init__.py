@@ -1,23 +1,22 @@
+from pathlib import Path
 from nonebot.adapters.onebot.v11 import MessageSegment
 from nonebot.plugin import PluginMetadata
 from nonebot_plugin_alconna import Alconna, Args, Arparma, Match, on_alconna
+from nonebot_plugin_htmlrender import template_to_pic
 from nonebot_plugin_uninfo import Uninfo
+from zhenxun.configs.config import BotConfig, Config
 from zhenxun.configs.utils import (
     AICallableParam,
     AICallableProperties,
     AICallableTag,
     Command,
     PluginExtraData,
+    RegisterConfig,
 )
 from zhenxun.services.log import logger
 from zhenxun.utils.message import MessageUtils
 
-from .music_163 import get_song_id
-
-
-def music(type_: str, id_: int) -> MessageSegment:
-    return MessageSegment.music(type_, id_)
-
+from .model_ncm import MusicHelper163, MusicMetaData
 
 _matcher = on_alconna(
     Alconna("点歌", Args["name?", str] / "\n"), priority=5, block=True
@@ -32,11 +31,41 @@ async def handle_first_receive(name: Match[str]):
 
 @_matcher.got_path("name", prompt="歌名是？")
 async def call_music(session: Uninfo, arparma: Arparma, name: str):
-    song_id = await get_song_id(name)
-    if not song_id:
+    meta_data = await MusicHelper163.meta_data(name)
+    if not meta_data:
         await MessageUtils.build_message("没有找到这首歌！").finish(reply_to=True)
-    await _matcher.send(music("163", song_id))
+
+    if Config.get_config("music", "type") == "zhenxun":
+        await build_zhenxun(meta_data)
+    else:
+        await build_normal(meta_data)
     logger.info(f"点歌 :{name}", arparma.header_result, session=session)
+
+
+async def build_zhenxun(meta_data: MusicMetaData):
+    data = {
+        "self_nickname": BotConfig.self_nickname,
+        **dict(meta_data),
+    }
+    result = await template_to_pic(
+        template_path=str((Path(__file__).parent / "templates").absolute()),
+        template_name="info.html",
+        templates={"data": data},
+        pages={
+            "viewport": {"width": 600, "height": 220},
+            "base_url": f"file://{Path(__file__).parent}",
+        },
+        wait=2,
+    )
+    message = [
+        result,
+        meta_data.url,
+    ]
+    await MessageUtils.build_message(message).send()
+
+
+async def build_normal(meta_data: MusicMetaData):
+    await _matcher.send(MessageSegment.music(meta_data.type_, int(meta_data.id)))
 
 
 __plugin_meta__ = PluginMetadata(
@@ -49,8 +78,16 @@ __plugin_meta__ = PluginMetadata(
     """.strip(),
     extra=PluginExtraData(
         author="HibiKier",
-        version="0.2",
+        version="1.0",
         commands=[Command(command="点歌 [歌名]")],
+        configs=[
+            RegisterConfig(
+                key="type",
+                value="zhenxun",
+                help="显示样式，normal, zhenxun",
+                default_value="zhenxun",
+            )
+        ],
         smart_tools=[
             AICallableTag(
                 name="call_music",

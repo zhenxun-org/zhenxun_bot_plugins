@@ -30,7 +30,9 @@ class PixManage:
         headers = None
         if token := base_config.get("token"):
             headers = {"Authorization": token}
-        res = await AsyncHttpx.post(api, json=json_data, headers=headers)
+        res = await AsyncHttpx.post(
+            api, json=json_data, headers=headers, timeout=base_config.get("timeout")
+        )
         res.raise_for_status()
         return PixResult(**res.json()).info
 
@@ -51,6 +53,8 @@ class PixManage:
         headers = None
         if token := base_config.get("token"):
             headers = {"Authorization": token}
-        res = await AsyncHttpx.post(api, json=json_data, headers=headers)
+        res = await AsyncHttpx.post(
+            api, json=json_data, headers=headers, timeout=base_config.get("timeout")
+        )
         res.raise_for_status()
         return PixResult(**res.json()).info

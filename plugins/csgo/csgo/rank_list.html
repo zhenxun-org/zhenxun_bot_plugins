@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSGO天梯排行榜</title>
+    <style>
+        /* 声明自定义字体，请确保路径正确 */
+        @font-face {
+            font-family: AlibabaHealthFont2;
+            src: url("../../font/AlibabaHealthFont2.0CN-85B.ttf");
+            /* <-- 请替换为你的字体文件实际路径 */
+        }
+
+        :root {
+            --primary-bg: #fff5f7;
+            /* 主背景色 */
+            --card-bg: white;
+            /* 卡片背景色 */
+            --border-color-light: #f3868c;
+            /* 边框颜色 */
+            --shadow-color-light: rgba(247, 123, 142, 0.15);
+            /* 柔和阴影 */
+            --gradient-start: #f67186;
+            /* 标题渐变开始 */
+            --gradient-end: #f7889c;
+            /* 标题渐变结束 */
+            --text-dark: #333333;
+            /* 深色文本 */
+            --text-highlight: #f67186;
+            /* 突出文本色 */
+            --section-title-bar: #f67186;
+            /* 章节标题条开始 */
+            --section-title-bar-end: #f7889c;
+            /* 章节标题条结束 */
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--primary-bg);
+            background-image: linear-gradient(45deg, rgba(247, 123, 142, 0.05) 25%, transparent 25%, transparent 75%, rgba(247, 123, 142, 0.05) 75%, rgba(247, 123, 142, 0.05)),
+                linear-gradient(45deg, rgba(247, 123, 142, 0.05) 25%, transparent 25%, transparent 75%, rgba(247, 123, 142, 0.05) 75%, rgba(247, 123, 142, 0.05));
+            background-size: 60px 60px;
+            background-position: 0 0, 30px 30px;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            font-family: "AlibabaHealthFont2", "Inter", sans-serif;
+        }
+
+        .wrapper {
+            width: 900px;
+            background: var(--card-bg);
+            border-radius: 20px;
+            padding: 35px 30px;
+            box-sizing: border-box;
+            box-shadow: 0 15px 40px var(--shadow-color-light);
+            margin: 40px 0;
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .wrapper::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 6px;
+            background: linear-gradient(to right, var(--gradient-start), var(--gradient-end));
+        }
+
+        .app-header {
+            text-align: center;
+            position: relative;
+            padding-bottom: 25px;
+        }
+
+        .app-title {
+            font-size: 38px;
+            background: linear-gradient(to right, var(--gradient-start), var(--gradient-end));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            margin: 10px 0;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            text-shadow: 0 2px 10px rgba(247, 123, 142, 0.2);
+        }
+
+        .app-subtitle {
+            font-size: 16px;
+            color: var(--gradient-end);
+            margin: 0;
+            font-weight: 500;
+            letter-spacing: 1px;
+        }
+
+        .info-box {
+            position: relative;
+            background: var(--card-bg);
+            border: 2px solid var(--border-color-light);
+            border-radius: 16px;
+            padding: 25px;
+            box-shadow: 0 8px 16px var(--shadow-color-light);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .section-title {
+            font-family: "fzrzFont", "Inter", sans-serif;
+            font-size: 24px;
+            color: var(--text-highlight);
+            margin: 0 0 20px 0;
+            display: flex;
+            align-items: center;
+            font-weight: bold;
+        }
+
+        .section-title:before {
+            content: "";
+            display: inline-block;
+            width: 8px;
+            height: 24px;
+            background: linear-gradient(to bottom, var(--section-title-bar), var(--section-title-bar-end));
+            margin-right: 12px;
+            border-radius: 4px;
+        }
+
+        .section-content {
+            font-size: 15px;
+            color: var(--text-dark);
+            line-height: 1.8;
+            z-index: 2;
+            position: relative;
+        }
+
+        .divider {
+            height: 1px;
+            background: linear-gradient(to right, transparent, var(--gradient-end), transparent);
+            margin: 15px 0;
+            /* 调整分割线间距 */
+        }
+
+        /* 排行榜样式 */
+        .rank-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 8px var(--shadow-color-light);
+        }
+
+        .rank-table th {
+            background: linear-gradient(to right, var(--gradient-start), var(--gradient-end));
+            color: white;
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+        }
+
+        .rank-table td {
+            padding: 15px;
+            border-bottom: 1px solid rgba(247, 123, 142, 0.2);
+            color: var(--text-dark);
+        }
+
+        .rank-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .rank-table tr:hover {
+            background-color: rgba(247, 123, 142, 0.05);
+        }
+
+        /* 排名样式 */
+        .rank-number {
+            font-weight: bold;
+            font-size: 18px;
+            color: var(--text-highlight);
+            width: 40px;
+            text-align: center;
+        }
+
+        /* 前三名特殊样式 */
+        .rank-1 .rank-number {
+            color: #FFD700;
+            /* 金色 */
+            font-size: 22px;
+        }
+
+        .rank-2 .rank-number {
+            color: #C0C0C0;
+            /* 银色 */
+            font-size: 20px;
+        }
+
+        .rank-3 .rank-number {
+            color: #CD7F32;
+            /* 铜色 */
+            font-size: 19px;
+        }
+
+        /* 玩家头像样式 */
+        .player-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid var(--gradient-start);
+            box-shadow: 0 0 5px rgba(247, 123, 142, 0.4);
+        }
+
+        /* 玩家名称样式 */
+        .player-name {
+            font-weight: 600;
+            font-size: 16px;
+            color: var(--text-dark);
+            max-width: 150px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        /* 分数样式 */
+        .player-score {
+            font-weight: bold;
+            font-size: 18px;
+            color: var(--text-highlight);
+        }
+
+        .player-stars {
+            font-weight: bold;
+            font-size: 16px;
+            color: #FFD700;
+            /* 金色 */
+            margin-left: 5px;
+        }
+
+        /* 其他数据样式 */
+        .player-rating,
+        .player-matches {
+            font-weight: 500;
+            font-size: 16px;
+        }
+
+        /* 页脚样式 */
+        .footer {
+            text-align: center;
+            padding: 20px 0 10px;
+            font-size: 13px;
+            color: #888;
+            border-top: 1px solid rgba(247, 123, 142, 0.1);
+            margin-top: 10px;
+            position: relative;
+        }
+
+        .footer::after {
+            content: "";
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100px;
+            height: 3px;
+            background: linear-gradient(to right, var(--gradient-start), var(--gradient-end));
+            border-radius: 3px;
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 920px) {
+            .wrapper {
+                width: 95%;
+                padding: 25px 15px;
+            }
+
+            .rank-table th,
+            .rank-table td {
+                padding: 10px 8px;
+            }
+
+            .player-name {
+                max-width: 100px;
+            }
+
+            .player-avatar {
+                width: 40px;
+                height: 40px;
+            }
+        }
+
+        /* 用户排名横幅样式 */
+        .user-rank-banner {
+            background: linear-gradient(135deg, rgba(246, 113, 134, 0.1) 0%, rgba(247, 136, 156, 0.2) 100%);
+            border: 2px solid var(--border-color-light);
+            border-radius: 12px;
+            padding: 15px 20px;
+            margin: 0 0 20px 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 12px rgba(247, 123, 142, 0.15);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .user-rank-banner:before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(to right, var(--gradient-start), var(--gradient-end));
+        }
+
+        .user-rank-icon {
+            font-size: 28px;
+            margin-right: 15px;
+        }
+
+        .user-rank-text {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-dark);
+            margin-right: 15px;
+        }
+
+        .user-rank-number {
+            font-size: 32px;
+            font-weight: 800;
+            color: var(--text-highlight);
+            text-shadow: 0 2px 4px rgba(247, 123, 142, 0.3);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="wrapper">
+        <div class="app-header">
+            <h1 class="app-title">完美CSGO {{type}} 排行榜</h1>
+            <p class="app-subtitle">CSGO LEADERBOARD</p>
+        </div>
+
+        <div class="info-box">
+            <h3 class="section-title">完美 {{type}} 排行榜</h3>
+
+            <div class="user-rank-banner">
+                <div class="user-rank-text">您的当前排名</div>
+                <div class="user-rank-number">{{ user_index }}</div>
+            </div>
+            <div class="section-content">
+                <p>以下是根据玩家天梯分数排序的排行榜，展示{{ player_list|length }}名玩家的数据。</p>
+            </div>
+
+            <table class="rank-table">
+                <thead>
+                    <tr>
+                        <th>排名</th>
+                        <th>头像</th>
+                        <th>玩家</th>
+                        <th>天梯分数</th>
+                        <th>Rating Pro</th>
+                        <th>比赛场次</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for player in player_list %}
+                    <tr class="rank-{{ loop.index }}">
+                        <td class="rank-number">{{ loop.index }}</td>
+                        <td>
+                            <img src="{{ player.avatar }}" alt="{{ player.name }}" class="player-avatar">
+                        </td>
+                        <td class="player-name">{{ player.name }}</td>
+                        <td>
+                            <span class="player-score">{{ player.pvp_score }}</span>
+                            {% if player.pvp_score >= 2400 %}
+                            <span class="player-stars">({{ player.stars }}★)</span>
+                            {% endif %}
+                        </td>
+                        <td class="player-rating">{{ "%.2f" | format(player.pw_rating) }}</td>
+                        <td class="player-matches">{{ player.total_matches }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="footer">
+            完美CSGO {{type}} 排行榜 | Zhenxun Bot
+        </div>
+    </div>
+</body>
+
+</html>

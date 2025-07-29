@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSGO比赛详情 - {{ base.match_id }}</title>
+    <!-- 引入自定义字体，请确保 .ttf 文件路径正确 -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap">
+    <style>
+        /* 声明自定义字体，请确保路径正确 */
+        @font-face {
+            font-family: AlibabaHealthFont2;
+            src: url("path/to/font/AlibabaHealthFont2.0CN-85B.ttf");
+        }
+
+        @font-face {
+            font-family: fzrzFont;
+            src: url("path/to/font/fzrzFont.ttf");
+        }
+
+        :root {
+            --primary-bg: #fff5f7;
+            --card-bg: white;
+            --border-color-light: #f3868c;
+            --shadow-color-light: rgba(247, 123, 142, 0.15);
+            --gradient-start: #f67186;
+            --gradient-end: #f7889c;
+            --text-dark: #333333;
+            --text-highlight: #f67186;
+            --section-title-bar: #f67186;
+            --section-title-bar-end: #f7889c;
+            --csgo-t-side-color: #ffc107;
+            --csgo-ct-side-color: #2196f3;
+            --csgo-win-color: #4CAF50;
+            --csgo-lose-color: #F44336;
+            --rating-good-color: #4CAF50;
+            --rating-bad-color: #F44336;
+            --we-good-color: #4CAF50;
+            --we-bad-color: #F44336;
+            --team1-color: #2196f3;
+            --team2-color: #ff9800;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--primary-bg);
+            background-image: linear-gradient(45deg, rgba(247, 123, 142, 0.05) 25%, transparent 25%, transparent 75%, rgba(247, 123, 142, 0.05) 75%, rgba(247, 123, 142, 0.05)),
+                linear-gradient(45deg, rgba(247, 123, 142, 0.05) 25%, transparent 25%, transparent 75%, rgba(247, 123, 142, 0.05) 75%, rgba(247, 123, 142, 0.05));
+            background-size: 60px 60px;
+            background-position: 0 0, 30px 30px;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            font-family: "AlibabaHealthFont2", "Inter", sans-serif;
+        }
+
+        .wrapper {
+            width: 900px;
+            background: var(--card-bg);
+            border-radius: 20px;
+            padding: 35px 30px;
+            box-sizing: border-box;
+            box-shadow: 0 15px 40px var(--shadow-color-light);
+            margin: 40px 0;
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .wrapper::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 6px;
+            background: linear-gradient(to right, var(--gradient-start), var(--gradient-end));
+        }
+
+        .app-header {
+            text-align: center;
+            position: relative;
+            padding-bottom: 25px;
+        }
+
+        .app-title {
+            font-size: 38px;
+            background: linear-gradient(to right, var(--gradient-start), var(--gradient-end));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            margin: 10px 0;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            text-shadow: 0 2px 10px rgba(247, 123, 142, 0.2);
+        }
+
+        .app-subtitle {
+            font-size: 16px;
+            color: var(--gradient-end);
+            margin: 0;
+            font-weight: 500;
+            letter-spacing: 1px;
+        }
+
+        .info-box {
+            position: relative;
+            background: var(--card-bg);
+            border: 2px solid var(--border-color-light);
+            border-radius: 16px;
+            padding: 25px;
+            box-shadow: 0 8px 16px var(--shadow-color-light);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .match-overview-box {
+            position: relative;
+            background-position: center;
+            background-size: cover;
+            background-repeat: no-repeat;
+        }
+
+        .match-overview-box::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.9);
+            z-index: 0;
+        }
+
+        .match-overview-box>* {
+            position: relative;
+            z-index: 1;
+        }
+
+        .section-title {
+            font-family: "fzrzFont", "Inter", sans-serif;
+            font-size: 24px;
+            color: var(--text-highlight);
+            margin: 0 0 20px 0;
+            display: flex;
+            align-items: center;
+            font-weight: bold;
+        }
+
+        .section-title:before {
+            content: "";
+            display: inline-block;
+            width: 8px;
+            height: 24px;
+            background: linear-gradient(to bottom, var(--section-title-bar), var(--section-title-bar-end));
+            margin-right: 12px;
+            border-radius: 4px;
+        }
+
+        .match-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        .match-id {
+            font-size: 16px;
+            color: #888;
+            background-color: rgba(247, 123, 142, 0.1);
+            padding: 5px 12px;
+            border-radius: 20px;
+        }
+
+        .match-time {
+            font-size: 16px;
+            color: #888;
+        }
+
+        .match-info {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .map-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .map-logo {
+            width: 60px;
+            height: 60px;
+            border-radius: 8px;
+            object-fit: cover;
+        }
+
+        .map-details {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .map-name {
+            font-size: 20px;
+            font-weight: bold;
+            color: var(--text-dark);
+        }
+
+        .map-duration {
+            font-size: 14px;
+            color: #888;
+        }
+
+        .score-panel {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(247, 123, 142, 0.05);
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+            position: relative;
+        }
+
+        .team-score {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex: 1;
+        }
+
+        .team-name {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .team1 {
+            color: var(--team1-color);
+        }
+
+        .team2 {
+            color: var(--team2-color);
+        }
+
+        .score {
+            font-size: 48px;
+            font-weight: 800;
+            line-height: 1;
+        }
+
+        .score-divider {
+            font-size: 36px;
+            font-weight: 300;
+            margin: 0 20px;
+            color: #ccc;
+        }
+
+        .half-scores {
+            font-size: 14px;
+            color: #888;
+            margin-top: 10px;
+        }
+
+        .win-indicator {
+            position: absolute;
+            top: -10px;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: bold;
+            color: white;
+        }
+
+        .team1-win {
+            left: 20px;
+            background-color: var(--team1-color);
+        }
+
+        .team2-win {
+            right: 20px;
+            background-color: var(--team2-color);
+        }
+
+        .divider {
+            height: 1px;
+            background: linear-gradient(to right, transparent, var(--gradient-end), transparent);
+            margin: 20px 0;
+        }
+
+        /* 玩家列表样式 */
+        .players-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .team-container {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .team-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .team-indicator {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+        }
+
+        .team1-indicator {
+            background-color: var(--team1-color);
+        }
+
+        .team2-indicator {
+            background-color: var(--team2-color);
+        }
+
+        .team-title {
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .players-table {
+            width: 100%;
+            border-collapse: collapse;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .players-table th {
+            background: linear-gradient(to right, var(--gradient-start), var(--gradient-end));
+            color: white;
+            padding: 12px 15px;
+            text-align: left;
+            font-weight: bold;
+        }
+
+        .players-table tr {
+            border-bottom: 1px solid rgba(247, 123, 142, 0.1);
+            transition: all 0.2s ease;
+        }
+
+        .players-table tr:hover {
+            background-color: rgba(247, 123, 142, 0.05);
+        }
+
+        .players-table td {
+            padding: 12px 15px;
+            vertical-align: middle;
+        }
+
+        .player-cell {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .player-avatar {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+
+        .player-name {
+            font-weight: bold;
+        }
+
+        .mvp-badge {
+            display: inline-block;
+            background-color: rgba(156, 39, 176, 0.2);
+            color: #7b1fa2;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: bold;
+            margin-left: 8px;
+        }
+
+        .kda-cell {
+            white-space: nowrap;
+        }
+
+        .rating-cell {
+            font-weight: bold;
+            white-space: nowrap;
+        }
+
+        .rating-good {
+            color: var(--rating-good-color);
+        }
+
+        .rating-bad {
+            color: var(--rating-bad-color);
+        }
+
+        .we-cell {
+            font-weight: bold;
+            white-space: nowrap;
+        }
+
+        .we-good {
+            color: var(--we-good-color);
+        }
+
+        .we-bad {
+            color: var(--we-bad-color);
+        }
+
+        .hs-cell {
+            white-space: nowrap;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: bold;
+            margin-right: 4px;
+        }
+
+        .badge.k3 {
+            background-color: rgba(33, 150, 243, 0.2);
+            color: #1976d2;
+        }
+
+        .badge.k4 {
+            background-color: rgba(255, 87, 34, 0.2);
+            color: #e64a19;
+        }
+
+        .badge.k5 {
+            background-color: rgba(233, 30, 99, 0.2);
+            color: #c2185b;
+        }
+
+        .badge.vs {
+            background-color: rgba(76, 175, 80, 0.2);
+            color: #388e3c;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 20px 0 10px;
+            font-size: 13px;
+            color: #888;
+            border-top: 1px solid rgba(247, 123, 142, 0.1);
+            margin-top: 10px;
+            position: relative;
+        }
+
+        .footer::after {
+            content: "";
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100px;
+            height: 3px;
+            background: linear-gradient(to right, var(--gradient-start), var(--gradient-end));
+            border-radius: 3px;
+        }
+
+        @media (max-width: 768px) {
+            .wrapper {
+                width: 95%;
+                padding: 20px 15px;
+            }
+
+            .players-table {
+                display: block;
+                overflow-x: auto;
+                white-space: nowrap;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="wrapper">
+        <div class="app-header">
+            <h1 class="app-title">完美CSGO比赛详情</h1>
+            <p class="app-subtitle">CSGO PERFECT WORLD MATCH DETAILS</p>
+        </div>
+
+        <!-- 比赛信息 -->
+        <div class="info-box match-overview-box" style="background-image: url('{{ base.map_url }}');">
+            <h3 class="section-title">比赛概览</h3>
+            <div class="match-header">
+                <div class="match-id">比赛ID: {{ base.match_id }}</div>
+                <div class="match-time">{{ base.start_time }}</div>
+            </div>
+
+            <div class="match-info">
+                <div class="map-info">
+                    <img src="{{ base.map_logo }}" alt="{{ base.map }}" class="map-logo">
+                    <div class="map-details">
+                        <div class="map-name">{{ base.map }}</div>
+                        <div class="map-duration">时长: {{ base.duration }} 分钟</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="score-panel">
+                {% if base.win_team == 1 %}
+                <div class="win-indicator team1-win">胜利</div>
+                {% else %}
+                <div class="win-indicator team2-win">胜利</div>
+                {% endif %}
+
+                <div class="team-score">
+                    <div class="team-name team1">队伍 1</div>
+                    <div class="score">{{ base.score1 }}</div>
+                    <div class="half-scores">(上半场: {{ base.half_score1 }}{% if base.extra_score1 > 0 %}, 加时:
+                        {{ base.extra_score1 }}{% endif %})</div>
+                </div>
+
+                <div class="score-divider">:</div>
+
+                <div class="team-score">
+                    <div class="team-name team2">队伍 2</div>
+                    <div class="score">{{ base.score2 }}</div>
+                    <div class="half-scores">(上半场: {{ base.half_score2 }}{% if base.extra_score2 > 0 %}, 加时:
+                        {{ base.extra_score2 }}{% endif %})</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- 玩家列表 -->
+        <div class="info-box">
+            <h3 class="section-title">玩家数据</h3>
+
+            <div class="players-container">
+                <!-- 队伍1玩家 -->
+                <div class="team-container">
+                    <div class="team-header">
+                        <div class="team-indicator team1-indicator"></div>
+                        <div class="team-title">队伍 1</div>
+                    </div>
+                    <table class="players-table">
+                        <thead>
+                            <tr>
+                                <th>玩家</th>
+                                <th>KDA</th>
+                                <th>Rating PRO</th>
+                                <th>WE</th>
+                                <th>爆头率</th>
+                                <th>荣誉</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for player in players %}
+                            {% if player.team == 1 %}
+                            <tr>
+                                <td class="player-cell">
+                                    <img src="{{ player.avatar }}" alt="{{ player.nick_name }}" class="player-avatar">
+                                    <span class="player-name">{{ player.nick_name }}</span>
+                                    {% if player.mvp %}
+                                    <span class="mvp-badge">MVP</span>
+                                    {% endif %}
+                                </td>
+                                <td class="kda-cell">
+                                    {{ player.kill }}/{{ player.death }}/{{ player.assist }}
+                                </td>
+                                <td
+                                    class="rating-cell {% if player.rating >= 1.0 %}rating-good{% else %}rating-bad{% endif %}">
+                                    {{ "%.2f"|format(player.rating) }}
+                                </td>
+                                <td class="we-cell {% if player.we >= 8.0 %}we-good{% else %}we-bad{% endif %}">
+                                    {{ "%.2f"|format(player.we) }}
+                                </td>
+                                <td class="hs-cell">
+                                    {{ "%.1f"|format(player.head_shot_ratio * 100) }}%
+                                </td>
+                                <td>
+                                    {% if player.three_kill > 0 %}
+                                    <span class="badge k3">三杀 x{{ player.three_kill }}</span>
+                                    {% endif %}
+
+                                    {% if player.four_kill > 0 %}
+                                    <span class="badge k4">四杀 x{{ player.four_kill }}</span>
+                                    {% endif %}
+
+                                    {% if player.five_kill > 0 %}
+                                    <span class="badge k5">五杀 x{{ player.five_kill }}</span>
+                                    {% endif %}
+
+                                    {% if player.vs1 > 0 or player.vs2 > 0 or player.vs3 > 0 or player.vs4 > 0 or player.vs5 > 0 %}
+                                    <span class="badge vs">残局
+                                        x{{ player.vs1 + player.vs2 + player.vs3 + player.vs4 + player.vs5 }}</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endif %}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- 队伍2玩家 -->
+                <div class="team-container">
+                    <div class="team-header">
+                        <div class="team-indicator team2-indicator"></div>
+                        <div class="team-title">队伍 2</div>
+                    </div>
+                    <table class="players-table">
+                        <thead>
+                            <tr>
+                                <th>玩家</th>
+                                <th>KDA</th>
+                                <th>Rating PRO</th>
+                                <th>WE</th>
+                                <th>爆头率</th>
+                                <th>荣誉</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for player in players %}
+                            {% if player.team == 2 %}
+                            <tr>
+                                <td class="player-cell">
+                                    <img src="{{ player.avatar }}" alt="{{ player.nick_name }}" class="player-avatar">
+                                    <span class="player-name">{{ player.nick_name }}</span>
+                                    {% if player.mvp %}
+                                    <span class="mvp-badge">MVP</span>
+                                    {% endif %}
+                                </td>
+                                <td class="kda-cell">
+                                    {{ player.kill }}/{{ player.death }}/{{ player.assist }}
+                                </td>
+                                <td
+                                    class="rating-cell {% if player.rating >= 1.0 %}rating-good{% else %}rating-bad{% endif %}">
+                                    {{ "%.2f"|format(player.rating) }}
+                                </td>
+                                <td class="we-cell {% if player.we >= 8.0 %}we-good{% else %}we-bad{% endif %}">
+                                    {{ "%.2f"|format(player.we) }}
+                                </td>
+                                <td class="hs-cell">
+                                    {{ "%.1f"|format(player.head_shot_ratio * 100) }}%
+                                </td>
+                                <td>
+                                    {% if player.three_kill > 0 %}
+                                    <span class="badge k3">三杀 x{{ player.three_kill }}</span>
+                                    {% endif %}
+
+                                    {% if player.four_kill > 0 %}
+                                    <span class="badge k4">四杀 x{{ player.four_kill }}</span>
+                                    {% endif %}
+
+                                    {% if player.five_kill > 0 %}
+                                    <span class="badge k5">五杀 x{{ player.five_kill }}</span>
+                                    {% endif %}
+
+                                    {% if player.vs1 > 0 or player.vs2 > 0 or player.vs3 > 0 or player.vs4 > 0 or player.vs5 > 0 %}
+                                    <span class="badge vs">残局
+                                        x{{ player.vs1 + player.vs2 + player.vs3 + player.vs4 + player.vs5 }}</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endif %}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            完美CSGO比赛详情查询 | Zhenxun Bot
+        </div>
+    </div>
+</body>
+
+</html>

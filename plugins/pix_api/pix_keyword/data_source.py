@@ -1,8 +1,8 @@
 from zhenxun.services.log import logger
 from zhenxun.utils.http_utils import AsyncHttpx
 
-from .._enum import KwType
 from .._config import PixResult, base_config
+from .._enum import KwType
 
 
 class KeywordManage:
@@ -23,6 +23,8 @@ class KeywordManage:
         headers = None
         if token := base_config.get("token"):
             headers = {"Authorization": token}
-        res = await AsyncHttpx.post(api, json=json_data, headers=headers)
+        res = await AsyncHttpx.post(
+            api, json=json_data, headers=headers, timeout=base_config.get("timeout")
+        )
         res.raise_for_status()
         return PixResult(**res.json()).info

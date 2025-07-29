@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>音乐信息卡片</title>
+    <link rel="stylesheet" href="main.css">
+</head>
+<body>
+    <div class="music-container">
+        <div class="header">{{ data['self_nickname'] }}为您点歌🎶</div>
+        <div class="decoration decoration-1"></div>
+        <div class="decoration decoration-2"></div>
+        <div class="music-card">
+            <div class="album-cover">
+                <img src="{{ data['picUrl'] }}" alt="专辑封面">
+            </div>
+            <div class="music-info">
+                <div class="music-name">{{ data['name'] }}</div>
+                {% if data['alias'] %}
+                <div class="music-alias">别名: {{ data['alias'] }}</div>
+                {% endif %}
+                <div class="artist-name">{{ data['artist_names'] }}</div>
+                <div class="album-name">专辑: {{ data['album_name'] }}</div>
+                <div class="duration">时长: {{ "%02d" % (data['duration'] // 60000) }}:{{ "%02d" % ((data['duration'] % 60000) // 1000) }}</div>
+                <div class="stats">
+                    <span><i>💬</i> {{ data['comment_count'] }}评论</span>
+                    <span><i>↗️</i> {{ data['share_count'] }}分享</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

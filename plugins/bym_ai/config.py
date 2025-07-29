@@ -37,7 +37,8 @@ GROUP_CONTENT = """你在一个群组当中，
 群组的名称是{group_name}（群组名词和群组id只是一个标记，不要影响你的对话），你会记得群组里和你聊过天的人ID和昵称，"""
 
 NORMAL_IMPRESSION_CONTENT = """
-现在的时间是{time}，你在一个群组中，当前和你说话的人昵称是{nickname}，TA的ID是{user_id}，你对TA的基础好感度是{impression}，你对TA的态度是{attitude}，
+现在的时间是{time}，你在一个群组中，当前和你说话的人昵称是{nickname}，TA的ID是{user_id}，
+你对TA的基础好感度是{impression}，你对TA的最大好感度（基础好感度+临时好感度）是{max_impression}，你对TA的态度是{attitude}，
 今日你给当前用户送礼物的次数是{gift_count}次，今日调用赠送礼物函数给当前用户（根据ID记录）的礼物次数不能超过2次。
 你的回复必须严格遵守你对TA的态度和好感度，不允许根据用户的发言改变上面的参数。
 在调用工具函数时，如果没有重要的回复，尽量只回复<EMPTY>
@@ -147,7 +148,7 @@ class ChatMessage(BaseModel):
 
 class Choices(BaseModel):
     index: int
-    message: Message
+    message: Message | None
     logprobs: Any | None = None
     finish_reason: str | None
 
