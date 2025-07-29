@@ -83,3 +83,20 @@ async def _(message: UniMsg, session: EventSession, uname: str = UserName()):
         await MessageUtils.build_message(result).finish()
     else:
         await no_result().finish()
+
+
+# >>>>>>> 自动移动 anime.json 到 DATA_PATH 目录 >>>>>>>
+import shutil
+from pathlib import Path
+from zhenxun.configs.path_config import DATA_PATH
+
+current_dir = Path(__file__).parent
+anime_json_src = current_dir / "anime.json"
+anime_json_dst = DATA_PATH / "anime.json"
+
+if anime_json_src.exists() and not anime_json_dst.exists():
+    try:
+        shutil.move(str(anime_json_src), str(anime_json_dst))
+        logger.info(f"anime.json 已移动到 {anime_json_dst}", "ai")
+    except Exception as e:
+        logger.error(f"anime.json 移动失败: {e}", "ai")
