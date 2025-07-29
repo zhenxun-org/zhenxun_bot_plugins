@@ -14,12 +14,22 @@ from zhenxun.utils.message import MessageUtils
 from .utils import ai_message_manager
 
 url = "http://openapi.tuling123.com/openapi/api/v2"
-
 check_url = "https://v3.alapi.cn/api/censor/text"
-
 index = 0
 
-anime_data = json.load(open(DATA_PATH / "anime.json", "r", encoding="utf8"))
+
+# 延迟加载 anime.json
+def load_anime_data() -> dict:
+    anime_file = DATA_PATH / "anime.json"
+    if not anime_file.exists():
+        logger.warning(f"anime.json 不存在于 {anime_file}", "ai")
+        return {}
+    try:
+        with anime_file.open("r", encoding="utf8") as f:
+            return json.load(f)
+    except Exception as e:
+        logger.error("加载 anime.json 时发生错误", e=e)
+        return {}
 
 
 async def get_chat_result(
@@ -36,29 +46,38 @@ async def get_chat_result(
     返回
         str: 回答
     """
+
     global index
     text = message.extract_plain_text()
     ai_message_manager.add_message(user_id, text)
+
     special_rst = await ai_message_manager.get_result(user_id, nickname)
     if special_rst:
         ai_message_manager.add_result(user_id, special_rst)
         return MessageUtils.build_message(special_rst)
+
     if index == 5:
         index = 0
+
     if len(text) < 6 and random.random() < 0.6:
-        keys = anime_data.keys()
-        for key in keys:
+        anime_data = load_anime_data()
+        for key in anime_data.keys():
             if text.find(key) != -1:
-                return random.choice(anime_data[key]).replace("你", nickname)
+                return MessageUtils.build_message(
+                    random.choice(anime_data[key]).replace("你", nickname)
+                )
+
     rst = await tu_ling(text, "", user_id) or await xie_ai(text)
     if not rst:
         return None
+
     if nickname:
         if len(nickname) < 5 and random.random() < 0.5:
             nickname = "~".join(nickname) + "~"
             if random.random() < 0.2 and "大人" not in nickname:
                 nickname += "大~人~"
         rst = str(rst).replace("小主人", nickname).replace("小朋友", nickname)
+
     ai_message_manager.add_result(user_id, rst)
     for t in Config.get_config("ai", "TEXT_FILTER"):
         rst = rst.replace(t, "*")
@@ -115,20 +134,20 @@ async def tu_ling(text: str, img_url: str, user_id: str) -> str | None:
     except IndexError:
         index = 0
         return None
-    text = ""
+
     response = await AsyncHttpx.post(url, json=req)
     if response.status_code != 200:
         return None
     resp_payload = json.loads(response.text)
-    if int(resp_payload["intent"]["code"]) in {4003}:
+    if int(resp_payload["intent"]["code"]) == 4003:
         return None
-    if resp_payload["results"]:
-        for result in resp_payload["results"]:
-            if result["resultType"] == "text":
-                text = result["values"]["text"]
-                if "请求次数超过" in text:
-                    text = ""
-    return text
+    for result in resp_payload.get("results", []):
+        if result.get("resultType") == "text":
+            text = result["values"]["text"]
+            if "请求次数超过" in text:
+                return ""
+            return text
+    return None
 
 
 # 屑 AI
@@ -162,10 +181,9 @@ async def xie_ai(text: str) -> str:
             if "淘宝" in content or "taobao.com" in content:
                 return ""
             while True:
-                r = re.search("{face:(.*)}", content)
+                r = re.search("{face:(.*?)}", content)
                 if r:
-                    id_ = r[1]
-                    content = content.replace("{" + f"face:{id_}" + "}", "")
+                    content = content.replace(r.group(0), "")
                 else:
                     break
         return (

@@ -18,8 +18,8 @@ bym_ai:
   BYM_AI_CHAT_URL: https://generativelanguage.googleapis.com/v1beta/chat/completions  # Gemini 官方 API，更推荐找反代
   BYM_AI_CHAT_TOKEN:
     - 你刚刚获取的 API KEY，可以有多个进行轮询
-  BYM_AI_CHAT_MODEL: gemini-2.0-flash-thinking-exp-01-21  # 推荐使用的聊天模型（免费）
-  BYM_AI_TOOL_MODEL: gemini-2.0-flash-exp  # 推荐使用的工具调用模型（免费，需开启 BYM_AI_CHAT_SMART）
+  BYM_AI_CHAT_MODEL: gemini-2.5-flash-lite  # 推荐使用的聊天模型（免费）
+  BYM_AI_TOOL_MODEL: gemini-2.5-flash-lite  # 推荐使用的工具调用模型（免费，需开启 BYM_AI_CHAT_SMART）
   BYM_AI_CHAT: true  # 是否开启伪人回复
   BYM_AI_CHAT_RATE: 0.001  # 伪人回复概率（0-1）
   BYM_AI_TTS_URL:  # TTS 接口地址
