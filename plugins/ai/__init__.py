@@ -11,6 +11,11 @@ from zhenxun.services.log import logger
 from zhenxun.utils.depends import UserName
 from zhenxun.utils.message import MessageUtils
 
+
+import shutil
+from pathlib import Path
+from zhenxun.configs.path_config import DATA_PATH
+
 from .data_source import get_chat_result, hello, no_result
 
 __plugin_meta__ = PluginMetadata(
@@ -86,9 +91,7 @@ async def _(message: UniMsg, session: EventSession, uname: str = UserName()):
 
 
 # >>>>>>> 自动移动 anime.json 到 DATA_PATH 目录 >>>>>>>
-import shutil
-from pathlib import Path
-from zhenxun.configs.path_config import DATA_PATH
+
 
 current_dir = Path(__file__).parent
 anime_json_src = current_dir / "anime.json"
