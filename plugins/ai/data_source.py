@@ -17,6 +17,7 @@ url = "http://openapi.tuling123.com/openapi/api/v2"
 check_url = "https://v3.alapi.cn/api/censor/text"
 index = 0
 
+
 # 延迟加载 anime.json
 def load_anime_data() -> dict:
     anime_file = DATA_PATH / "anime.json"
@@ -29,6 +30,7 @@ def load_anime_data() -> dict:
     except Exception as e:
         logger.error("加载 anime.json 时发生错误", e=e)
         return {}
+
 
 async def get_chat_result(
     message: UniMsg, user_id: str, nickname: str
@@ -224,7 +226,9 @@ def no_result() -> UniMessage:
                     "我！不！知！道！",
                 ]
             ),
-            IMAGE_PATH / "noresult" / random.choice(os.listdir(IMAGE_PATH / "noresult")),
+            IMAGE_PATH
+            / "noresult"
+            / random.choice(os.listdir(IMAGE_PATH / "noresult")),
         ]
     )
 
