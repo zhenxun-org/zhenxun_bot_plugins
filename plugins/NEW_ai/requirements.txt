@@ -2,3 +2,4 @@ openai
 tavily-python
 google-genai
 contextlib
+python-dotenv
