@@ -537,5 +537,16 @@
         "version": "0.1",
         "plugin_type": "NORMAL",
         "is_dir": true
+    },
+    {
+        "name": "ai升级",
+        "module": "New_ai",
+        "module_path": "plugins.New_ai",
+        "description": "增加ai问答",
+        "usage": "和真寻简答对话吧",
+        "author": "wangling",
+        "version": "1.0",
+        "plugin_type": "NORMAL",
+        "is_dir": true
     }
 ]
