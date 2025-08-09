@@ -358,7 +358,11 @@ class BuffUpdateManager:
         返回:
             Response | None: 返回响应
         """
-        cookie = {"session": base_config.get("COOKIE")}
+        start_headers = {
+            "cookie": base_config.get("COOKIE"),
+            "referer": "https://buff.163.com/market/csgo",
+            "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36",
+        }
         proxy = None
         if ip := base_config.get("BUFF_PROXY"):
             proxy = {"http://": ip, "https://": ip}
@@ -367,7 +371,7 @@ class BuffUpdateManager:
                 BUFF_URL,
                 proxy=proxy,
                 params=params,
-                cookies=cookie,  # type: ignore
+                headers=start_headers,
             )
             response.raise_for_status()
             return response
