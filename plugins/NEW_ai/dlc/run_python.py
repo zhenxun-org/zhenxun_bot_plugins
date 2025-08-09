@@ -47,7 +47,6 @@ class CodeExecutor:
             else:
                 return f"代码执行出错: {e}"
 
-            
     async def fix_bug(self, code, e):
         promote = """
 "你是一个代码修复员你需要修复用户发送给你的代码，并直接回复修复后的代码。

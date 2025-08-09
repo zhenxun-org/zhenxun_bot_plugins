@@ -5,13 +5,15 @@ import os
 import base64
 from zhenxun.configs.path_config import TEMP_PATH
 from dotenv import load_dotenv
+
 load_dotenv()
 
 url = "https://api.siliconflow.cn/v1/images/generations"
 
+
 async def get_image(prompt):
     # 1. 优化保存路径处理
-    save_dir = f'C:\\Users\\Administrator\\Desktop\\zhenxun_bot-main\\{TEMP_PATH}'
+    save_dir = f"C:\\Users\\Administrator\\Desktop\\zhenxun_bot-main\\{TEMP_PATH}"
     filename = "image.png"
     save_path = os.path.join(save_dir, filename)
     payload = {
@@ -36,19 +38,19 @@ async def get_image(prompt):
             print(f"获取下载链接: {download_url}")
     except httpx.HTTPStatusError as exc:
         return f"API请求错误: {exc.response.status_code}"
-    except (KeyError, IndexError,httpx.RequestError) as e:
+    except (KeyError, IndexError, httpx.RequestError) as e:
         return f"响应数据错误: {str(e)}"
     if not download_url:
-        return '下载连接获取错误'
+        return "下载连接获取错误"
 
     try:
-        await AsyncHttpx.download_file(download_url,save_path)
-        with open(save_path,'rb') as file:
+        await AsyncHttpx.download_file(download_url, save_path)
+        with open(save_path, "rb") as file:
             byte_data = file.read()
-        return 'base64://'+base64.b64encode(byte_data).decode("utf-8")
+        return "base64://" + base64.b64encode(byte_data).decode("utf-8")
     except:
         return "下载失败"
 
 
-if __name__ == '__main__':
-    asyncio.run(get_image('坐在椅子上正在读书的人'))
+if __name__ == "__main__":
+    asyncio.run(get_image("坐在椅子上正在读书的人"))

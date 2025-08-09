@@ -15,7 +15,8 @@ from zhenxun.utils.depends import UserName
 from zhenxun.utils.message import MessageUtils
 
 from .data_source import get_chat_result, hello, no_result
-#存在大量原ai模块的遗产部分已废弃但未清除
+
+# 存在大量原ai模块的遗产部分已废弃但未清除
 __plugin_meta__ = PluginMetadata(
     name="NEW_AI",
     description=f"{BotConfig.self_nickname}更聪明了哦",
@@ -55,7 +56,7 @@ ai = on_message(rule=to_me(), priority=998)
 
 
 @ai.handle()
-async def _(message: str, user_id,group_id, uname: str = UserName()):
+async def _(message: str, user_id, group_id, uname: str = UserName()):
     if not message or message in [
         "你好啊",
         "你好",
@@ -82,6 +83,6 @@ async def _(message: str, user_id,group_id, uname: str = UserName()):
         result = str(result)
         for t in Config.get_config("ai", "TEXT_FILTER"):
             result = result.replace(t, "*")
-        #await MessageUtils.build_message(result).finish()
+        # await MessageUtils.build_message(result).finish()
     else:
         await no_result().finish()
