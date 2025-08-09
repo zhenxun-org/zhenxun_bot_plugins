@@ -542,7 +542,7 @@
         "name": "ai升级",
         "module": "New_ai",
         "module_path": "plugins.New_ai",
-        "description": "增加ai问答",
+        "description": "对原ai模块进行升级、由于改动过大故作为新库上传",
         "usage": "和真寻简答对话吧",
         "author": "wangling",
         "version": "1.0",
