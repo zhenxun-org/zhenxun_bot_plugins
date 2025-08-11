@@ -42,8 +42,8 @@ class BindManager:
                     return (
                         f"Steam ID {steam_id} 已被其他用户 {existing_user.user_id} 绑定"
                     )
-
-            await CsgoUser.create(user_id=user_id, steam_id=steam_id)
+            else:
+                await CsgoUser.create(user_id=user_id, steam_id=steam_id)
             refresh_result = []
             try:
                 await CsgoManager.get_user_official_data(

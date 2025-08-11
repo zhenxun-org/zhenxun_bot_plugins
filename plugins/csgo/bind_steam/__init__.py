@@ -1,3 +1,5 @@
+import re
+
 from nonebot.plugin import PluginMetadata
 from nonebot_plugin_alconna import Arparma
 from nonebot_plugin_uninfo import Uninfo
@@ -27,6 +29,13 @@ __plugin_meta__ = PluginMetadata(
 
 @_bind_steam_id_matcher.handle()
 async def _(session: Uninfo, steam_id: str, arparma: Arparma):
+    if not steam_id:
+        await MessageUtils.build_message("Steam ID不能为空").finish(reply_to=True)
+    if not re.fullmatch(r"^\d{17}$", steam_id):
+        await MessageUtils.build_message("Steam ID格式错误，需要64位Id").finish(
+            reply_to=True
+        )
+
     result = await BindManager.bind_steam_id(session, session.user.id, steam_id)
 
     logger.info(

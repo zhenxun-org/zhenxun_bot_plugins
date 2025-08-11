@@ -89,7 +89,7 @@ async def _(bot: Bot, event: PokeNotifyEvent):
     if _clmt.check(event.user_id) or random.random() < 0.3:
         rst = ""
         if random.random() < 0.15:
-            await BanConsole.ban(uid, gid, 1, 60)
+            await BanConsole.ban(uid, gid, 1, "戳一戳封禁", 60)
             rst = "气死我了！"
         await poke_.finish(rst + random.choice(REPLY_MESSAGE), at_sender=True)
     rand = random.random()
