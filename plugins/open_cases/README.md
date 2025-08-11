@@ -1,13 +1,13 @@
 # 如何更新武器箱？
 
-1. 登录 [BUFF](https://buff.163.com/)
+1. 登录 [BUFF](https://buff.163.com/)，注意登录时候需要勾选10天有效
 2. 按 f12 打开控制台选择网络
 3. 选择一个请求查看
 
-![t](test.png)
+![t](test2.png)
 
-4. 将`session=`之后的内容复制到`data/config.yaml`中开箱的`COOKIE`字段中进行重载配置或重启
-5. 发送 更新武器箱
+4. 将`Cookie`对应的内容复制到`data/config.yaml`中开箱的`COOKIE`字段中进行重载配置或重启
+5. 发送 `更新武器箱 ALL`
 
 > [!WARNING]
 >
