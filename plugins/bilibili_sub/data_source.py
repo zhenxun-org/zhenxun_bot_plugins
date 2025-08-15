@@ -141,8 +141,9 @@ async def add_up_sub(session: Uninfo, uid: int, sub_user: str) -> str:
         else:
             video_info = video_info["data"]
         latest_video_created = 0
-        if video_info["list"].get("vlist"):
-            latest_video_created = video_info["list"]["vlist"][0]["created"]
+        if video_list := video_info.get("list"):
+            if vlist := video_list.get("vlist"):
+                latest_video_created = vlist[0].get("created", 0)
         if await BilibiliSub.sub_handle(
             uid,
             "up",
@@ -379,60 +380,63 @@ async def _get_up_status(session: Uninfo | None, sub_id: int) -> list:
 
     # 处理视频信息
     video = None
-    if video_info["list"].get("vlist"):
-        video = video_info["list"]["vlist"][0]
-        latest_video_created = video.get("created", 0)
-        sub_latest_video_created = sub_data.latest_video_created or 0
+    if video_list := video_info.get("list"):
+        if vlist := video_list.get("vlist"):
+            video = vlist[0]
+            latest_video_created = vlist[0].get("created", 0)
+            sub_latest_video_created = sub_data.latest_video_created or 0
 
-        # 视频时效性检查
-        if (
-            latest_video_created
-            and sub_latest_video_created < latest_video_created
-            and datetime.fromtimestamp(latest_video_created) > time_threshold
-        ):
-            # 检查视频链接是否被拦截
-            video_url = f"https://www.bilibili.com/video/{video['bvid']}"
+            # 视频时效性检查
+            if (
+                latest_video_created
+                and sub_latest_video_created < latest_video_created
+                and datetime.fromtimestamp(latest_video_created) > time_threshold
+            ):
+                # 检查视频链接是否被拦截
+                video_url = f"https://www.bilibili.com/video/{video.get('bvid', '')}"
 
-            # 带重试的封面获取
-            image = None
-            try:
-                image_bytes = await AsyncHttpx.get_content(video["pic"])
-                image = BuildImage(background=image_bytes)
-            except Exception as e:
-                logger.error(
-                    f"下载图片构造失败: {video['pic']}",
-                    LOG_COMMAND,
-                    session=session,
-                    e=e,
+                # 带重试的封面获取
+                image = None
+                try:
+                    image_bytes = await AsyncHttpx.get_content(video.get("pic", ""))
+                    image = BuildImage(background=image_bytes)
+                except Exception as e:
+                    logger.error(
+                        f"下载图片构造失败: {video.get('pic', '')}",
+                        LOG_COMMAND,
+                        session=session,
+                        e=e,
+                    )
+
+                # 构建消息内容
+                video_msg = [
+                    f"{uname} 投稿了新视频啦！🎉\n",
+                    f"标题：{video.get('title', '')}\n",
+                    f"Bvid：{video.get('bvid', '')}\n",
+                    f"链接：{video_url}",
+                ]
+
+                # 合并动态和视频消息
+                if msg_list and image:
+                    msg_list += [dividing_line, image, *video_msg]
+                elif image:  # 仅有视频更新
+                    msg_list = [image, *video_msg]
+                elif msg_list:  # 有动态但无封面
+                    msg_list += [dividing_line, *video_msg]
+                else:  # 仅有无封面视频
+                    msg_list = ["⚠️ 封面获取失败，但仍需通知：", *video_msg]
+
+                # 强制更新视频时间戳
+                await BilibiliSub.sub_handle(
+                    sub_id, latest_video_created=latest_video_created
                 )
 
-            # 构建消息内容
-            video_msg = [
-                f"{uname} 投稿了新视频啦！🎉\n",
-                f"标题：{video['title']}\n",
-                f"Bvid：{video['bvid']}\n",
-                f"链接：{video_url}",
-            ]
-
-            # 合并动态和视频消息
-            if msg_list and image:
-                msg_list += [dividing_line, image, *video_msg]
-            elif image:  # 仅有视频更新
-                msg_list = [image, *video_msg]
-            elif msg_list:  # 有动态但无封面
-                msg_list += [dividing_line, *video_msg]
-            else:  # 仅有无封面视频
-                msg_list = ["⚠️ 封面获取失败，但仍需通知：", *video_msg]
-
-            # 强制更新视频时间戳
-            await BilibiliSub.sub_handle(
-                sub_id, latest_video_created=latest_video_created
-            )
-
-        elif latest_video_created > sub_latest_video_created:  # 超时视频仍更新时间戳
-            await BilibiliSub.sub_handle(
-                sub_id, latest_video_created=latest_video_created
-            )
+            elif (
+                latest_video_created > sub_latest_video_created
+            ):  # 超时视频仍更新时间戳
+                await BilibiliSub.sub_handle(
+                    sub_id, latest_video_created=latest_video_created
+                )
 
     return msg_list
 
