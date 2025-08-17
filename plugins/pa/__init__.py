@@ -20,7 +20,7 @@ __plugin_meta__ = PluginMetadata(
     爬爬爬爬爬爬爬
     """.strip(),
     extra=PluginExtraData(
-        author="HibiKier", version="0.1", commands=[Command(command="爬")]
+        author="HibiKier", version="0.2", commands=[Command(command="爬")]
     ).to_dict(),
 )
 
