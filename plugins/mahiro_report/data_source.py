@@ -65,9 +65,7 @@ class Report:
         template_path = Path(__file__).parent / "mahiro_report" / "main.html"
         component = ui.template(template_path, data=data)
         image_bytes = await ui.render(
-            component,
-            viewport={"width": 578, "height": 1885},
-            wait=2
+            component, viewport={"width": 578, "height": 1885}, wait=2
         )
         with open(file, "wb") as f:
             f.write(image_bytes)
