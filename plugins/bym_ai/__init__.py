@@ -43,7 +43,7 @@ __plugin_meta__ = PluginMetadata(
     """.strip(),
     extra=PluginExtraData(
         author="Chtholly & HibiKier",
-        version="0.5",
+        version="0.6",
         superuser_help="重置所有会话\n重载prompt",
         ignore_prompt=True,
         configs=[
@@ -137,7 +137,8 @@ __plugin_meta__ = PluginMetadata(
             RegisterConfig(
                 key="IMAGE_UNDERSTANDING_DATA_SUBMIT_STRATEGY",
                 value=None,
-                help="图片理解数据提交策略，可选 base64 | image_url 为空时不进行图片理解",
+                help="图片理解数据提交策略，可选 base64 | image_url"
+                " 为空时不进行图片理解",
                 default_value=None,
             ),
             RegisterConfig(
@@ -148,7 +149,8 @@ __plugin_meta__ = PluginMetadata(
             RegisterConfig(
                 key="IMAGE_UNDERSTANDING_DATA_STORAGE_STRATEGY_GEMINI_PROXY",
                 value=None,
-                help="gemini 文件上传策略代理地址，只在图片理解数据存储策略为 gemini 时有效",
+                help="gemini 文件上传策略代理地址，只在图片理解数据存储策略为"
+                " gemini 时有效",
                 default_value="generativelanguage.googleapis.com",
             ),
         ],

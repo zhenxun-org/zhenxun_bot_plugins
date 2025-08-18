@@ -22,6 +22,7 @@ from zhenxun.builtin_plugins.sign_in.utils import (
 from zhenxun.configs.config import BotConfig, Config
 from zhenxun.configs.path_config import IMAGE_PATH, TEMP_PATH
 from zhenxun.configs.utils import AICallableTag
+from zhenxun.models.group_console import GroupConsole
 from zhenxun.models.sign_user import SignUser
 from zhenxun.services.log import logger
 from zhenxun.utils.decorator.retry import Retry
@@ -33,6 +34,7 @@ from .config import (
     BYM_CONTENT,
     DEEP_SEEK_SPLIT,
     DEFAULT_GROUP,
+    GROUP_CONTENT,
     NO_RESULT,
     NO_RESULT_IMAGE,
     NORMAL_CONTENT,
@@ -180,6 +182,8 @@ class TokenCounter:
             if isinstance(tokens, str):
                 tokens = [tokens]
             self.tokens = dict.fromkeys(tokens, 0)
+        else:
+            raise Exception("未配置BYM_AI_CHAT_TOKEN, 请在config.yaml中配置")
 
     def get_token(self) -> str:
         """获取token，将时间最小的token返回"""
@@ -360,15 +364,15 @@ class CallApi:
     def __init__(self):
         url = {
             "gemini": "https://generativelanguage.googleapis.com/v1beta/chat/completions",
-            "DeepSeek": "https://api.deepseek.com/v1/chat/completions",
+            "deepseek": "https://api.deepseek.com/v1/chat/completions",
             "硅基流动": "https://api.siliconflow.cn/v1",
             "阿里云百炼": "https://dashscope.aliyuncs.com/compatible-mode/v1",
             "百度智能云": "https://qianfan.baidubce.com/v2",
             "字节火山引擎": "https://ark.cn-beijing.volces.com/api/v3",
         }
         # 对话
-        chat_url = base_config.get("BYM_AI_CHAT_URL")
-        self.chat_url = url.get(chat_url, chat_url)
+        chat_url = base_config.get("BYM_AI_CHAT_URL") or ""
+        self.chat_url = url.get(chat_url.lower(), chat_url)
         self.chat_model = base_config.get("BYM_AI_CHAT_MODEL")
         self.tool_model = base_config.get("BYM_AI_TOOL_MODEL")
         self.chat_token = token_counter.get_token()
@@ -420,7 +424,7 @@ class CallApi:
             )
             token_counter.delay(self.chat_token)
         if response.status_code == 400:
-            logger.warning(f"请求接口错误 code: 400 {response.json()}", "BYM_AI")
+            logger.warning(f"请求接口错误 code: 400 {response.text}", "BYM_AI")
             raise CallApiParamException()
 
         response.raise_for_status()
@@ -600,7 +604,7 @@ class ChatManager:
                 user_id=user_id,
                 impression=cls.user_impression[user_id],
                 max_impression=cls.user_impression[user_id] + 30,
-                attitude=level2attitude[level],
+                attitude=level2attitude[str(level)],
                 gift_count=gift_count,
             )
             if base_config.get("ENABLE_IMPRESSION")
@@ -609,16 +613,16 @@ class ChatManager:
                 user_id=user_id,
             )
         )
-        # if group_id and base_config.get("ENABLE_GROUP_CHAT"):
-        #     if group_id not in GROUP_NAME_CACHE:
-        #         if group := await GroupConsole.get_group(group_id):
-        #             GROUP_NAME_CACHE[group_id] = group.group_name
-        #     content_result = (
-        #         GROUP_CONTENT.format(
-        #             group_id=group_id, group_name=GROUP_NAME_CACHE.get(group_id, "")
-        #         )
-        #         + content_result
-        #     )
+        if group_id and base_config.get("ENABLE_GROUP_CHAT"):
+            if group_id not in GROUP_NAME_CACHE:
+                if group := await GroupConsole.get_group(group_id):
+                    GROUP_NAME_CACHE[group_id] = group.group_name
+            content_result = (
+                GROUP_CONTENT.format(
+                    group_id=group_id, group_name=GROUP_NAME_CACHE.get(group_id, "")
+                )
+                + content_result
+            )
         content.insert(
             0,
             cls.format("text", content_result),
