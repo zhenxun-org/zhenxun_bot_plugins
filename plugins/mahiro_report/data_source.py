@@ -1,14 +1,12 @@
 import asyncio
 from datetime import datetime
 from pathlib import Path
-import xml.etree.ElementTree as ET
 
-from nonebot_plugin_htmlrender import template_to_pic
+import xml.etree.ElementTree as ET
 from zhdate import ZhDate
 
+from zhenxun import ui
 from zhenxun.configs.config import Config
-from zhenxun.configs.path_config import TEMPLATE_PATH
-from zhenxun.utils._build_image import BuildImage
 from zhenxun.utils.http_utils import AsyncHttpx
 
 from .config import REPORT_PATH, Anime, Hitokoto, SixData
@@ -64,17 +62,15 @@ class Report:
             "zh_date": zhdata.chinese().split()[0][5:],
             "full_show": Config.get_config("mahiro_report", "full_show"),
         }
-        image_bytes = await template_to_pic(
-            template_path=str((TEMPLATE_PATH / "mahiro_report").absolute()),
-            template_name="main.html",
-            templates={"data": data},
-            pages={
-                "viewport": {"width": 578, "height": 1885},
-                "base_url": f"file://{TEMPLATE_PATH}",
-            },
-            wait=2,
+        template_path = Path(__file__).parent / "mahiro_report" / "main.html"
+        component = ui.template(template_path, data=data)
+        image_bytes = await ui.render(
+            component,
+            viewport={"width": 578, "height": 1885},
+            wait=2
         )
-        await BuildImage.open(image_bytes).save(file)
+        with open(file, "wb") as f:
+            f.write(image_bytes)
         return file
 
     @classmethod
