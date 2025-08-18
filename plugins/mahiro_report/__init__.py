@@ -1,6 +1,4 @@
 from datetime import datetime
-from pathlib import Path
-import shutil
 
 import nonebot
 from nonebot.adapters import Bot
@@ -11,10 +9,8 @@ from nonebot_plugin_apscheduler import scheduler
 from nonebot_plugin_session import EventSession
 from playwright.async_api import TimeoutError
 
-from zhenxun.configs.path_config import TEMPLATE_PATH
 from zhenxun.configs.utils import Command, PluginExtraData, RegisterConfig, Task
 from zhenxun.services.log import logger
-from zhenxun.services.plugin_init import PluginInit
 from zhenxun.utils.common_utils import CommonUtils
 from zhenxun.utils.message import MessageUtils
 from zhenxun.utils.platform import broadcast_group
@@ -31,11 +27,11 @@ __plugin_meta__ = PluginMetadata(
     """.strip(),
     extra=PluginExtraData(
         author="HibiKier",
-        version="0.4",
+        version="0.5",
         superuser_help="""重置真寻日报""",
         commands=[Command(command="真寻日报")],
         tasks=[Task(module="mahiro_report", name="真寻日报")],
-        configs=[  # 添加配置项提示用户如何获取和填写ALAPI_TOKEN
+        configs=[
             RegisterConfig(
                 module="alapi",
                 key="ALAPI_TOKEN",
@@ -53,8 +49,6 @@ __plugin_meta__ = PluginMetadata(
     ).to_dict(),
 )
 
-
-RESOURCE_PATH = TEMPLATE_PATH / "mahiro_report"
 
 _matcher = on_alconna(Alconna("真寻日报"), priority=5, block=True, use_origin=True)
 
@@ -80,21 +74,6 @@ async def _(session: EventSession, arparma: Arparma):
     except TimeoutError:
         await MessageUtils.build_message("真寻日报生成超时...").send(at_sender=True)
         logger.error("真寻日报生成超时", arparma.header_result, session=session)
-
-
-class MyPluginInit(PluginInit):
-    async def install(self):
-        res = Path(__file__).parent / "mahiro_report"
-        if res.exists():
-            if RESOURCE_PATH.exists():
-                shutil.rmtree(RESOURCE_PATH)
-            shutil.move(res, RESOURCE_PATH)
-            logger.info(f"移动 真寻日报 资源文件夹成功 {res} -> {RESOURCE_PATH}")
-
-    async def remove(self):
-        if RESOURCE_PATH.exists():
-            shutil.rmtree(RESOURCE_PATH)
-            logger.info(f"删除 真寻日报 资源文件夹成功 {RESOURCE_PATH}")
 
 
 driver = nonebot.get_driver()
