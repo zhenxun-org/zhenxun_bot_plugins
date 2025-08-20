@@ -1,11 +1,11 @@
 import asyncio
+import time
 from datetime import datetime
 from io import BytesIO
-import time
 
+import nonebot
 from arclet.alconna.typing import CommandMeta
 from bilireq.login import Login
-import nonebot
 from nonebot.adapters import Bot
 from nonebot.drivers import Driver
 from nonebot.matcher import Matcher
@@ -17,7 +17,6 @@ from nonebot_plugin_alconna import Alconna, Args, UniMessage, on_alconna
 from nonebot_plugin_apscheduler import scheduler
 from nonebot_plugin_session import EventSession
 from nonebot_plugin_uninfo import Uninfo
-
 from zhenxun.configs.config import Config
 from zhenxun.configs.utils import PluginExtraData, RegisterConfig
 from zhenxun.models.group_console import GroupConsole
@@ -62,7 +61,7 @@ __plugin_meta__ = PluginMetadata(
         """.strip(),
     extra=PluginExtraData(
         author="HibiKier",
-        version="0.8",
+        version="0.9",
         superuser_help="""
     登录b站获取cookie防止风控：
             bil_check/检测b站
@@ -215,7 +214,7 @@ async def _(session: Uninfo, state: T_State, sub_type: str, sub_msg: str):
         sub_msg = sub_msg.split("/")[-1]
     sub_id = sub_msg[2:] if sub_msg.startswith("md") else sub_msg
     if sub_id.isdigit():
-        state["sub_id"] = int(sub_id)
+        state["sub_id"] = sub_id
 
     elif sub_type in {"season", "动漫", "番剧"}:
         rst = "*以为您找到以下番剧，请输入Id选择：*\n"
@@ -233,7 +232,7 @@ async def _(session: Uninfo, state: T_State, sub_type: str, sub_msg: str):
 
 @add_sub.got("sub_type")
 @add_sub.got("sub_user")
-@add_sub.got("id")
+@add_sub.got("sub_id")
 async def _(
     session: Uninfo,
     state: T_State,

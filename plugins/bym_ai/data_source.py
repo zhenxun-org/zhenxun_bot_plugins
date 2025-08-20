@@ -1,20 +1,19 @@
 import asyncio
 import base64
-from collections.abc import Sequence
-from datetime import datetime
 import os
-from pathlib import Path
 import random
 import re
 import time
-from typing import ClassVar, Literal
 import uuid
+from collections.abc import Sequence
+from datetime import datetime
+from pathlib import Path
+from typing import ClassVar, Literal
 
 from nonebot.adapters import Bot, MessageSegment
 from nonebot.compat import model_dump
 from nonebot_plugin_alconna import Image, Reply, Text, UniMessage, UniMsg
 from nonebot_plugin_uninfo import Uninfo
-
 from zhenxun.builtin_plugins.sign_in.utils import (
     get_level_and_next_impression,
     level2attitude,
@@ -182,8 +181,6 @@ class TokenCounter:
             if isinstance(tokens, str):
                 tokens = [tokens]
             self.tokens = dict.fromkeys(tokens, 0)
-        else:
-            raise Exception("未配置BYM_AI_CHAT_TOKEN, 请在config.yaml中配置")
 
     def get_token(self) -> str:
         """获取token，将时间最小的token返回"""

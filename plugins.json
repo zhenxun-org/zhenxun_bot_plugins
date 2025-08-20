@@ -424,7 +424,7 @@
         "description": "非常便利的B站订阅通知",
         "usage": "B站直播，番剧，UP动态开播等提醒",
         "author": "HibiKier",
-        "version": "0.8",
+        "version": "0.9",
         "plugin_type": "NORMAL",
         "is_dir": true
     },
@@ -490,7 +490,7 @@
         "description": "小真寻想成为人类...",
         "usage": "你问小真寻的愿望？小真寻说她想成为人类！",
         "author": "Chtholly & HibiKier",
-        "version": "0.6",
+        "version": "0.7",
         "plugin_type": "NORMAL",
         "is_dir": true
     },

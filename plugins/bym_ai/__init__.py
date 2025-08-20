@@ -1,6 +1,6 @@
 import asyncio
-from pathlib import Path
 import random
+from pathlib import Path
 
 from httpx import HTTPStatusError
 from nonebot import on_message
@@ -10,7 +10,6 @@ from nonebot.plugin import PluginMetadata
 from nonebot.rule import to_me
 from nonebot_plugin_alconna import Alconna, UniMsg, Voice, on_alconna
 from nonebot_plugin_uninfo import Uninfo
-
 from zhenxun.configs.config import BotConfig
 from zhenxun.configs.path_config import IMAGE_PATH
 from zhenxun.configs.utils import (
@@ -43,7 +42,7 @@ __plugin_meta__ = PluginMetadata(
     """.strip(),
     extra=PluginExtraData(
         author="Chtholly & HibiKier",
-        version="0.6",
+        version="0.7",
         superuser_help="重置所有会话\n重载prompt",
         ignore_prompt=True,
         configs=[
