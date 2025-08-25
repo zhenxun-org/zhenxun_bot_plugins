@@ -16,6 +16,7 @@ from nonebot_plugin_alconna import (
 from nonebot_plugin_alconna.builtins.extensions.reply import ReplyMergeExtension
 from nonebot_plugin_uninfo import Uninfo
 from nonebot_plugin_waiter import waiter
+
 from zhenxun.configs.utils import Command, PluginExtraData, RegisterConfig
 from zhenxun.services.log import logger
 from zhenxun.utils.depends import CheckConfig
@@ -123,6 +124,7 @@ async def _(
         await MessageUtils.build_message("请求失败了哦，请稍后再试~").send(
             reply_to=True
         )
+        return
     if isinstance(info_list, str):
         await MessageUtils.build_message(info_list).finish(at_sender=True)
     if not info_list:
