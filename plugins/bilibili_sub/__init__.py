@@ -15,7 +15,6 @@ from nonebot.plugin import PluginMetadata
 from nonebot.typing import T_State
 from nonebot_plugin_alconna import Alconna, Args, UniMessage, on_alconna
 from nonebot_plugin_apscheduler import scheduler
-from nonebot_plugin_session import EventSession
 from nonebot_plugin_uninfo import Uninfo
 from zhenxun.configs.config import Config
 from zhenxun.configs.utils import PluginExtraData, RegisterConfig
@@ -24,6 +23,7 @@ from zhenxun.services.log import logger
 from zhenxun.utils.image_utils import text2image
 from zhenxun.utils.message import MessageUtils
 from zhenxun.utils.platform import PlatformUtils
+from zhenxun.utils.utils import get_entity_ids
 
 from .auth import AuthManager
 from .config import LOG_COMMAND
@@ -52,12 +52,12 @@ __plugin_meta__ = PluginMetadata(
                 添加订阅 ['主播'/'UP'/'番剧'] [id/链接/番名]
                 删除订阅 ['主播'/'UP'/'id'] [id]
                 查看订阅
-            示例：   
+            示例：
                 添加订阅主播 2345344 <-(直播房间id)
                 添加订阅UP 2355543 <-(个人主页id)
                 添加订阅番剧 史莱姆 <-(支持模糊搜索)
                 添加订阅番剧 125344 <-(番剧id)
-                删除订阅id 2324344 <-(任意id，通过查看订阅获取)
+                删除订阅 id 2324344 <-(任意id，通过查看订阅获取)
         """.strip(),
     extra=PluginExtraData(
         author="HibiKier",
@@ -149,7 +149,7 @@ add_sub = on_alconna(
         Args["sub_type", str]["sub_msg", str],
         meta=CommandMeta(compact=True),
     ),
-    aliases={"d", "添加订阅"},
+    aliases={"添加订阅"},
     priority=5,
     block=True,
 )
@@ -159,7 +159,7 @@ del_sub = on_alconna(
         Args["sub_type", str]["sub_msg", str],
         meta=CommandMeta(compact=True),
     ),
-    aliases={"td", "取消订阅"},
+    aliases={"取消订阅"},
     priority=5,
     block=True,
 )
@@ -269,31 +269,30 @@ async def _(
 
 @del_sub.got("sub_type")
 @del_sub.got("sub_user")
-@del_sub.got("id")
+@del_sub.got("sub_id")
 async def _(
-    session: EventSession,
-    id_: str = ArgStr("id"),
+    session: Uninfo,
+    sub_id: str = ArgStr("sub_id"),
     sub_type: str = ArgStr("sub_type"),
     sub_user: str = ArgStr("sub_user"),
 ):
     if sub_type in {"主播", "直播"}:
-        result = await BilibiliSub.delete_bilibili_sub(int(id_), sub_user, "live")
+        result = await BilibiliSub.delete_bilibili_sub(int(sub_id), sub_user, "live")
     elif sub_type.lower() in {"up", "用户"}:
-        result = await BilibiliSub.delete_bilibili_sub(int(id_), sub_user, "up")
+        result = await BilibiliSub.delete_bilibili_sub(int(sub_id), sub_user, "up")
     else:
-        result = await BilibiliSub.delete_bilibili_sub(int(id_), sub_user)
+        result = await BilibiliSub.delete_bilibili_sub(int(sub_id), sub_user)
     if result:
-        await MessageUtils.build_message(f"删除订阅id：{id_} 成功...").send()
-        logger.info(f"删除订阅 {id_}", session=session)
+        await MessageUtils.build_message(f"删除订阅id：{sub_id} 成功...").send()
+        logger.info(f"删除订阅 {sub_id}", session=session)
     else:
-        await MessageUtils.build_message(f"删除订阅id：{id_} 失败...").send()
+        await MessageUtils.build_message(f"删除订阅id：{sub_id} 失败...").send()
 
 
 @show_sub_info.handle()
-async def _(session: EventSession):
-    gid = session.id3 or session.id2
-    id_ = gid if gid else session.id1
-    data = await BilibiliSub.filter(sub_users__contains=id_).all()
+async def _(session: Uninfo):
+    entity = get_entity_ids(session)
+    data = await BilibiliSub.filter(sub_users__contains=entity.user_id).all()
     live_rst = ""
     up_rst = ""
     season_rst = ""
@@ -315,7 +314,9 @@ async def _(session: EventSession):
     up_rst = "当前订阅的UP：\n" + up_rst if up_rst else up_rst
     season_rst = "当前订阅的番剧：\n" + season_rst if season_rst else season_rst
     if not live_rst and not up_rst and not season_rst:
-        live_rst = "该群目前没有任何订阅..." if gid else "您目前没有任何订阅..."
+        live_rst = (
+            "该群目前没有任何订阅..." if entity.group_id else "您目前没有任何订阅..."
+        )
 
     img = await text2image(live_rst + up_rst + season_rst, padding=10, color="#f9f6f2")
     await MessageUtils.build_message(img).finish()
