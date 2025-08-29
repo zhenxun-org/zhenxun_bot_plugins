@@ -31,7 +31,7 @@ __plugin_meta__ = PluginMetadata(
             完美战绩 @笨蛋 -p 2
             完美战绩详情 1234
     """.strip(),
-    extra=PluginExtraData(author="HibiKier", version="0.1", menu_type="CSGO").to_dict(),
+    extra=PluginExtraData(author="HibiKier", version="0.1.1", menu_type="CSGO").to_dict(),
 )
 
 

@@ -23,7 +23,7 @@ __plugin_meta__ = PluginMetadata(
         绑定steam 123123123123
         解绑steam
     """.strip(),
-    extra=PluginExtraData(author="HibiKier", version="0.1", menu_type="CSGO").to_dict(),
+    extra=PluginExtraData(author="HibiKier", version="0.1.1", menu_type="CSGO").to_dict(),
 )
 
 

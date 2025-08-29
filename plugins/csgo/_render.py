@@ -1,7 +1,6 @@
+from pathlib import Path
 from nonebot.compat import model_dump
-from nonebot_plugin_htmlrender import template_to_pic
-
-from zhenxun.configs.path_config import TEMPLATE_PATH
+from zhenxun import ui
 
 from .config import (
     CURRENT_SEASON,
@@ -16,6 +15,11 @@ from .config import (
 
 class Renderer:
     """渲染器"""
+
+    @classmethod
+    def _get_template_path(cls, template_name: str) -> Path:
+        """获取模板文件路径"""
+        return Path(__file__).parent / "csgo" / template_name
 
     @classmethod
     async def render_map_data(
@@ -48,22 +52,19 @@ class Renderer:
             ):
                 map["map_rate"] = model_dump(map_rate)
 
-        # 渲染正常页面
-        return await template_to_pic(
-            template_path=str((TEMPLATE_PATH / "csgo").absolute()),
-            template_name="map_data.html",
-            templates={
+        template_component = ui.template(
+            path=cls._get_template_path("map_data.html"),
+            data={
                 "maps": map_data_dict,
                 "player_name": player_name,
                 "steam_id": steam_id,
                 "avatar_url": avatar_url,
                 "season": season,
             },
-            pages={
-                "viewport": {"width": 1000, "height": 600},
-                "base_url": f"file://{TEMPLATE_PATH}",
-            },
-            wait=2,
+        )
+        return await ui.render(
+            template_component,
+            viewport={"width": 1000, "height": 600},
         )
 
     @classmethod
@@ -83,20 +84,17 @@ class Renderer:
         返回:
             bytes: 图片数据
         """
-        # 渲染正常页面
-        return await template_to_pic(
-            template_path=str((TEMPLATE_PATH / "csgo").absolute()),
-            template_name="perfect_world_user.html",
-            templates={
+        template_component = ui.template(
+            path=cls._get_template_path("perfect_world_user.html"),
+            data={
                 "player_stats": model_dump(player_info),
                 "avatar_url": avatar_url,
                 "season": season,
             },
-            pages={
-                "viewport": {"width": 1000, "height": 600},
-                "base_url": f"file://{TEMPLATE_PATH}",
-            },
-            wait=2,
+        )
+        return await ui.render(
+            template_component,
+            viewport={"width": 1000, "height": 600},
         )
 
     @classmethod
@@ -112,18 +110,15 @@ class Renderer:
         返回:
             bytes: 图片数据
         """
-        # 渲染正常页面
-        return await template_to_pic(
-            template_path=str((TEMPLATE_PATH / "csgo").absolute()),
-            template_name="official_user.html",
-            templates={
+        template_component = ui.template(
+            path=cls._get_template_path("official_user.html"),
+            data={
                 "player_stats": model_dump(player_info),
             },
-            pages={
-                "viewport": {"width": 1000, "height": 600},
-                "base_url": f"file://{TEMPLATE_PATH}",
-            },
-            wait=2,
+        )
+        return await ui.render(
+            template_component,
+            viewport={"width": 1000, "height": 600},
         )
 
     @classmethod
@@ -159,14 +154,11 @@ class Renderer:
         返回:
             bytes: 图片数据
         """
-        # 转换为字典列表以便模板渲染
         match_list_dict = [model_dump(match) for match in match_list]
 
-        # 渲染正常页面
-        return await template_to_pic(
-            template_path=str((TEMPLATE_PATH / "csgo").absolute()),
-            template_name="match_list.html",
-            templates={
+        template_component = ui.template(
+            path=cls._get_template_path("match_list.html"),
+            data={
                 "match_list": match_list_dict,
                 "player_name": player_name,
                 "steam_id": steam_id,
@@ -179,11 +171,10 @@ class Renderer:
                 "current_page": current_page,
                 "page_count": page_count,
             },
-            pages={
-                "viewport": {"width": 1000, "height": 600},
-                "base_url": f"file://{TEMPLATE_PATH}",
-            },
-            wait=2,
+        )
+        return await ui.render(
+            template_component,
+            viewport={"width": 1000, "height": 600},
         )
 
     @classmethod
@@ -199,23 +190,19 @@ class Renderer:
         返回:
             bytes: 图片数据
         """
-        # 转换为字典以便模板渲染
         base_data = model_dump(match_data.base)
         players_data = [model_dump(player) for player in match_data.players]
 
-        # 渲染正常页面
-        return await template_to_pic(
-            template_path=str((TEMPLATE_PATH / "csgo").absolute()),
-            template_name="match_detail.html",
-            templates={
+        template_component = ui.template(
+            path=cls._get_template_path("match_detail.html"),
+            data={
                 "base": base_data,
                 "players": players_data,
             },
-            pages={
-                "viewport": {"width": 1000, "height": 600},
-                "base_url": f"file://{TEMPLATE_PATH}",
-            },
-            wait=2,
+        )
+        return await ui.render(
+            template_component,
+            viewport={"width": 1000, "height": 600},
         )
 
     @classmethod
@@ -239,22 +226,19 @@ class Renderer:
         返回:
             bytes: 图片数据
         """
-        # 渲染正常页面
-        return await template_to_pic(
-            template_path=str((TEMPLATE_PATH / "csgo").absolute()),
-            template_name="video_list.html",
-            templates={
+        template_component = ui.template(
+            path=cls._get_template_path("video_list.html"),
+            data={
                 "videos": video_list,
                 "player_name": player_name,
                 "steam_id": steam_id,
                 "avatar_url": avatar_url,
                 "total_count": total_count,
             },
-            pages={
-                "viewport": {"width": 1000, "height": 600},
-                "base_url": f"file://{TEMPLATE_PATH}",
-            },
-            wait=2,
+        )
+        return await ui.render(
+            template_component,
+            viewport={"width": 1000, "height": 600},
         )
 
     @classmethod
@@ -275,18 +259,15 @@ class Renderer:
             bytes: 图片数据
         """
         rank_type = "分数" if rank_type == "score" else "RT"
-        # 渲染正常页面
-        return await template_to_pic(
-            template_path=str((TEMPLATE_PATH / "csgo").absolute()),
-            template_name="rank_list.html",
-            templates={
+        template_component = ui.template(
+            path=cls._get_template_path("rank_list.html"),
+            data={
                 "user_index": user_index,
                 "player_list": player_list,
                 "type": rank_type,
             },
-            pages={
-                "viewport": {"width": 1000, "height": 600},
-                "base_url": f"file://{TEMPLATE_PATH}",
-            },
-            wait=2,
+        )
+        return await ui.render(
+            template_component,
+            viewport={"width": 1000, "height": 600},
         )
