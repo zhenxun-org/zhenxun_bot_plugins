@@ -28,7 +28,9 @@ __plugin_meta__ = PluginMetadata(
         完美rt排行
         完美rt排行 50
     """.strip(),
-    extra=PluginExtraData(author="HibiKier", version="0.1.1", menu_type="CSGO").to_dict(),
+    extra=PluginExtraData(
+        author="HibiKier", version="0.1.1", menu_type="CSGO"
+    ).to_dict(),
 )
 
 

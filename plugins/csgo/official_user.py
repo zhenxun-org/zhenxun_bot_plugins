@@ -28,7 +28,9 @@ __plugin_meta__ = PluginMetadata(
         官匹数据 @笨蛋
         官匹数据 1231231233
     """.strip(),
-    extra=PluginExtraData(author="HibiKier", version="0.1.1", menu_type="CSGO").to_dict(),
+    extra=PluginExtraData(
+        author="HibiKier", version="0.1.1", menu_type="CSGO"
+    ).to_dict(),
 )
 
 

@@ -19,7 +19,9 @@ __plugin_meta__ = PluginMetadata(
     指令：
         csgo刷新数据
     """.strip(),
-    extra=PluginExtraData(author="HibiKier", version="0.1.1", menu_type="CSGO").to_dict(),
+    extra=PluginExtraData(
+        author="HibiKier", version="0.1.1", menu_type="CSGO"
+    ).to_dict(),
 )
 
 
