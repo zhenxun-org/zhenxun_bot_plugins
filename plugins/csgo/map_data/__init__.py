@@ -32,7 +32,9 @@ __plugin_meta__ = PluginMetadata(
         完美地图数据 1231231233
         完美地图数据 1231231233 S20
     """.strip(),
-    extra=PluginExtraData(author="HibiKier", version="0.1", menu_type="CSGO").to_dict(),
+    extra=PluginExtraData(
+        author="HibiKier", version="0.1.1", menu_type="CSGO"
+    ).to_dict(),
 )
 
 

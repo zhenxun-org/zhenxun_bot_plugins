@@ -9,8 +9,7 @@
         /* 声明自定义字体，请确保路径正确 */
         @font-face {
             font-family: AlibabaHealthFont2;
-            src: url("../../font/AlibabaHealthFont2.0CN-85B.ttf");
-            /* <-- 请替换为你的字体文件实际路径 */
+            src: url("{{ asset('fonts/AlibabaHealthFont2.0CN-85B.ttf') }}");
         }
 
         :root {
@@ -514,7 +513,7 @@
             border-radius: 3px;
         }
     </style>
-    <script src="../js/echarts.min.js"></script>
+    <script src="{{ asset('js/echarts.min.js') }}"></script>
 </head>
 
 <body>

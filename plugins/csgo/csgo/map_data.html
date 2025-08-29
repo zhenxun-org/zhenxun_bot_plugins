@@ -7,18 +7,14 @@
     <title>CSGO地图胜率 - 示例玩家</title>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap">
     <style>
-        /* 注意: 为了在任何环境下都能显示，这里移除了本地字体文件引用。
-           如果你有特定的自定义字体文件 (.ttf)，你需要将它们上传到你的服务器，
-           并在这里更新正确的 URL 路径，例如:
-           @font-face {
-               font-family: AlibabaHealthFont2;
-               src: url("https://your-domain.com/fonts/AlibabaHealthFont2.0CN-85B.ttf");
-           }
-           @font-face {
-               font-family: fzrzFont;
-               src: url("https://your-domain.com/fonts/fzrzFont.ttf");
-           }
-        */
+        @font-face {
+            font-family: AlibabaHealthFont2;
+            src: url("{{ asset('fonts/AlibabaHealthFont2.0CN-85B.ttf') }}");
+        }
+        @font-face {
+            font-family: fzrzFont;
+            src: url("{{ asset('fonts/fzrzExtraBold.ttf') }}");
+        }
 
         :root {
             --primary-bg: #fff5f7;
