@@ -61,7 +61,9 @@ __plugin_meta__ = PluginMetadata(
         完美时刻 1231231233
         完美时刻下载 1234
     """.strip(),
-    extra=PluginExtraData(author="HibiKier", version="0.1", menu_type="CSGO").to_dict(),
+    extra=PluginExtraData(
+        author="HibiKier", version="0.1.1", menu_type="CSGO"
+    ).to_dict(),
 )
 
 
