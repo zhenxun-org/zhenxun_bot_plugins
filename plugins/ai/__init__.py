@@ -70,9 +70,9 @@ async def _(message: UniMsg, session: Uninfo, uname: str = UserName()):
         "你好",
         "在",
     ]:
-        await hello().finish()
+        await hello().finish(reply_to=True)
     if not session.user.id:
-        await MessageUtils.build_message("用户id不存在...").finish()
+        await MessageUtils.build_message("用户id不存在...").finish(reply_to=True)
     group = session.group
     if group:
         nickname = await GroupInfoUser.get_user_nickname(session.user.id, group.id)
@@ -86,9 +86,9 @@ async def _(message: UniMsg, session: Uninfo, uname: str = UserName()):
         result = str(result)
         for t in Config.get_config("ai", "TEXT_FILTER"):
             result = result.replace(t, "*")
-        await MessageUtils.build_message(result).finish()
+        await MessageUtils.build_message(result).finish(reply_to=True)
     else:
-        await no_result().finish()
+        await no_result().finish(reply_to=True)
 
 
 # >>>>>>> 自动移动 anime.json 到 DATA_PATH 目录 >>>>>>>
