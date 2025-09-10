@@ -52,7 +52,7 @@ async def _(session: EventSession, arparma: Arparma, text: str):
         for x in data:
             trans = ""
             if x.get("trans"):
-                trans = x["trans"][0]
+                trans = "，".join(x["trans"])
             elif x.get("inputting"):
                 trans = "，".join(x["inputting"])
             tmp += f"{x['name']} -> {trans}\n"
