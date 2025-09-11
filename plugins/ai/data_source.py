@@ -1,9 +1,10 @@
 import os
 import random
 import re
+import time
 
+from nonebot_plugin_alconna import UniMessage
 import ujson as json
-from nonebot_plugin_alconna import UniMessage, UniMsg
 
 from zhenxun.configs.config import BotConfig, Config
 from zhenxun.configs.path_config import DATA_PATH, IMAGE_PATH
@@ -32,9 +33,7 @@ def load_anime_data() -> dict:
         return {}
 
 
-async def get_chat_result(
-    message: UniMsg, user_id: str, nickname: str
-) -> UniMessage | None:
+async def get_chat_result(text: str, user_id: str, nickname: str) -> UniMessage | None:
     """获取 AI 返回值，顺序： 特殊回复 -> 图灵 -> 青云客
 
     参数:
@@ -48,7 +47,6 @@ async def get_chat_result(
     """
 
     global index
-    text = message.extract_plain_text()
     ai_message_manager.add_message(user_id, text)
 
     special_rst = await ai_message_manager.get_result(user_id, nickname)
@@ -62,7 +60,7 @@ async def get_chat_result(
     if len(text) < 6 and random.random() < 0.6:
         anime_data = load_anime_data()
         for key in anime_data.keys():
-            if text.find(key) != -1:
+            if key in text:
                 return MessageUtils.build_message(
                     random.choice(anime_data[key]).replace("你", nickname)
                 )
@@ -144,9 +142,7 @@ async def tu_ling(text: str, img_url: str, user_id: str) -> str | None:
     for result in resp_payload.get("results", []):
         if result.get("resultType") == "text":
             text = result["values"]["text"]
-            if "请求次数超过" in text:
-                return ""
-            return text
+            return "" if "请求次数超过" in text else text
     return None
 
 
@@ -161,11 +157,13 @@ async def xie_ai(text: str) -> str:
         str: 青云可回复
     """
     res = await AsyncHttpx.get(
-        f"http://api.qingyunke.com/api.php?key=free&appid=0&msg={text}"
+        "http://api.qingyunke.com/api.php",
+        params={"key": "free", "appid": 0, "msg": text, "_": int(time.time())},
+        timeout=10,
     )
     content = ""
     try:
-        data = json.loads(res.text)
+        data = res.json()
         if data["result"] == 0:
             content = data["content"]
             if "菲菲" in content:
@@ -181,9 +179,8 @@ async def xie_ai(text: str) -> str:
             if "淘宝" in content or "taobao.com" in content:
                 return ""
             while True:
-                r = re.search("{face:(.*?)}", content)
-                if r:
-                    content = content.replace(r.group(0), "")
+                if r := re.search("{face:(.*?)}", content):
+                    content = content.replace(r[0], "")
                 else:
                     break
         return (
