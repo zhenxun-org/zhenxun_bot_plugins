@@ -3,6 +3,7 @@ from nonebot.plugin import PluginMetadata
 from nonebot_plugin_alconna import Arparma, Match, UniMsg
 from nonebot_plugin_alconna import At as alcAt
 from nonebot_plugin_session import EventSession
+
 from zhenxun.configs.utils import Command, PluginExtraData, RegisterConfig
 from zhenxun.services.log import logger
 from zhenxun.utils.depends import UserName
@@ -43,7 +44,7 @@ __plugin_meta__ = PluginMetadata(
     """.strip(),
     extra=PluginExtraData(
         author="HibiKier",
-        version="0.2-89d294e",
+        version="0.3",
         menu_type="群内小游戏",
         commands=[
             Command(command="装弹 [子弹数] ?[金额] ?[at]"),

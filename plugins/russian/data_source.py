@@ -1,13 +1,14 @@
 import contextlib
+from datetime import datetime, timedelta
 import random
 import time
-from datetime import datetime, timedelta
 
 from apscheduler.jobstores.base import JobLookupError
 from nonebot.adapters import Bot
 from nonebot_plugin_alconna import At, UniMessage
 from nonebot_plugin_apscheduler import scheduler
 from pydantic import BaseModel
+
 from zhenxun.configs.config import BotConfig, Config
 from zhenxun.models.group_member_info import GroupInfoUser
 from zhenxun.models.user_console import UserConsole
@@ -18,8 +19,6 @@ from zhenxun.utils.message import MessageUtils
 from zhenxun.utils.platform import PlatformUtils
 
 from .model import RussianUser
-
-base_config = Config.get("russian")
 
 
 class Russian(BaseModel):
@@ -145,7 +144,7 @@ class RussianManage:
             return MessageUtils.build_message(
                 f"现在是 {russian.player1[1]} 发起的对决\n请等待比赛结束后再开始下一轮."
             )
-        max_money = base_config.get("MAX_RUSSIAN_BET_GOLD")
+        max_money = Config.get_config("russian","MAX_RUSSIAN_BET_GOLD")
         if rus.money > max_money:
             return MessageUtils.build_message(f"太多了！单次金额不能超过{max_money}！")
         user = await UserConsole.get_user(rus.player1[0])

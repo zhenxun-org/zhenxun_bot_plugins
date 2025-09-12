@@ -27,7 +27,7 @@ class RussianUser(Model):
     max_losing_streak = fields.IntField(default=0)
     """最大连败"""
 
-    class Meta:
+    class Meta: # pyright: ignore[reportIncompatibleVariableOverride]
         table = "russian_users"
         table_description = "俄罗斯轮盘数据表"
         unique_together = ("user_id", "group_id")
@@ -42,30 +42,8 @@ class RussianUser(Model):
             itype: 输或赢 'win' or 'lose'
         """
         user, _ = await cls.get_or_create(user_id=user_id, group_id=group_id)
-        if itype == "win":
-            _max = (
-                user.max_winning_streak
-                if user.max_winning_streak > user.winning_streak + 1
-                else user.winning_streak + 1
-            )
-            user.win_count = user.win_count + 1
-            user.winning_streak = user.winning_streak + 1
-            user.losing_streak = 0
-            user.max_winning_streak = _max
-            await user.save(
-                update_fields=[
-                    "win_count",
-                    "winning_streak",
-                    "losing_streak",
-                    "max_winning_streak",
-                ]
-            )
-        elif itype == "lose":
-            _max = (
-                user.max_losing_streak
-                if user.max_losing_streak > user.losing_streak + 1
-                else user.losing_streak + 1
-            )
+        if itype == "lose":
+            _max = max(user.max_losing_streak, user.losing_streak + 1)
             user.fail_count = user.fail_count + 1
             user.losing_streak = user.losing_streak + 1
             user.winning_streak = 0
@@ -76,6 +54,20 @@ class RussianUser(Model):
                     "winning_streak",
                     "losing_streak",
                     "max_losing_streak",
+                ]
+            )
+        elif itype == "win":
+            _max = max(user.max_winning_streak, user.winning_streak + 1)
+            user.win_count = user.win_count + 1
+            user.winning_streak = user.winning_streak + 1
+            user.losing_streak = 0
+            user.max_winning_streak = _max
+            await user.save(
+                update_fields=[
+                    "win_count",
+                    "winning_streak",
+                    "losing_streak",
+                    "max_winning_streak",
                 ]
             )
         return user
@@ -90,7 +82,7 @@ class RussianUser(Model):
             itype: 输或赢 'win' or 'lose'
             count: 金钱数量
         """
-        user, _ = await cls.get_or_create(user_id=str(user_id), group_id=group_id)
+        user, _ = await cls.get_or_create(user_id=user_id, group_id=group_id)
         if itype == "win":
             user.make_money = user.make_money + count
         elif itype == "lose":
@@ -100,7 +92,7 @@ class RussianUser(Model):
     @classmethod
     async def _run_script(cls):
         return [
-            "ALTER TABLE russian_users RENAME COLUMN user_qq TO user_id;",  # 将user_qq改为user_id
-            "ALTER TABLE russian_users ALTER COLUMN user_id TYPE character varying(255);",
-            "ALTER TABLE russian_users ALTER COLUMN group_id TYPE character varying(255);",
+            "ALTER TABLE russian_users RENAME COLUMN user_qq TO user_id;",
+            "ALTER TABLE russian_users ALTER COLUMN user_id TYPE character varying(255);",  # noqa: E501
+            "ALTER TABLE russian_users ALTER COLUMN group_id TYPE character varying(255);",  # noqa: E501
         ]
