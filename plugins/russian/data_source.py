@@ -144,7 +144,7 @@ class RussianManage:
             return MessageUtils.build_message(
                 f"现在是 {russian.player1[1]} 发起的对决\n请等待比赛结束后再开始下一轮."
             )
-        max_money = Config.get_config("russian","MAX_RUSSIAN_BET_GOLD")
+        max_money = Config.get_config("russian", "MAX_RUSSIAN_BET_GOLD")
         if rus.money > max_money:
             return MessageUtils.build_message(f"太多了！单次金额不能超过{max_money}！")
         user = await UserConsole.get_user(rus.player1[0])

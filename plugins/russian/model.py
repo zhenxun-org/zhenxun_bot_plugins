@@ -27,7 +27,7 @@ class RussianUser(Model):
     max_losing_streak = fields.IntField(default=0)
     """最大连败"""
 
-    class Meta: # pyright: ignore[reportIncompatibleVariableOverride]
+    class Meta:  # pyright: ignore[reportIncompatibleVariableOverride]
         table = "russian_users"
         table_description = "俄罗斯轮盘数据表"
         unique_together = ("user_id", "group_id")
