@@ -61,7 +61,7 @@ class DownloadService:
 
         available_streams = sorted(
             [s for s in video_streams if s.get("id") in quality_preference],
-            key=lambda s: quality_preference.index(s.get("id")), # type: ignore
+            key=lambda s: quality_preference.index(s.get("id")),  # type: ignore
         )
         if initial_quality_id:
             available_streams = [

@@ -150,7 +150,7 @@ async def check_login_status(org_matcher: Matcher, user_id: str):
                 try:
                     from bilibili_api import get_session
 
-                    session = get_session() # type: ignore
+                    session = get_session()  # type: ignore
                     if hasattr(session, "cookie_jar"):
                         session = cast("aiohttp.ClientSession", session)
                         for cookie in session.cookie_jar:
@@ -166,7 +166,7 @@ async def check_login_status(org_matcher: Matcher, user_id: str):
 
                             refresh_buvid()
 
-                            session = get_session() # type: ignore
+                            session = get_session()  # type: ignore
                             if hasattr(session, "cookie_jar"):
                                 session = cast("aiohttp.ClientSession", session)
                                 for cookie in session.cookie_jar:

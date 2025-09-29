@@ -70,7 +70,7 @@ class DownloadManager:
             try:
                 logger.info(f"工作者获取到任务: {task.info_model.title}, 等待信号量...")
                 assert self.semaphore is not None
-                async with self.semaphore: # type: ignore
+                async with self.semaphore:  # type: ignore
                     logger.info(f"信号量已获取，开始处理任务: {task.info_model.title}")
 
                     if task.is_manual:

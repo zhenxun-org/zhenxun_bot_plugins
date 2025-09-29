@@ -26,7 +26,7 @@ from nonebot.adapters.onebot.v11 import MessageSegment as V11MessageSegment
 from zhenxun.utils.decorator.retry import Retry
 from ..config import (
     SEND_VIDEO_MAX_RETRIES,
-    SEND_VIDEO_RETRY_DELAY, # type: ignore
+    SEND_VIDEO_RETRY_DELAY,  # type: ignore
     SEND_VIDEO_TIMEOUT,
     IMAGE_CACHE_DIR,
     base_config,
@@ -141,7 +141,7 @@ class MessageBuilder:
             file_name = f"bili_live_cover_{info.room_id}.jpg"
             cover_path = IMAGE_CACHE_DIR / file_name
             if await ImageHelper.download_image(info.cover, cover_path):
-                segments.append(Image(path=cover_path)) # type: ignore
+                segments.append(Image(path=cover_path))  # type: ignore
 
         start_time_str = ""
         if info.live_status == 1 and info.live_start_time:
@@ -548,7 +548,9 @@ async def render_unimsg_to_image(message: UniMsg) -> Optional[bytes]:
 
             elif seg.raw:
                 try:
-                    raw_data = seg.raw.getvalue() if isinstance(seg.raw, BytesIO) else seg.raw
+                    raw_data = (
+                        seg.raw.getvalue() if isinstance(seg.raw, BytesIO) else seg.raw
+                    )
                     img_base64 = base64.b64encode(raw_data).decode()
                     img_src = f"data:image/png;base64,{img_base64}"
                 except Exception as e:
@@ -601,7 +603,7 @@ def _get_user_friendly_error_message(exception: Exception) -> str:
 
 @Retry.api(
     stop_max_attempt=SEND_VIDEO_MAX_RETRIES,
-    wait_fixed_seconds=SEND_VIDEO_RETRY_DELAY, # type: ignore
+    wait_fixed_seconds=SEND_VIDEO_RETRY_DELAY,  # type: ignore
     exception=(asyncio.TimeoutError,),
     log_name="发送视频文件",
 )

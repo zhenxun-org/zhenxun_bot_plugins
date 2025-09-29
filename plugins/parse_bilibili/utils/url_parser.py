@@ -28,7 +28,7 @@ class UrlParser(ABC):
     """URL解析器基类"""
 
     PRIORITY: ClassVar[int] = 100
-    RESOURCE_TYPE: ClassVar[ResourceType] = None # type: ignore
+    RESOURCE_TYPE: ClassVar[ResourceType] = None  # type: ignore
     PATTERN: ClassVar[Optional[Pattern]] = None
 
     @classmethod
@@ -47,7 +47,7 @@ class UrlParser(ABC):
 class RegexUrlParser(UrlParser):
     """基于正则表达式的URL解析器基类"""
 
-    PATTERN: ClassVar[Pattern] = None # type: ignore
+    PATTERN: ClassVar[Pattern] = None  # type: ignore
     GROUP_INDEX: ClassVar[int] = 1
 
     @classmethod
@@ -339,7 +339,10 @@ def extract_bilibili_url_from_message(
     if not target_url:
         plain_text = message.extract_plain_text().strip()
         if plain_text:
-            match = re.search(r"b23\.tv/([A-Za-z0-9]+)|bilibili\.com/video/(av\d+|BV[A-Za-z0-9]+)", plain_text)
+            match = re.search(
+                r"b23\.tv/([A-Za-z0-9]+)|bilibili\.com/video/(av\d+|BV[A-Za-z0-9]+)",
+                plain_text,
+            )
             if match:
                 target_url = match.group(0)
                 logger.debug(f"从文本内容提取到URL: {target_url}")
@@ -506,7 +509,7 @@ async def extract_bilibili_url_from_event(bot: Bot, event: Event) -> Optional[st
     target_url = None
 
     try:
-        reply: UniMessage = await reply_fetch(event, bot) # type: ignore
+        reply: UniMessage = await reply_fetch(event, bot)  # type: ignore
         if reply:
             logger.debug("找到回复消息")
             target_url = await extract_bilibili_url_from_reply(reply)

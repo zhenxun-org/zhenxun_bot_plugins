@@ -49,7 +49,7 @@ from .commands import (
 )
 from .commands.login import credential_status_matcher
 
-_ = ( # type: ignore
+_ = (  # type: ignore
     login_matcher,
     bili_download_matcher,
     auto_download_matcher,
@@ -86,13 +86,13 @@ async def _startup():
 
 @driver.on_shutdown
 async def _shutdown():
-    await bili_session.close() # type: ignore
+    await bili_session.close()  # type: ignore
 
 
 __plugin_meta__ = PluginMetadata(
     name="B站内容解析",
     description="B站内容解析（视频、直播、专栏/动态、番剧），支持被动解析、命令下载和自动下载。",
-        usage="""
+    usage="""
 ### 插件功能
 
 **1. 被动解析**
@@ -275,8 +275,12 @@ async def _rule(uninfo: Uninfo, message: UniMsg) -> bool:
     if plain_text_for_check:
         logger.debug(f"检查文本内容: '{plain_text_for_check[:100]}...'", "B站解析")
         parser_found = UrlParserRegistry.get_parser(plain_text_for_check)
-        if parser_found and parser_found.__name__ == "PureVideoIdParser" and hasattr(parser_found, "PATTERN"):
-            if parser_found.PATTERN.fullmatch(plain_text_for_check): # type: ignore
+        if (
+            parser_found
+            and parser_found.__name__ == "PureVideoIdParser"
+            and hasattr(parser_found, "PATTERN")
+        ):
+            if parser_found.PATTERN.fullmatch(plain_text_for_check):  # type: ignore
                 logger.debug("文本内容匹配到纯视频ID，符合规则", "B站解析")
                 return True
 
@@ -423,7 +427,7 @@ async def _(
     target_url = extract_bilibili_url_from_message(message, check_hyper=check_hyper)
 
     if not target_url:
-        logger.debug("被动解析：在消息中未找到有效的B站URL/ID，退出处理。") # type: ignore
+        logger.debug("被动解析：在消息中未找到有效的B站URL/ID，退出处理。")  # type: ignore
         return
 
     if not await CacheService.should_parse_url(target_url, session):
@@ -441,7 +445,7 @@ async def _(
         final_message = await _build_message_for_content(parsed_content, render_enabled)
 
         if final_message:
-            await final_message.send() # type: ignore
+            await final_message.send()  # type: ignore
             await CacheService.add_url_to_cache(target_url, session)
             logger.info(f"被动解析：成功解析并发送: {target_url}", session=session)
 
