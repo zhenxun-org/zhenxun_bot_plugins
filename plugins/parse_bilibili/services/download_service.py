@@ -61,7 +61,7 @@ class DownloadService:
 
         available_streams = sorted(
             [s for s in video_streams if s.get("id") in quality_preference],
-            key=lambda s: quality_preference.index(s.get("id")),
+            key=lambda s: quality_preference.index(s.get("id")), # type: ignore
         )
         if initial_quality_id:
             available_streams = [
@@ -260,6 +260,8 @@ class DownloadService:
         ep_id = season_info.target_ep_id
         duration_seconds = 0
         video_obj = None
+        if ep_id is None:
+            raise DownloadError("番剧分集ID (ep_id) 未找到")
         try:
             ep = bangumi.Episode(epid=ep_id, credential=get_credential())
             video_obj = await ep.turn_to_video()

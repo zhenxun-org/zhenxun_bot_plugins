@@ -5,8 +5,10 @@ from nonebot.matcher import Matcher
 from nonebot.permission import SUPERUSER
 from nonebot.adapters.onebot.v11 import MessageSegment
 import asyncio
+import aiohttp
 from bilibili_api import login_v2, exceptions as BiliExceptions
 from bilibili_api.utils.picture import Picture
+from typing import cast
 
 from zhenxun.services.log import logger
 from ..config import save_credential_to_file, get_credential
@@ -37,7 +39,7 @@ async def handle_login_start(bot: Bot, event: Event, matcher: Matcher):
         try:
             await login_instance.generate_qrcode()
             logger.debug("generate_qrcode 调用完成")
-        except BiliExceptions.ApiException as api_err:
+        except BiliExceptions.ResponseCodeException as api_err:
             logger.error(
                 f"调用 generate_qrcode 时发生 BiliApiException: {api_err.code} - {api_err.message}"
             )
@@ -148,8 +150,9 @@ async def check_login_status(org_matcher: Matcher, user_id: str):
                 try:
                     from bilibili_api import get_session
 
-                    session = get_session()
-                    if hasattr(session, "cookie_jar") and session.cookie_jar:
+                    session = get_session() # type: ignore
+                    if hasattr(session, "cookie_jar"):
+                        session = cast("aiohttp.ClientSession", session)
                         for cookie in session.cookie_jar:
                             if cookie.key == "buvid3":
                                 logger.info(f"成功获取到 buvid3: {cookie.value}")
@@ -163,8 +166,9 @@ async def check_login_status(org_matcher: Matcher, user_id: str):
 
                             refresh_buvid()
 
-                            session = get_session()
-                            if hasattr(session, "cookie_jar") and session.cookie_jar:
+                            session = get_session() # type: ignore
+                            if hasattr(session, "cookie_jar"):
+                                session = cast("aiohttp.ClientSession", session)
                                 for cookie in session.cookie_jar:
                                     if cookie.key == "buvid3":
                                         logger.info(

@@ -9,7 +9,7 @@ from nonebot.adapters import Bot, Event
 
 from nonebot_plugin_uninfo import Uninfo
 from nonebot_plugin_session import EventSession
-from nonebot_plugin_alconna import UniMsg, Text, Image
+from nonebot_plugin_alconna import UniMsg, UniMessage, Text, Image
 
 from zhenxun.services.log import logger
 from zhenxun.utils.enum import PluginType
@@ -49,7 +49,7 @@ from .commands import (
 )
 from .commands.login import credential_status_matcher
 
-_ = (
+_ = ( # type: ignore
     login_matcher,
     bili_download_matcher,
     auto_download_matcher,
@@ -86,57 +86,68 @@ async def _startup():
 
 @driver.on_shutdown
 async def _shutdown():
-    await bili_session.close_session()
+    await bili_session.close() # type: ignore
 
 
 __plugin_meta__ = PluginMetadata(
     name="B站内容解析",
     description="B站内容解析（视频、直播、专栏/动态、番剧），支持被动解析、命令下载和自动下载。",
-    usage="""
-    插件功能：
-    1. 被动解析：自动监听消息中的 B 站链接，并发送解析结果（可配置渲染成图片）。
-       - 支持视频(av/BV)、直播、专栏(cv)、动态(t.bili/opus)、番剧/影视(ss/ep)、用户空间(space)。
-       - 支持短链(b23.tv)、小程序/卡片（需开启）。
-       - 默认配置下，5分钟内同一链接在同一会话不重复解析。
-       - 开启方式：
-         方式一：使用命令「开启群被动b站解析」或「关闭群被动b站解析」
-         方式二：在bot的Webui页面的「群组」中修改群被动状态「b站解析」
+        usage="""
+### 插件功能
 
-    2. 手动视频下载命令：
-       bili/b站下载 [链接/ID]  # 专门用于下载 B 站视频
+**1. 被动解析**
 
-       - 支持视频链接、av/BV号、引用包含链接的消息或卡片。
-       - 命令执行过程中会发送提示信息，并在下载完成后发送视频文件。
-       - 支持视频缓存功能，已下载过的视频会被缓存，再次下载时直接从缓存发送。
-       - 可通过配置项 VIDEO_DOWNLOAD_QUALITY 设置下载视频的质量(16=360P, 32=480P, 64=720P, 80=1080P)。
+> 自动监听消息中的 B 站链接，并发送解析结果。
 
-    3. 获取封面命令：
-       bili/b站封面  # 获取B站视频/番剧的原始封面图片
+- **支持类型**: 视频(av/BV)、直播、专栏(cv)、动态(t.bili/opus)、番剧/影视(ss/ep)、用户空间(space)。
+- **智能识别**: 支持短链(b23.tv)及小程序/JSON卡片（需在配置中开启）。
+- **防刷屏**: 默认5分钟内同一链接在同一会话中不重复解析（可通过 `CACHE_TTL` 配置修改）。
+- **开关控制**:
+    - 命令: `开启群被动b站解析` / `关闭群被动b站解析`
+    - WebUI: 在bot后台的「群组」->「群功能」中修改「b站解析」状态。
 
-       - 只能通过引用包含B站链接的消息来触发，不支持直接传入链接参数。
-       - 支持视频(av/BV)和番剧(ss/ep)的封面获取。
-       - 返回原始大小的封面图片，不受尺寸限制。
+**2. 手动视频下载**
 
-    4. 自动下载控制命令 (需要管理员权限):
-       bili/b站自动下载 on    # 为当前群聊开启视频自动下载
-       bili/b站自动下载 off   # 为当前群聊关闭视频自动下载
-       - 开启后，当被动解析到视频链接时，会自动执行下载并发送视频文件。
+- **命令**: `bili下载 [链接/ID]` (别名: `b站下载`)
 
-    5. B站账号登录命令 (仅超级用户):
-       bili登录  # 生成二维码进行B站账号登录
+> 用于下载 B 站视频。支持视频链接、av/BV号、或引用包含视频链接的消息/卡片。
 
-       - 登录后可以获取更多需要登录才能查看的内容和更高清晰度的视频。
-       - 支持凭证自动刷新，保持登录状态长期有效。
+- **功能**:
+    - 下载过程中会发送进度提示。
+    - 支持视频缓存，重复下载会直接发送缓存文件。
+    - 可通过 `VIDEO_DOWNLOAD_QUALITY` 配置项设置下载画质。
 
-    6. B站账号状态查询命令 (仅超级用户):
-       bili状态  # 查询当前B站账号登录状态
+**3. 获取封面**
 
-       - 可以查看当前凭证的有效性和是否需要刷新等信息。
-       - 显示sessdata等重要凭证的状态。
+- **命令**: `bili封面` (别名: `b站封面`)
+
+> 获取 B 站视频或番剧的原始封面图片。
+
+- **使用方式**: 必须通过**引用**包含 B 站视频(av/BV)或番剧(ss/ep)链接的消息来触发。
+
+**4. 自动下载控制 (需要**管理员**权限)**
+
+- **命令**: 
+    - `bili自动下载 on`: 为当前群聊开启视频自动下载。
+    - `bili自动下载 off`: 为当前群聊关闭视频自动下载。
+
+> 开启后，被动解析到视频链接时，会自动下载并发送视频文件。
+
+**5. B站账号登录 (仅限**超级用户**)**
+
+- **命令**: `bili登录`
+
+> 生成二维码进行 B 站账号登录，以解析需要登录才能查看的内容和获取更高清晰度的视频。支持凭证自动刷新。
+
+**6. B站账号状态查询 (仅限**超级用户**)**
+
+- **命令**: `bili状态`
+
+> 查询当前 B 站账号的登录凭证状态，如是否有效、是否需要刷新等。
     """.strip(),
     extra=PluginExtraData(
         author="leekooyo (Refactored by Assistant)",
-        version="1.5.0",
+        version="1.5.1",
         plugin_type=PluginType.DEPENDANT,
         menu_type="其他",
         configs=[
@@ -264,8 +275,8 @@ async def _rule(uninfo: Uninfo, message: UniMsg) -> bool:
     if plain_text_for_check:
         logger.debug(f"检查文本内容: '{plain_text_for_check[:100]}...'", "B站解析")
         parser_found = UrlParserRegistry.get_parser(plain_text_for_check)
-        if parser_found and parser_found.__name__ == "PureVideoIdParser":
-            if parser_found.PATTERN.fullmatch(plain_text_for_check):
+        if parser_found and parser_found.__name__ == "PureVideoIdParser" and hasattr(parser_found, "PATTERN"):
+            if parser_found.PATTERN.fullmatch(plain_text_for_check): # type: ignore
                 logger.debug("文本内容匹配到纯视频ID，符合规则", "B站解析")
                 return True
 
@@ -284,7 +295,7 @@ async def _build_video_message(
         try:
             image_bytes = await render_video_info_to_image(video_info)
             if image_bytes:
-                return UniMsg(
+                return UniMessage(
                     [Image(raw=image_bytes), Text(f"链接: {video_info.parsed_url}")]
                 )
             else:
@@ -324,14 +335,14 @@ async def _build_article_message(
     )
 
     if article_message and article_info.url:
-        image_segment = None
+        image_segment: Image | None = None
         for seg in article_message:
             if isinstance(seg, Image):
                 image_segment = seg
                 break
 
         if image_segment:
-            return UniMsg([image_segment, Text(f"\n链接: {article_info.url}")])
+            return UniMessage([image_segment, Text(f"\n链接: {article_info.url}")])
         else:
             return article_message
     else:
@@ -346,7 +357,7 @@ async def _build_season_message(
         try:
             image_bytes = await render_season_info_to_image(season_info)
             if image_bytes:
-                return UniMsg(
+                return UniMessage(
                     [Image(raw=image_bytes), Text(f"\n链接: {season_info.parsed_url}")]
                 )
             else:
@@ -412,7 +423,7 @@ async def _(
     target_url = extract_bilibili_url_from_message(message, check_hyper=check_hyper)
 
     if not target_url:
-        logger.debug("被动解析：在消息中未找到有效的B站URL/ID，退出处理。")
+        logger.debug("被动解析：在消息中未找到有效的B站URL/ID，退出处理。") # type: ignore
         return
 
     if not await CacheService.should_parse_url(target_url, session):
@@ -430,7 +441,7 @@ async def _(
         final_message = await _build_message_for_content(parsed_content, render_enabled)
 
         if final_message:
-            await final_message.send()
+            await final_message.send() # type: ignore
             await CacheService.add_url_to_cache(target_url, session)
             logger.info(f"被动解析：成功解析并发送: {target_url}", session=session)
 

@@ -3,13 +3,14 @@ from pathlib import Path
 import re
 import time
 from typing import Optional, Dict, Any
+from io import BytesIO
 from .common import format_number, format_duration
 
 import aiofiles
 
 from bs4 import BeautifulSoup
 import jinja2
-from nonebot_plugin_alconna import Image, Text, UniMsg
+from nonebot_plugin_alconna import Image, Text, UniMsg, UniMessage
 from nonebot_plugin_htmlrender import html_to_pic
 
 from zhenxun.utils.http_utils import AsyncHttpx
@@ -25,7 +26,7 @@ from nonebot.adapters.onebot.v11 import MessageSegment as V11MessageSegment
 from zhenxun.utils.decorator.retry import Retry
 from ..config import (
     SEND_VIDEO_MAX_RETRIES,
-    SEND_VIDEO_RETRY_DELAY,
+    SEND_VIDEO_RETRY_DELAY, # type: ignore
     SEND_VIDEO_TIMEOUT,
     IMAGE_CACHE_DIR,
     base_config,
@@ -122,7 +123,7 @@ class MessageBuilder:
         )
         segments.append(Text(text_content))
 
-        return UniMsg(segments)
+        return UniMessage(segments)
 
     @staticmethod
     def _clean_html_description(html_description: str) -> str:
@@ -140,7 +141,7 @@ class MessageBuilder:
             file_name = f"bili_live_cover_{info.room_id}.jpg"
             cover_path = IMAGE_CACHE_DIR / file_name
             if await ImageHelper.download_image(info.cover, cover_path):
-                segments.append(Image(path=cover_path))
+                segments.append(Image(path=cover_path)) # type: ignore
 
         start_time_str = ""
         if info.live_status == 1 and info.live_start_time:
@@ -174,7 +175,7 @@ class MessageBuilder:
             if await ImageHelper.download_image(info.keyframe_url, keyframe_path):
                 segments.append(Image(path=keyframe_path))
 
-        return UniMsg(segments)
+        return UniMessage(segments)
 
     @staticmethod
     async def build_article_message(
@@ -188,12 +189,12 @@ class MessageBuilder:
         if render_enabled:
             if info.screenshot_bytes:
                 logger.debug("渲染模式：使用内存截图")
-                return UniMsg(Image(raw=info.screenshot_bytes))
+                return UniMessage(Image(raw=info.screenshot_bytes))
             elif info.screenshot_path:
                 path = Path(info.screenshot_path)
                 if path.exists():
                     logger.debug(f"渲染模式：使用本地截图: {path}")
-                    return UniMsg(Image(path=path))
+                    return UniMessage(Image(path=path))
                 else:
                     logger.error(f"渲染模式：截图路径不存在: {info.screenshot_path}")
             logger.warning("渲染模式：无可用截图，将回退发送文本信息")
@@ -226,7 +227,7 @@ class MessageBuilder:
             has_content = True
 
         if has_content:
-            return UniMsg(segments)
+            return UniMessage(segments)
         else:
             logger.warning(f"文章/动态信息不足，无法构建消息: {info.type} {info.id}")
             return None
@@ -289,7 +290,7 @@ class MessageBuilder:
         )
         segments.append(Text(text_content))
 
-        return UniMsg(segments)
+        return UniMessage(segments)
 
     @staticmethod
     async def build_user_message(info: UserInfo) -> UniMsg:
@@ -324,7 +325,7 @@ class MessageBuilder:
         )
         segments.append(Text(text_content))
 
-        return UniMsg(segments)
+        return UniMessage(segments)
 
 
 async def render_html_to_image(
@@ -547,7 +548,8 @@ async def render_unimsg_to_image(message: UniMsg) -> Optional[bytes]:
 
             elif seg.raw:
                 try:
-                    img_base64 = base64.b64encode(seg.raw).decode()
+                    raw_data = seg.raw.getvalue() if isinstance(seg.raw, BytesIO) else seg.raw
+                    img_base64 = base64.b64encode(raw_data).decode()
                     img_src = f"data:image/png;base64,{img_base64}"
                 except Exception as e:
                     logger.error("转换原始图片数据到URI时出错", e=e)
@@ -599,7 +601,7 @@ def _get_user_friendly_error_message(exception: Exception) -> str:
 
 @Retry.api(
     stop_max_attempt=SEND_VIDEO_MAX_RETRIES,
-    wait_fixed_seconds=SEND_VIDEO_RETRY_DELAY,
+    wait_fixed_seconds=SEND_VIDEO_RETRY_DELAY, # type: ignore
     exception=(asyncio.TimeoutError,),
     log_name="发送视频文件",
 )
