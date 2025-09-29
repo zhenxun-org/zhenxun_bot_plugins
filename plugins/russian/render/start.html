@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>俄罗斯轮盘 - 游戏开始</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #1a1a1a;
+            color: #fff;
+            padding: 20px;
+        }
+
+        .game-container {
+            background: #2a2a2a;
+            border: 1px solid #444;
+            padding: 20px;
+            max-width: 600px;
+            margin: 0 auto;
+            text-align: center;
+        }
+
+        .game-title {
+            font-size: 24px;
+            margin-bottom: 20px;
+            color: #ff6b6b;
+        }
+
+        .weapon-info {
+            background: #333;
+            border: 1px solid #ff6b6b;
+            padding: 15px;
+            margin: 20px 0;
+        }
+
+        .weapon-name {
+            font-size: 18px;
+            color: #ff6b6b;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .weapon-description {
+            font-size: 14px;
+            color: #ccc;
+            margin-bottom: 15px;
+            padding: 10px;
+            background: #444;
+        }
+
+        .weapon-effect {
+            background: #444;
+            padding: 10px;
+            border: 1px solid #ffd700;
+        }
+
+        .effect-title {
+            font-size: 14px;
+            color: #ffd700;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .effect-description {
+            font-size: 12px;
+            color: #fff;
+        }
+
+        .players-section {
+            display: flex;
+            justify-content: space-around;
+            margin: 20px 0;
+        }
+
+        .player-card {
+            background: #333;
+            border: 1px solid #444;
+            padding: 15px;
+            margin: 10px;
+            min-width: 150px;
+        }
+
+        .player-avatar {
+            margin-bottom: 10px;
+        }
+
+        .player-avatar img {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            border: 2px solid #444;
+        }
+
+        .player-name {
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #ffd93d;
+        }
+
+        .player-id {
+            font-size: 12px;
+            color: #999;
+            margin-bottom: 10px;
+        }
+
+        .player-stats {
+            font-size: 12px;
+            color: #ccc;
+        }
+
+        .stat-row {
+            margin: 3px 0;
+        }
+
+        .game-stats {
+            background: #333;
+            padding: 15px;
+            margin: 20px 0;
+        }
+
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            margin: 5px 0;
+            padding: 5px;
+            background: #444;
+        }
+
+        .stat-label {
+            font-weight: bold;
+            color: #ffd93d;
+        }
+
+        .stat-value {
+            color: #fff;
+        }
+
+        .money {
+            color: #00ff7f;
+            font-weight: bold;
+        }
+
+        .ai-indicator {
+            background: #333;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #00ffff;
+        }
+
+        .ai-text {
+            color: #00ffff;
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="game-container">
+        <h1 class="game-title">🎯 俄罗斯轮盘</h1>
+
+        <div class="weapon-info">
+            <div class="weapon-name">
+                {{ weapon_name }}
+            </div>
+            <div class="weapon-description">
+                {{ weapon_description }}
+            </div>
+            {% if weapon_effect %}
+            <div class="weapon-effect">
+                <div class="effect-title">✨ 特殊效果:</div>
+                <div class="effect-description">
+                    {{ weapon_effect }}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="players-section">
+            <div class="player-card">
+                <div class="player-avatar">
+                    <img src="{{ player1_avatar }}" alt="{{ russian.player1[1] }}" />
+                </div>
+                <div class="player-name">{{ russian.player1[1] }}</div>
+                <div class="player-id">ID: {{ russian.player1[0] }}</div>
+                <div class="player-stats">
+                    <div class="stat-row">胜率: {{ player1_win_rate }}%</div>
+                    <div class="stat-row">胜场: {{ player1_wins }}</div>
+                </div>
+            </div>
+
+            {% if russian.player2 %}
+            <div class="player-card">
+                <div class="player-avatar">
+                    <img src="{{ player2_avatar }}" alt="{{ russian.player2[1] }}" />
+                </div>
+                <div class="player-name">{{ russian.player2[1] }}</div>
+                <div class="player-id">ID: {{ russian.player2[0] }}</div>
+                <div class="player-stats">
+                    <div class="stat-row">胜率: {{ player2_win_rate }}%</div>
+                    <div class="stat-row">胜场: {{ player2_wins }}</div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        {% if russian.is_ai %}
+        <div class="ai-indicator">
+            <div class="ai-text">🤖 人机对战模式</div>
+        </div>
+        {% endif %}
+
+        <div class="game-stats">
+            <div class="stat-item">
+                <span class="stat-label">💰 赌注金额:</span>
+                <span class="stat-value money">{{ russian.money }} 金币</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">🔫 子弹数量:</span>
+                <span class="stat-value">{{ russian.bullet_num }} 发</span>
+            </div>
+        </div>
+    </div>
+
+    <footer class="footer-container">
+        <p class="creator-credit"></p>
+        <p class="timestamp"></p>
+    </footer>
+</body>
+
+
+<style>
+    .footer-container {
+        text-align: center;
+        padding: 16px;
+        background-color: transparent;
+        font-family: "AlibabaHealthFont2", sans-serif;
+    }
+
+    .footer-container p {
+        margin: 2px 0;
+    }
+
+    .creator-credit {
+        font-weight: bold;
+        font-size: 13px;
+        color: var(--color-primary);
+    }
+
+    .timestamp {
+        font-size: 11px;
+        color: var(--color-primary);
+        opacity: 0.75;
+    }
+</style>
+
+
+<script>
+    (function () {
+        const creatorText = "Powered by Zhenxun Bot";
+        const creditElement = document.querySelector('.creator-credit');
+        if (creditElement) {
+            creditElement.innerText = creatorText;
+        }
+
+        const timestampElement = document.querySelector('.timestamp');
+        if (timestampElement) {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+            const formattedDateTime = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+            timestampElement.innerText = formattedDateTime;
+        }
+    })();
+</script>
+
+</html>

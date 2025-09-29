@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>俄罗斯轮盘 - 我的战绩</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #1a1a1a;
+            color: #fff;
+            padding: 20px;
+        }
+
+        .record-container {
+            background: #2a2a2a;
+            border: 1px solid #444;
+            padding: 20px;
+            max-width: 600px;
+            margin: 0 auto;
+            text-align: center;
+        }
+
+        .record-title {
+            font-size: 24px;
+            margin-bottom: 20px;
+            color: #ff6b6b;
+        }
+
+        .player-info {
+            background: #333;
+            border: 1px solid #ffd700;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 10px;
+        }
+
+        .player-avatar {
+            margin-bottom: 15px;
+        }
+
+        .player-avatar img {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            border: 3px solid #ffd700;
+        }
+
+        .player-name {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #ffd93d;
+        }
+
+        .player-id {
+            font-size: 14px;
+            color: #999;
+            margin-bottom: 15px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .stat-card {
+            background: #444;
+            border: 1px solid #666;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-card.win {
+            border-color: #4CAF50;
+            background: #2a3a2a;
+        }
+
+        .stat-card.lose {
+            border-color: #f44336;
+            background: #3a2a2a;
+        }
+
+        .stat-card.money {
+            border-color: #ffd700;
+            background: #3a3a2a;
+        }
+
+        .stat-card.streak {
+            border-color: #9c27b0;
+            background: #3a2a3a;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #ccc;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #fff;
+            margin-bottom: 5px;
+        }
+
+        .stat-description {
+            font-size: 11px;
+            color: #999;
+        }
+
+        .win-rate-section {
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            border: 2px solid #4CAF50;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 10px;
+        }
+
+        .win-rate-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #fff;
+        }
+
+        .win-rate-value {
+            font-size: 36px;
+            font-weight: bold;
+            color: #fff;
+            margin-bottom: 5px;
+        }
+
+        .win-rate-description {
+            font-size: 14px;
+            color: #fff;
+            opacity: 0.9;
+        }
+
+        .weapon-section {
+            background: #333;
+            border: 1px solid #ff6b6b;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 10px;
+        }
+
+        .weapon-title {
+            font-size: 18px;
+            color: #ff6b6b;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+
+        .weapon-info {
+            display: flex;
+            justify-content: space-around;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .weapon-item {
+            background: #444;
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #666;
+            min-width: 120px;
+        }
+
+        .weapon-name {
+            font-size: 14px;
+            color: #ffd93d;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .weapon-description {
+            font-size: 11px;
+            color: #ccc;
+        }
+
+        .achievement-section {
+            background: #333;
+            border: 1px solid #ffd700;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 10px;
+        }
+
+        .achievement-title {
+            font-size: 18px;
+            color: #ffd700;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+
+        .achievement-list {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .achievement-item {
+            background: #444;
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #666;
+            text-align: center;
+        }
+
+        .achievement-icon {
+            font-size: 20px;
+            margin-bottom: 5px;
+        }
+
+        .achievement-text {
+            font-size: 12px;
+            color: #ccc;
+        }
+
+        .achievement-value {
+            font-size: 14px;
+            color: #ffd93d;
+            font-weight: bold;
+        }
+
+        .money-summary {
+            background: #333;
+            border: 1px solid #00ff7f;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 10px;
+        }
+
+        .money-title {
+            font-size: 18px;
+            color: #00ff7f;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+
+        .money-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .money-item {
+            text-align: center;
+        }
+
+        .money-label {
+            font-size: 12px;
+            color: #ccc;
+            margin-bottom: 5px;
+        }
+
+        .money-value {
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        .money-earned {
+            color: #00ff7f;
+        }
+
+        .money-lost {
+            color: #ff6b6b;
+        }
+
+        .net-profit {
+            color: #ffd700;
+            font-size: 24px;
+        }
+
+        .footer {
+            margin-top: 30px;
+            padding: 15px;
+            background: #333;
+            border-radius: 8px;
+            border: 1px solid #666;
+        }
+
+        .footer-text {
+            font-size: 12px;
+            color: #999;
+        }
+
+        .rank-badge {
+            display: inline-block;
+            background: #ff6b6b;
+            color: #fff;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+
+        .rank-badge.gold {
+            background: #ffd700;
+            color: #000;
+        }
+
+        .rank-badge.silver {
+            background: #c0c0c0;
+            color: #000;
+        }
+
+        .rank-badge.bronze {
+            background: #cd7f32;
+            color: #fff;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="record-container">
+        <h1 class="record-title">🎯 我的战绩</h1>
+
+        <div class="player-info">
+            <div class="player-avatar">
+                <img src="{{ user_avatar }}" alt="{{ user_name }}" />
+            </div>
+            <div class="player-name">{{ user_name }}</div>
+            <div class="player-id">ID: {{ user_id }}</div>
+        </div>
+
+        <div class="win-rate-section">
+            <div class="win-rate-title">🏆 胜率统计</div>
+            <div class="win-rate-value">{{ "%.1f"|format(win_rate) }}%</div>
+            <div class="win-rate-description">
+                总场次: {{ total_games }} | 胜场: {{ user.win_count }} | 败场: {{ user.fail_count }}
+            </div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card win">
+                <div class="stat-label">胜利场次</div>
+                <div class="stat-value">{{ user.win_count }}</div>
+                <div class="stat-description">总胜利次数</div>
+            </div>
+
+            <div class="stat-card lose">
+                <div class="stat-label">失败场次</div>
+                <div class="stat-value">{{ user.fail_count }}</div>
+                <div class="stat-description">总失败次数</div>
+            </div>
+
+            <div class="stat-card streak">
+                <div class="stat-label">当前连胜</div>
+                <div class="stat-value">{{ user.winning_streak }}</div>
+                <div class="stat-description">连续胜利次数</div>
+            </div>
+
+            <div class="stat-card streak">
+                <div class="stat-label">当前连败</div>
+                <div class="stat-value">{{ user.losing_streak }}</div>
+                <div class="stat-description">连续失败次数</div>
+            </div>
+        </div>
+
+        <div class="achievement-section">
+            <div class="achievement-title">🏅 成就记录</div>
+            <div class="achievement-list">
+                <div class="achievement-item">
+                    <div class="achievement-icon">🔥</div>
+                    <div class="achievement-text">最高连胜</div>
+                    <div class="achievement-value">{{ user.max_winning_streak }}</div>
+                </div>
+
+                <div class="achievement-item">
+                    <div class="achievement-icon">💀</div>
+                    <div class="achievement-text">最高连败</div>
+                    <div class="achievement-value">{{ user.max_losing_streak }}</div>
+                </div>
+
+                <div class="achievement-item">
+                    <div class="achievement-icon">💰</div>
+                    <div class="achievement-text">总赚取</div>
+                    <div class="achievement-value">{{ user.make_money }}</div>
+                </div>
+
+                <div class="achievement-item">
+                    <div class="achievement-icon">💸</div>
+                    <div class="achievement-text">总输掉</div>
+                    <div class="achievement-value">{{ user.lose_money }}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="money-summary">
+            <div class="money-title">💎 金币统计</div>
+            <div class="money-grid">
+                <div class="money-item">
+                    <div class="money-label">赚取金币</div>
+                    <div class="money-value money-earned">+{{ user.make_money }}</div>
+                </div>
+                <div class="money-item">
+                    <div class="money-label">输掉金币</div>
+                    <div class="money-value money-lost">-{{ user.lose_money }}</div>
+                </div>
+            </div>
+            <div style="margin-top: 15px; text-align: center;">
+                <div class="money-label">净收益</div>
+                <div class="money-value net-profit">
+                    {% if net_profit >= 0 %}+{% endif %}{{ net_profit }}
+                </div>
+            </div>
+        </div>
+
+
+        <div class="footer">
+            <div class="footer-text">
+                🎯 俄罗斯轮盘战绩面板 | 数据统计截止至当前时间
+            </div>
+        </div>
+
+        <footer class="footer-container">
+            <p class="creator-credit"></p>
+            <p class="timestamp"></p>
+        </footer>
+    </div>
+</body>
+
+<style>
+    .footer-container {
+        text-align: center;
+        padding: 16px;
+        background-color: transparent;
+        font-family: "AlibabaHealthFont2", sans-serif;
+    }
+
+    .footer-container p {
+        margin: 2px 0;
+    }
+
+    .creator-credit {
+        font-weight: bold;
+        font-size: 13px;
+        color: var(--color-primary);
+    }
+
+    .timestamp {
+        font-size: 11px;
+        color: var(--color-primary);
+        opacity: 0.75;
+    }
+</style>
+
+
+<script>
+    (function () {
+        const creatorText = "Powered by Zhenxun Bot";
+        const creditElement = document.querySelector('.creator-credit');
+        if (creditElement) {
+            creditElement.innerText = creatorText;
+        }
+
+        const timestampElement = document.querySelector('.timestamp');
+        if (timestampElement) {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+            const formattedDateTime = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+            timestampElement.innerText = formattedDateTime;
+        }
+    })();
+</script>
+
+</html>

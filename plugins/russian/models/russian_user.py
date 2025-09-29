@@ -27,22 +27,63 @@ class RussianUser(Model):
     max_losing_streak = fields.IntField(default=0)
     """最大连败"""
 
-    class Meta:
+    class Meta:  # pyright: ignore [reportIncompatibleVariableOverride]
         table = "russian_users"
         table_description = "俄罗斯轮盘数据表"
         unique_together = ("user_id", "group_id")
 
     @classmethod
-    async def add_count(cls, user_id: str, group_id: str, itype: str):
+    async def get_user_win_rate(cls, user_id: str, group_id: str) -> float:
+        """获取用户胜率"""
+        user = await cls.get_user(user_id, group_id)
+        return user.win_count / (user.win_count + user.fail_count)
+
+    @classmethod
+    async def get_user_win_count(cls, user_id: str, group_id: str) -> int:
+        """获取用户胜利次数"""
+        user = await cls.get_user(user_id, group_id)
+        return user.win_count
+
+    @classmethod
+    async def get_user_fail_count(cls, user_id: str, group_id: str) -> int:
+        """获取用户失败次数"""
+        user = await cls.get_user(user_id, group_id)
+        return user.fail_count
+
+    @classmethod
+    async def get_user_winning_streak(cls, user_id: str, group_id: str) -> int:
+        """获取用户当前连胜"""
+        user = await cls.get_user(user_id, group_id)
+        return user.winning_streak
+
+    @classmethod
+    async def get_user_losing_streak(cls, user_id: str, group_id: str) -> int:
+        """获取用户当前连败"""
+        user = await cls.get_user(user_id, group_id)
+        return user.losing_streak
+
+    @classmethod
+    async def get_user(cls, user_id: str, group_id: str) -> "RussianUser":
+        """获取用户俄罗斯轮盘数据
+
+        参数:
+            user_id: 用户id
+            group_id: 群号
+        """
+        user, _ = await cls.get_or_create(user_id=user_id, group_id=group_id)
+        return user
+
+    @classmethod
+    async def add_count(cls, user_id: str, group_id: str, type_: str) -> "RussianUser":
         """添加用户输赢次数
 
         说明:
             user_id: 用户id
             group_id: 群号
-            itype: 输或赢 'win' or 'lose'
+            type_: 输或赢 'win' or 'lose'
         """
         user, _ = await cls.get_or_create(user_id=user_id, group_id=group_id)
-        if itype == "win":
+        if type_ == "win":
             _max = (
                 user.max_winning_streak
                 if user.max_winning_streak > user.winning_streak + 1
@@ -60,7 +101,7 @@ class RussianUser(Model):
                     "max_winning_streak",
                 ]
             )
-        elif itype == "lose":
+        elif type_ == "lose":
             _max = (
                 user.max_losing_streak
                 if user.max_losing_streak > user.losing_streak + 1
@@ -81,19 +122,19 @@ class RussianUser(Model):
         return user
 
     @classmethod
-    async def money(cls, user_id: str, group_id: str, itype: str, count: int):
+    async def money(cls, user_id: str, group_id: str, type_: str, count: int):
         """添加用户输赢金钱
 
         参数:
             user_id: 用户id
             group_id: 群号
-            itype: 输或赢 'win' or 'lose'
+            type_: 输或赢 'win' or 'lose'
             count: 金钱数量
         """
         user, _ = await cls.get_or_create(user_id=str(user_id), group_id=group_id)
-        if itype == "win":
+        if type_ == "win":
             user.make_money = user.make_money + count
-        elif itype == "lose":
+        elif type_ == "lose":
             user.lose_money = user.lose_money + count
         await user.save(update_fields=["make_money", "lose_money"])
 

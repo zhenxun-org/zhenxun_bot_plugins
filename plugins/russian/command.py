@@ -6,7 +6,9 @@ from zhenxun.utils.rules import ensure_group
 _russian_matcher = on_alconna(
     Alconna(
         "俄罗斯轮盘",
-        Args["num?", str]["money?", int]["at_user?", alcAt],
+        Args["num?", str]["money?", int]["weapon?", str]["armor?", str][
+            "at_user?", alcAt
+        ],
     ),
     aliases={"装弹", "俄罗斯转盘"},
     rule=ensure_group,
@@ -15,7 +17,10 @@ _russian_matcher = on_alconna(
 )
 
 _accept_matcher = on_alconna(
-    Alconna("接受对决"),
+    Alconna(
+        "接受对决",
+        Args["weapon?", str]["armor?", str],
+    ),
     aliases={"接受决斗", "接受挑战"},
     rule=ensure_group,
     priority=5,

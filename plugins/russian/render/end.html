@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>俄罗斯轮盘 - 游戏结算</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #1a1a1a;
+            color: #fff;
+            padding: 20px;
+        }
+
+        .game-container {
+            background: #2a2a2a;
+            border: 1px solid #444;
+            padding: 20px;
+            max-width: 600px;
+            margin: 0 auto;
+            text-align: center;
+        }
+
+        .game-title {
+            font-size: 24px;
+            margin-bottom: 20px;
+            color: #ff6b6b;
+        }
+
+        .result-section {
+            background: #333;
+            border: 2px solid #ff6b6b;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 10px;
+        }
+
+        .winner-section {
+            background: #2a3a2a;
+            border: 1px solid #4CAF50;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 10px;
+        }
+
+        .loser-section {
+            background: #3a2a2a;
+            border: 1px solid #f44336;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 10px;
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #ffd93d;
+        }
+
+        .winner-title {
+            color: #fff;
+            font-size: 20px;
+        }
+
+        .loser-title {
+            color: #fff;
+            font-size: 20px;
+        }
+
+        .player-info {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 15px 0;
+        }
+
+        .player-avatar {
+            margin-right: 15px;
+        }
+
+        .player-avatar img {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            border: 3px solid #fff;
+        }
+
+        .player-details {
+            text-align: left;
+        }
+
+        .player-name {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #fff;
+        }
+
+        .player-id {
+            font-size: 12px;
+            color: #ccc;
+            margin-bottom: 10px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin: 15px 0;
+        }
+
+        .stat-item {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 10px;
+            border-radius: 5px;
+            text-align: center;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #ccc;
+            margin-bottom: 5px;
+        }
+
+        .stat-value {
+            font-size: 16px;
+            font-weight: bold;
+            color: #fff;
+        }
+
+        .money {
+            color: #00ff7f;
+            font-weight: bold;
+        }
+
+        .lose-money {
+            color: #ff6b6b;
+            font-weight: bold;
+        }
+
+        .weapon-info {
+            background: #333;
+            border: 1px solid #ff6b6b;
+            padding: 15px;
+            margin: 20px 0;
+        }
+
+        .weapon-name {
+            font-size: 18px;
+            color: #ff6b6b;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .bullet-arrangement {
+            background: #444;
+            padding: 15px;
+            margin: 20px 0;
+            border: 1px solid #ffd700;
+        }
+
+        .bullet-title {
+            font-size: 16px;
+            color: #ffd700;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .bullet-display {
+            display: flex;
+            justify-content: center;
+            gap: 5px;
+            flex-wrap: wrap;
+        }
+
+        .bullet {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+            color: #fff;
+        }
+
+        .bullet-empty {
+            background: #666;
+            border: 2px solid #999;
+        }
+
+        .bullet-loaded {
+            background: #ff6b6b;
+            border: 2px solid #ff4444;
+        }
+
+        .fee-info {
+            background: #333;
+            padding: 15px;
+            margin: 20px 0;
+            border: 1px solid #ffd700;
+        }
+
+        .fee-text {
+            color: #ffd700;
+            font-size: 14px;
+        }
+
+        .ai-indicator {
+            background: #333;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #00ffff;
+        }
+
+        .ai-text {
+            color: #00ffff;
+            font-weight: bold;
+        }
+
+        .celebration {
+            font-size: 48px;
+            margin: 20px 0;
+            animation: bounce 2s infinite;
+        }
+
+        @keyframes bounce {
+
+            0%,
+            20%,
+            50%,
+            80%,
+            100% {
+                transform: translateY(0);
+            }
+
+            40% {
+                transform: translateY(-10px);
+            }
+
+            60% {
+                transform: translateY(-5px);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="game-container">
+        <h1 class="game-title">🎯 俄罗斯轮盘 - 结算</h1>
+
+        <div class="celebration">🎉</div>
+
+        <div class="result-section">
+            <div class="section-title">🏆 决斗结果</div>
+            <div style="font-size: 18px; color: #4CAF50; font-weight: bold;">
+                这场决斗是 {{ win_user[1] }} 胜利了！
+            </div>
+        </div>
+
+        <div class="winner-section">
+            <div class="section-title winner-title">👑 胜者</div>
+            <div class="player-info">
+                <div class="player-avatar">
+                    <img src="{{ winner_avatar }}" alt="{{ win_user[1] }}" />
+                </div>
+                <div class="player-details">
+                    <div class="player-name">{{ win_user[1] }}</div>
+                    <div class="player-id">ID: {{ win_user[0] }}</div>
+                </div>
+            </div>
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-label">本次赢取</div>
+                    <div class="stat-value money">{{ russian.money - fee }} 金币</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">累计胜场</div>
+                    <div class="stat-value">{{ winner.win_count }}</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">累计赚取</div>
+                    <div class="stat-value money">{{ winner.make_money + russian.money - fee }} 金币</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">胜率</div>
+                    <div class="stat-value">
+                        {{ "%.1f"|format(winner.win_count / (winner.win_count + winner.fail_count) * 100) if (winner.win_count + winner.fail_count) > 0 else "0.0" }}%
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="loser-section">
+            <div class="section-title loser-title">💀 败者</div>
+            <div class="player-info">
+                <div class="player-avatar">
+                    <img src="{{ loser_avatar }}" alt="{{ lose_user[1] }}" />
+                </div>
+                <div class="player-details">
+                    <div class="player-name">{{ lose_user[1] }}</div>
+                    <div class="player-id">ID: {{ lose_user[0] }}</div>
+                </div>
+            </div>
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-label">本次输掉</div>
+                    <div class="stat-value lose-money">{{ russian.money }} 金币</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">累计败场</div>
+                    <div class="stat-value">{{ loser.fail_count }}</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">累计输掉</div>
+                    <div class="stat-value lose-money">{{ loser.lose_money + russian.money }} 金币</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">败率</div>
+                    <div class="stat-value">
+                        {{ "%.1f"|format(loser.fail_count / (loser.win_count + loser.fail_count) * 100) if (loser.win_count + loser.fail_count) > 0 else "0.0" }}%
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="weapon-info">
+            <div class="weapon-name">
+                🔫 {{ weapon_config.name }}
+            </div>
+            <div style="font-size: 14px; color: #ccc;">
+                {{ weapon_config.special_effect.name }}: {{ weapon_config.special_effect.description }}
+            </div>
+        </div>
+
+        <div class="bullet-arrangement">
+            <div class="bullet-title">💣 子弹排列</div>
+            <div class="bullet-display">
+                {% for bullet in russian.bullet_arr %}
+                <div class="bullet {% if bullet == 1 %}bullet-loaded{% else %}bullet-empty{% endif %}">
+                    {% if bullet == 1 %}💥{% else %}○{% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="fee-info">
+            <div class="fee-text">
+                💰 {{ bot_nickname }} 从中收取了 {{ "%.1f"|format(rand) }}% ({{ fee }}金币) 作为手续费！
+            </div>
+        </div>
+
+        {% if russian.is_ai %}
+        <div class="ai-indicator">
+            <div class="ai-text">🤖 人机对战模式</div>
+        </div>
+        {% endif %}
+    </div>
+
+    <footer class="footer-container">
+        <p class="creator-credit"></p>
+        <p class="timestamp"></p>
+    </footer>
+</body>
+
+
+<style>
+    .footer-container {
+        text-align: center;
+        padding: 16px;
+        background-color: transparent;
+        font-family: "AlibabaHealthFont2", sans-serif;
+    }
+
+    .footer-container p {
+        margin: 2px 0;
+    }
+
+    .creator-credit {
+        font-weight: bold;
+        font-size: 13px;
+        color: var(--color-primary);
+    }
+
+    .timestamp {
+        font-size: 11px;
+        color: var(--color-primary);
+        opacity: 0.75;
+    }
+</style>
+
+
+<script>
+    (function () {
+        const creatorText = "Powered by Zhenxun Bot";
+        const creditElement = document.querySelector('.creator-credit');
+        if (creditElement) {
+            creditElement.innerText = creatorText;
+        }
+
+        const timestampElement = document.querySelector('.timestamp');
+        if (timestampElement) {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+            const formattedDateTime = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+            timestampElement.innerText = formattedDateTime;
+        }
+    })();
+</script>
+
+</html>
