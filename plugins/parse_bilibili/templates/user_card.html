@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>Bilibili User Card</title>
+    <style>
+        @font-face {
+            font-family: 'AlibabaPuHuiTi';
+            src: url('data:font/ttf;base64,{{ font_van_base64 }}');
+            font-weight: normal;
+            font-style: normal;
+        }
+        body {
+            margin: 0;
+            font-family: 'AlibabaPuHuiTi', sans-serif;
+            background: transparent;
+        }
+        .card-wrapper {
+            width: 500px;
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        .header {
+            height: 140px;
+            background-size: cover;
+            background-position: center;
+            position: relative;
+        }
+        .header::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 50px;
+            background: linear-gradient(to top, rgba(255,255,255,1) 20%, rgba(255,255,255,0));
+        }
+        .avatar {
+            width: 90px;
+            height: 90px;
+            border-radius: 50%;
+            border: 4px solid #fff;
+            position: absolute;
+            bottom: -45px;
+            left: 30px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+            z-index: 2;
+        }
+        .main-content {
+            padding: 60px 30px 25px 30px;
+        }
+        .user-info {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 15px;
+        }
+        .name {
+            font-size: 24px;
+            font-weight: bold;
+            color: #181818;
+        }
+        .live-badge {
+            padding: 5px 10px;
+            background-color: #f44336;
+            color: white;
+            border-radius: 16px;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        .sign {
+            font-size: 14px;
+            color: #606060;
+            margin-bottom: 18px;
+            border-left: 3px solid #fb7299;
+            padding-left: 12px;
+        }
+        .tags {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+        .tag {
+            background-color: #f1f1f1;
+            color: #606060;
+            padding: 4px 10px;
+            border-radius: 16px;
+            font-size: 13px;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            padding: 20px 0;
+            border-top: 1px solid #eee;
+            border-bottom: 1px solid #eee;
+        }
+        .stat-item {
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 20px;
+            font-weight: bold;
+            color: #fb7299;
+        }
+        .stat-label {
+            font-size: 13px;
+            color: #606060;
+        }
+        .secondary-stats {
+            margin-top: 20px;
+            font-size: 14px;
+            color: #606060;
+            text-align: center;
+        }
+        .live-room-entry {
+            margin-top: 20px;
+            padding: 12px;
+            background-color: #fff1f3;
+            border: 1px solid #ffe4e8;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 14px;
+            color: #fb7299;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="card-wrapper">
+        <div class="header" style="background-image: url('{{ top_photo }}');">
+            <img src="{{ face }}" alt="avatar" class="avatar">
+        </div>
+        <div class="main-content">
+            <div class="user-info">
+                <span class="name">{{ name }}</span>
+                {% if live_status == 1 %}
+                <span class="live-badge">直播中</span>
+                {% endif %}
+            </div>
+            <p class="sign">{{ sign }}</p>
+            <div class="tags">
+                <span class="tag">Lv.{{ level }}</span>
+                <span class="tag">{{ sex }}</span>
+                {% if birthday %}
+                <span class="tag">{{ birthday }}</span>
+                {% endif %}
+            </div>
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-value">{{ follower }}</div>
+                    <div class="stat-label">粉丝</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">{{ following }}</div>
+                    <div class="stat-label">关注</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">{{ likes }}</div>
+                    <div class="stat-label">获赞</div>
+                </div>
+            </div>
+            <div class="secondary-stats">
+                总播放: {{ archive_view }} · 总阅读: {{ article_view }}
+            </div>
+            {% if live_status == 1 %}
+            <div class="live-room-entry">
+                正在直播：{{ live_title }}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>
+

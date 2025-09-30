@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>Bilibili Live Card</title>
+    <style>
+        @font-face {
+            font-family: 'AlibabaPuHuiTi';
+            src: url('data:font/ttf;base64,{{ font_van_base64 }}');
+        }
+        body {
+            margin: 0;
+            font-family: 'AlibabaPuHuiTi', sans-serif;
+            background: transparent;
+        }
+        .card-wrapper {
+            width: 500px;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+            padding: 20px;
+        }
+        .header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 15px;
+        }
+        .avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+        }
+        .header-info {
+            display: flex;
+            flex-direction: column;
+        }
+        .uname {
+            font-size: 16px;
+            font-weight: bold;
+            color: #181818;
+        }
+        .area {
+            font-size: 13px;
+            color: #606060;
+        }
+        .cover-image {
+            width: 100%;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+        .title-section {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+        .title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #181818;
+        }
+        .status-badge {
+            padding: 4px 10px;
+            border-radius: 16px;
+            font-size: 13px;
+            font-weight: bold;
+            color: white;
+            flex-shrink: 0;
+        }
+        .status-badge.live { background-color: #00b5e5; }
+        .status-badge.round { background-color: #f67186; }
+        .status-badge.off { background-color: #909399; }
+        .details, .description {
+            font-size: 14px;
+            color: #606060;
+            line-height: 1.7;
+            margin-bottom: 15px;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        .keyframe-section {
+            margin-top: 15px;
+            border-top: 1px solid #eee;
+            padding-top: 15px;
+        }
+        .keyframe-title {
+            font-size: 14px;
+            font-weight: bold;
+            color: #181818;
+            margin-bottom: 10px;
+        }
+        .keyframe-image {
+            width: 100%;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+<div class="card-wrapper">
+    <div class="header">
+        <img src="{{ data.face }}" alt="avatar" class="avatar">
+        <div class="header-info">
+            <span class="uname">{{ data.uname }}</span>
+            <span class="area">{{ data.area_name }}</span>
+        </div>
+    </div>
+
+    <img src="{{ data.cover }}" alt="cover" class="cover-image">
+
+    <div class="title-section">
+        <span class="title">{{ data.title }}</span>
+        {% if data.live_status == 1 %}
+            <span class="status-badge live">直播中</span>
+        {% elif data.live_status == 2 %}
+            <span class="status-badge round">轮播中</span>
+        {% else %}
+            <span class="status-badge off">未开播</span>
+        {% endif %}
+    </div>
+
+    {% if data.start_time %}
+    <div class="details"><strong>开播时间:</strong> {{ data.start_time }}</div>
+    {% endif %}
+
+    {% if data.description %}
+    <div class="description"><strong>简介:</strong> {{ data.description }}</div>
+    {% endif %}
+
+    {% if data.keyframe %}
+    <div class="keyframe-section">
+        <div class="keyframe-title">直播画面:</div>
+        <img src="{{ data.keyframe }}" alt="keyframe" class="keyframe-image">
+    </div>
+    {% endif %}
+</div>
+</body>
+</html>
+

@@ -193,7 +193,7 @@ class ScreenshotService:
             )
 
             if playwright_cookies:
-                await context.add_cookies(playwright_cookies)
+                await context.add_cookies(playwright_cookies) # type: ignore
 
             page = await context.new_page()
 

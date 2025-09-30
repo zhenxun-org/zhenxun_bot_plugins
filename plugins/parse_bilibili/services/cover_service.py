@@ -1,6 +1,6 @@
 from typing import Optional, Union
 
-from nonebot_plugin_alconna import UniMsg
+from nonebot_plugin_alconna import UniMsg, UniMessage, Image
 from zhenxun.services.log import logger
 from zhenxun.utils.http_utils import AsyncHttpx
 
@@ -52,13 +52,9 @@ class CoverService:
                 raise BilibiliBaseException("下载封面图片失败。")
 
             title = f"《{parsed_content.title}》的封面"
-            return (
-                UniMsg.image(
-                    raw=image_data,
-                    name=f"{parsed_content.bvid or parsed_content.season_id}.jpg",
-                )
-                + f"\n{title}\n原始链接: {cover_url}"
-            )
+            image_segment = Image(raw=image_data, name=f"{getattr(parsed_content, 'bvid', None) or getattr(parsed_content, 'season_id', 'cover')}.jpg")
+            text_segment = f"\n{title}\n原始链接: {cover_url}"
+            return UniMessage([image_segment, text_segment])
 
         except BilibiliBaseException:
             raise

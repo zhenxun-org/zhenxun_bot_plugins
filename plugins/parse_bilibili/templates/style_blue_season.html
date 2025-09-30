@@ -1,52 +1,77 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bilibili 番剧/影视详情</title>
     <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+        }
+
+        @font-face {
+            font-family: 'vanfont';
+            src: url('data:font/ttf;base64,{{ font_van_base64 }}');
+            font-weight: normal;
+            font-style: normal;
+        }
+
         @font-face {
             font-family: 'van';
             src: url(data:font/truetype;base64,{{ font_van_base64 }}) format('truetype');
         }
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif; }
-        body { display: inline-block; background-color: #ffffff; }
 
-        .card { /* 卡片主体 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+        }
+
+        body {
+            display: inline-block;
             background-color: #ffffff;
-            border-radius: 10px; /* 圆角 */
-            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08); /* 细微阴影 */
-            margin: 10px; /* 外边距，让阴影可见 */
+        }
+
+        .card {
+            background-color: #ffffff;
+            border-radius: 10px;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+            margin: 10px;
             overflow: hidden;
-            width: 450px; /* 调整宽度 */
+            width: 450px;
             max-width: 100%;
             color: #333;
-            border: 1px solid #f0f0f0; /* 浅边框 */
+            border: 1px solid #f0f0f0;
         }
 
-        .cover img { /* 封面 */
-            width: 100%; height: auto; display: block;
-            aspect-ratio: 3 / 4; /* 番剧常用比例 */
+        .cover img {
+            width: 100%;
+            height: auto;
+            display: block;
+            aspect-ratio: 3 / 4;
             object-fit: cover;
-            /* 移除下边框，避免重叠 */
         }
 
-        .info { padding: 15px 18px; } /* 调整内边距 */
+        .info {
+            padding: 15px 18px;
+        }
 
-        .title-container { /* 标题和右侧信息容器 */
+        .title-container {
             display: flex;
             justify-content: space-between;
-            align-items: flex-start; /* 顶部对齐 */
+            align-items: flex-start;
             margin-bottom: 8px;
         }
 
         .title {
-            font-size: 18px; /* 标题字号 */
+            font-size: 18px;
             font-weight: 600;
             line-height: 1.4;
             color: #181818;
-            margin-right: 10px; /* 与右侧信息间距 */
-            /* 最多显示 3 行 */
+            margin-right: 10px;
             display: -webkit-box;
             -webkit-line-clamp: 3;
             -webkit-box-orient: vertical;
@@ -54,97 +79,162 @@
             text-overflow: ellipsis;
         }
 
-        .meta-right { /* 右侧信息（类型、评分） */
+        .meta-right {
             text-align: right;
-            flex-shrink: 0; /* 防止被压缩 */
+            flex-shrink: 0;
         }
 
-        .type-name { /* 类型标签 */
+        .type-name {
             display: inline-block;
             font-size: 12px;
-            background-color: #fb7299; /* 粉色背景 */
+            background-color: #fb7299;
             color: white;
             padding: 3px 8px;
             border-radius: 4px;
             margin-bottom: 5px;
             font-weight: 500;
         }
-        .rating { /* 评分 */
+
+        .rating {
             font-size: 14px;
-            color: #ffb400; /* 评分颜色 */
+            color: #ffb400;
             font-weight: bold;
         }
-        .rating .count { /* 评分人数 */
+
+        .rating .count {
             font-size: 11px;
             color: #999;
             font-weight: normal;
             margin-left: 3px;
         }
 
-        .details { /* 状态、地区、风格 */
-            font-size: 13px; color: #666; margin-bottom: 10px; /* 增大下方间距 */ line-height: 1.6;
+        .details {
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 10px;
+            line-height: 1.6;
         }
-        .details span { margin-right: 8px; background-color: #f7f7f7; padding: 2px 6px; border-radius: 4px; display: inline-block; margin-bottom: 4px; } /* 给每个信息加个背景块 */
 
-        .desc { /* 简介 */
-            font-size: 13px; color: #555; line-height: 1.6; margin-top: 8px; margin-bottom: 12px;
-            display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
-            overflow: hidden; text-overflow: ellipsis;
-            padding-left: 0; /* 移除左边框 */
+        .details span {
+            margin-right: 8px;
+            background-color: #f7f7f7;
+            padding: 2px 6px;
+            border-radius: 4px;
+            display: inline-block;
+            margin-bottom: 4px;
+        }
+
+        .desc {
+            font-size: 13px;
+            color: #555;
+            line-height: 1.6;
+            margin-top: 8px;
+            margin-bottom: 12px;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            padding-left: 0;
             border-left: none;
         }
 
-        .stats { /* 统计数据 */
-            display: grid; grid-template-columns: repeat(4, 1fr); /* 保持4列 */
-            gap: 12px 5px; /* 调整间距 */ margin: 15px 0 10px; /* 调整外边距 */
-            font-size: 12px; color: #666; text-align: center;
-            border-top: 1px solid #f0f0f0; padding-top: 12px; /* 增加上边距 */
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px 5px;
+            margin: 15px 0 10px;
+            font-size: 12px;
+            color: #666;
+            text-align: center;
+            border-top: 1px solid #f0f0f0;
+            padding-top: 12px;
         }
-        .stats > span { display: flex; flex-direction: column; align-items: center; }
-        .stats > span::before {
-            display: block; font-family: 'van'; font-size: 30px; /* 图标稍小 */
-            margin-bottom: 2px; color: #aaa;
-        }
-        /* --- 图标 content (保持你校对后的正确字符) --- */
-        .stats .views::before     { content: "\e6e6"; } /* 播放 */
-        .stats .danmakus::before { content: "\e6e7"; } /* 弹幕 */
-        .stats .favorites::before{ content: "\e6e1"; } /* 追番 */
-        .stats .reply::before    { content: "\e6b9"; } /* 评论 */
-        .stats .likes::before    { content: "\e6e0"; } /* 点赞 */
-        .stats .coins::before    { content: "\e6e4"; } /* 投币 */
-        .stats .share::before   { content: "\e72f"; } /* 分享 */
-        /* --- --- */
 
-        .portal { /* 底部样式 */
-            position: relative; width: 100%; height: 55px; /* 高度再减小 */
-            background-color: #fff8fa; /* 淡粉色背景 */ margin-top: 0px; /* 移除顶部间距 */ display: flex;
-            align-items: center; justify-content: center; /* 居中 */ padding: 0 15px;
-            border-top: 1px solid #f0f0f0; /* 分隔线 */
-            border-bottom-left-radius: 10px; border-bottom-right-radius: 10px; /* 匹配卡片圆角 */
+        .stats>span {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
-        .portal .bili-logo { font-size: 22px; font-weight: bold; color: #fb7299; } /* 粉色 Logo */
+
+        .stats>span::before {
+            display: block;
+            font-family: 'van';
+            font-size: 30px;
+            margin-bottom: 2px;
+            color: #aaa;
+        }
+
+        .stats .views::before {
+            content: "\e6e6";
+        }
+
+        .stats .danmakus::before {
+            content: "\e6e7";
+        }
+
+        .stats .favorites::before {
+            content: "\e6e1";
+        }
+
+        .stats .reply::before {
+            content: "\e6b9";
+        }
+
+        .stats .likes::before {
+            content: "\e6e0";
+        }
+
+        .stats .coins::before {
+            content: "\e6e4";
+        }
+
+        .stats .share::before {
+            content: "\e72f";
+        }
+
+        .portal {
+            position: relative;
+            width: 100%;
+            height: 55px;
+            background-color: #fff8fa;
+            margin-top: 0px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 15px;
+            border-top: 1px solid #f0f0f0;
+            border-bottom-left-radius: 10px;
+            border-bottom-right-radius: 10px;
+        }
+
+        .portal .bili-logo {
+            font-size: 22px;
+            font-weight: bold;
+            color: #fb7299;
+        }
     </style>
 </head>
+
 <body>
     <div class="card">
         {% if cover_image_src %}
         <div class="cover">
-            <img src="{{ cover_image_src }}" alt="Season Cover"/>
+            <img src="{{ cover_image_src }}" alt="Season Cover" />
         </div>
         {% endif %}
         <div class="info">
             <div class="title-container">
-                 <!-- ######## 显示分集/季度标题 ######## -->
                 <div class="title">
                     {{ title }} {# 现在 title 优先是分集标题 #}
                     {% if season_title %}
-                        <span style="font-size: 13px; color: #888; display: block; font-weight: normal;">(所属系列: {{ season_title }})</span>
+                    <span style="font-size: 13px; color: #888; display: block; font-weight: normal;">(所属系列: {{
+                        season_title }})</span>
                     {% endif %}
                 </div>
-                 <!-- ################################# -->
                 <div class="meta-right">
                     <div class="type-name">{{ type_name }}</div>
-                     {% if rating_score > 0 %}
+                    {% if rating_score > 0 %}
                     <div class="rating">
                         {{ rating_score }}<span class="count">({{ rating_count }}人评)</span>
                     </div>
@@ -158,11 +248,10 @@
                 {% if areas %}<span>地区: {{ areas }}</span>{% endif %}
                 {% if styles %}<span>风格: {{ styles }}</span>{% endif %}
             </div>
-             {% if desc %}
+            {% if desc %}
             <div class="desc">{{ desc | replace("\n", "<br>") | safe }}</div>
             {% endif %}
             <div class="stats">
-                <!-- ######## 使用模板变量显示统计数据和标签 ######## -->
                 <span class="views">{{ view_count }}<br>播放</span>
                 <span class="danmakus">{{ dm_count }}<br>弹幕</span>
                 <span class="favorites">{{ fav_count }}<br>{{ fav_label }}</span> {# 使用 fav_label #}
@@ -170,14 +259,13 @@
                 <span class="likes">{{ like_count }}<br>点赞</span>
                 <span class="coins">{{ coin_count }}<br>投币</span>
                 <span class="share">{{ share_count }}<br>分享</span>
-                <span></span> <!-- 占位符 -->
-                <!-- ############################################# -->
+                <span></span>
             </div>
         </div>
         <div class="portal">
             <span class="bili-logo">bilibili</span>
-            <!-- 移除扫码文字和二维码 -->
         </div>
     </div>
 </body>
+
 </html>

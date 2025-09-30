@@ -10,7 +10,7 @@ from zhenxun.services.log import logger
 
 from ..services.network_service import ParserService
 from ..services.utility_service import AutoDownloadManager
-from ..services.download_manager import DownloadTask, download_manager
+from ..services.download_service import DownloadTask, download_manager
 from ..utils.exceptions import BilibiliBaseException
 from ..utils.url_parser import extract_bilibili_url_from_event
 
