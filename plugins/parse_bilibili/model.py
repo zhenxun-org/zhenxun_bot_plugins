@@ -51,6 +51,8 @@ class VideoInfo(BaseModel):
     pub_location: Optional[str] = None
     pages: Optional[list] = None
     parsed_url: str
+    ai_summary: Optional[str] = None
+    online_count: Optional[str] = None
 
 
 class LiveInfo(BaseModel):

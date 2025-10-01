@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from enum import Enum, auto
 from typing import List, Optional, Pattern, Tuple, Type, ClassVar, Dict, Any
 from nonebot.adapters import Event, Bot
-from nonebot_plugin_alconna.uniseg import Hyper, UniMsg, Text
+from nonebot_plugin_alconna.uniseg import Hyper, Reply
 from nonebot_plugin_alconna.uniseg.tools import reply_fetch
 
 from zhenxun.services.log import logger
@@ -28,7 +28,8 @@ class UrlParser(ABC):
     """URL解析器基类"""
 
     PRIORITY: ClassVar[int] = 100
-    RESOURCE_TYPE: ClassVar[ResourceType] = None
+    RESOURCE_TYPE: ClassVar[ResourceType] = None  # type: ignore
+    PATTERN: ClassVar[Optional[Pattern]] = None
 
     @classmethod
     @abstractmethod
@@ -46,7 +47,7 @@ class UrlParser(ABC):
 class RegexUrlParser(UrlParser):
     """基于正则表达式的URL解析器基类"""
 
-    PATTERN: ClassVar[Pattern] = None
+    PATTERN: ClassVar[Pattern] = None  # type: ignore
     GROUP_INDEX: ClassVar[int] = 1
 
     @classmethod
@@ -86,7 +87,6 @@ class VideoUrlParser(RegexUrlParser):
 
     PRIORITY = 20
     RESOURCE_TYPE = ResourceType.VIDEO
-    # 修改正则表达式，使其能匹配 /video/ 路径或 bvid=... 的URL参数
     PATTERN = re.compile(
         r"bilibili\.com/.*?(?:video/(av\d+|BV[A-Za-z0-9]+)|[?&]bvid=(BV[A-Za-z0-9]+))"
     )
@@ -104,7 +104,6 @@ class VideoUrlParser(RegexUrlParser):
         if not match:
             raise UrlParseError(f"URL不匹配视频模式: {url}")
 
-        # group(1) 匹配 /video/后的ID, group(2) 匹配 bvid=后的ID
         resource_id = match.group(1) or match.group(2)
         if not resource_id:
             raise UrlParseError(f"无法从URL提取视频资源ID: {url}")
@@ -338,21 +337,17 @@ def extract_bilibili_url_from_message(
     if not target_url:
         plain_text = message.extract_plain_text().strip()
         if plain_text:
-            parser_found = UrlParserRegistry.get_parser(plain_text)
-            if parser_found:
-                match = (
-                    parser_found.PATTERN.search(plain_text)
-                    if parser_found.PATTERN
-                    else None
-                )
-                if match:
-                    target_url = match.group(0)
-                    logger.debug(f"从文本内容提取到URL: {target_url}")
-                elif parser_found.__name__ == "PureVideoIdParser":
-                    if parser_found.PATTERN.fullmatch(plain_text):
-                        target_url = plain_text
-                        logger.debug(f"从文本内容提取到纯视频ID: {target_url}")
-            else:
+            match = re.search(
+                r"b23\.tv/([A-Za-z0-9]+)|bilibili\.com/video/(av\d+|BV[A-Za-z0-9]+)",
+                plain_text,
+            )
+            if match:
+                target_url = match.group(0)
+                logger.debug(f"从文本内容提取到URL: {target_url}")
+            elif re.fullmatch(r"((av|AV)\d+|(bv|BV)[A-Za-z0-9]+)", plain_text):
+                target_url = plain_text
+                logger.debug(f"从文本内容提取到纯视频ID: {target_url}")
+            elif "bilibili.com" in plain_text or "b23.tv" in plain_text:
                 from .common import extract_url_from_text
 
                 url = extract_url_from_text(plain_text)
@@ -396,106 +391,6 @@ def parse_bilibili_url(
     return resource_type, resource_id, url_info_dict
 
 
-async def extract_bilibili_url_from_reply(reply: Optional[UniMsg]) -> Optional[str]:
-    """从回复消息中提取B站URL"""
-    if not reply or not reply.msg:
-        logger.debug("回复消息为空")
-        return None
-
-    target_url = None
-
-    for seg in reply.msg:
-        if isinstance(seg, Hyper) and seg.raw:
-            logger.debug(f"处理回复消息的 Hyper 段，raw 长度: {len(seg.raw)}")
-            extracted_url = _extract_url_from_hyper_or_json(seg.raw)
-            if extracted_url:
-                target_url = extracted_url
-                logger.info(f"从回复消息提取到B站链接: {target_url}")
-                break
-
-    if not target_url:
-        patterns = {
-            "b23_tv": ShortUrlParser.PATTERN,
-            "video": VideoUrlParser.PATTERN,
-            "live": LiveUrlParser.PATTERN,
-            "article": ArticleUrlParser.PATTERN,
-            "opus": OpusUrlParser.PATTERN,
-            "bangumi": BangumiUrlParser.PATTERN,
-            "pure_video_id": PureVideoIdParser.PATTERN,
-        }
-        url_match_order = ["b23_tv", "video", "bangumi", "live", "article", "opus"]
-
-        for seg in reply.msg:
-            if isinstance(seg, Text):
-                text_content = seg.text.strip()
-                if not text_content:
-                    continue
-                logger.debug(f"检查回复消息的 Text 段: '{text_content}'")
-
-                for key in url_match_order:
-                    match = patterns[key].search(text_content)
-                    if match:
-                        potential_url = match.group(0)
-                        if (
-                            potential_url.startswith("http")
-                            or "b23.tv" in potential_url
-                            or key == "b23_tv"
-                        ):
-                            target_url = potential_url
-                            logger.info(f"从回复消息提取到B站链接: {target_url}")
-                            break
-
-                if target_url:
-                    break
-
-                if not target_url:
-                    match = patterns["pure_video_id"].search(text_content)
-                    if match:
-                        target_url = match.group(0)
-                        logger.info(f"从回复消息提取到B站视频ID: {target_url}")
-                        break
-
-        if not target_url:
-            try:
-                plain_text = reply.msg.extract_plain_text().strip()
-                if plain_text:
-                    logger.debug(f"尝试从回复消息的纯文本提取: '{plain_text}'")
-
-                    bangumi_pattern = re.compile(
-                        r"(?:https?://)?(?:www\.|m\.)?bilibili\.com/bangumi/play/(ss\d+|ep\d+)"
-                    )
-                    bangumi_match = bangumi_pattern.search(plain_text)
-                    if bangumi_match:
-                        target_url = bangumi_match.group(0)
-                        logger.info(f"从回复消息提取到B站番剧链接: {target_url}")
-                    else:
-                        for key in url_match_order:
-                            match = patterns[key].search(plain_text)
-                            if match:
-                                potential_url = match.group(0)
-                                if (
-                                    potential_url.startswith("http")
-                                    or "b23.tv" in potential_url
-                                    or "bilibili.com" in potential_url
-                                    or key == "b23_tv"
-                                ):
-                                    target_url = potential_url
-                                    logger.info(
-                                        f"从回复消息提取到B站链接: {target_url}"
-                                    )
-                                    break
-
-                        if not target_url:
-                            match = patterns["pure_video_id"].fullmatch(plain_text)
-                            if match:
-                                target_url = match.group(0)
-                                logger.info(f"从回复消息提取到B站视频ID: {target_url}")
-            except Exception as e:
-                logger.warning(f"提取回复纯文本失败: {e}")
-
-    return target_url
-
-
 async def extract_bilibili_url_from_json_data(json_data: str) -> Optional[str]:
     """从JSON数据中提取B站URL"""
     if not json_data:
@@ -512,10 +407,10 @@ async def extract_bilibili_url_from_event(bot: Bot, event: Event) -> Optional[st
     target_url = None
 
     try:
-        reply = await reply_fetch(event, bot)
-        if reply:
-            logger.debug("找到回复消息")
-            target_url = await extract_bilibili_url_from_reply(reply)
+        reply: Optional["Reply"] = await reply_fetch(event, bot)  # type: ignore
+        if reply and reply.msg:
+            logger.debug("找到回复消息，使用通用提取器...")
+            target_url = extract_bilibili_url_from_message(reply.msg)
             if target_url:
                 return target_url
 
@@ -527,10 +422,10 @@ async def extract_bilibili_url_from_event(bot: Bot, event: Event) -> Optional[st
             raw_event = {}
             logger.debug("事件对象没有model_dump或dict方法")
 
-        if hasattr(event, "reply") and event.reply:
+        if reply_attr := getattr(event, "reply", None):
             logger.debug("事件中包含回复信息")
 
-            reply_message = event.reply.message
+            reply_message = reply_attr.message
             logger.debug("获取到回复消息")
 
             for seg in reply_message:

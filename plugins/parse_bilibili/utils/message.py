@@ -2,16 +2,20 @@ import base64
 from pathlib import Path
 import re
 import time
-from typing import Optional, Dict, Any
+from typing import Optional
+from io import BytesIO
 from .common import format_number, format_duration
 
 import aiofiles
 
 from bs4 import BeautifulSoup
 import jinja2
-from nonebot_plugin_alconna import Image, Text, UniMsg
-from nonebot_plugin_htmlrender import html_to_pic
+from nonebot_plugin_alconna import UniMsg, UniMessage, Text, Image
 
+from zhenxun import ui
+from zhenxun.ui.builders import (
+    MarkdownBuilder,
+)
 from zhenxun.utils.http_utils import AsyncHttpx
 
 from bilibili_api import comment
@@ -25,7 +29,7 @@ from nonebot.adapters.onebot.v11 import MessageSegment as V11MessageSegment
 from zhenxun.utils.decorator.retry import Retry
 from ..config import (
     SEND_VIDEO_MAX_RETRIES,
-    SEND_VIDEO_RETRY_DELAY,
+    SEND_VIDEO_RETRY_DELAY,  # type: ignore
     SEND_VIDEO_TIMEOUT,
     IMAGE_CACHE_DIR,
     base_config,
@@ -122,7 +126,7 @@ class MessageBuilder:
         )
         segments.append(Text(text_content))
 
-        return UniMsg(segments)
+        return UniMessage(segments)
 
     @staticmethod
     def _clean_html_description(html_description: str) -> str:
@@ -140,7 +144,7 @@ class MessageBuilder:
             file_name = f"bili_live_cover_{info.room_id}.jpg"
             cover_path = IMAGE_CACHE_DIR / file_name
             if await ImageHelper.download_image(info.cover, cover_path):
-                segments.append(Image(path=cover_path))
+                segments.append(Image(path=cover_path))  # type: ignore
 
         start_time_str = ""
         if info.live_status == 1 and info.live_start_time:
@@ -158,7 +162,7 @@ class MessageBuilder:
             f"分区: {info.parent_area_name} / {info.area_name}\n"
             f"{start_time_str}"
             f"简介: {plain_description}\n"
-            f"直播间: {info.parsed_url}"
+            f"直播间: {info.room_url or info.parsed_url}"
         )
         segments.append(Text(text_content))
 
@@ -174,7 +178,7 @@ class MessageBuilder:
             if await ImageHelper.download_image(info.keyframe_url, keyframe_path):
                 segments.append(Image(path=keyframe_path))
 
-        return UniMsg(segments)
+        return UniMessage(segments)
 
     @staticmethod
     async def build_article_message(
@@ -188,12 +192,12 @@ class MessageBuilder:
         if render_enabled:
             if info.screenshot_bytes:
                 logger.debug("渲染模式：使用内存截图")
-                return UniMsg(Image(raw=info.screenshot_bytes))
+                return UniMessage(Image(raw=info.screenshot_bytes))
             elif info.screenshot_path:
                 path = Path(info.screenshot_path)
                 if path.exists():
                     logger.debug(f"渲染模式：使用本地截图: {path}")
-                    return UniMsg(Image(path=path))
+                    return UniMessage(Image(path=path))
                 else:
                     logger.error(f"渲染模式：截图路径不存在: {info.screenshot_path}")
             logger.warning("渲染模式：无可用截图，将回退发送文本信息")
@@ -226,7 +230,7 @@ class MessageBuilder:
             has_content = True
 
         if has_content:
-            return UniMsg(segments)
+            return UniMessage(segments)
         else:
             logger.warning(f"文章/动态信息不足，无法构建消息: {info.type} {info.id}")
             return None
@@ -289,7 +293,7 @@ class MessageBuilder:
         )
         segments.append(Text(text_content))
 
-        return UniMsg(segments)
+        return UniMessage(segments)
 
     @staticmethod
     async def build_user_message(info: UserInfo) -> UniMsg:
@@ -324,28 +328,7 @@ class MessageBuilder:
         )
         segments.append(Text(text_content))
 
-        return UniMsg(segments)
-
-
-async def render_html_to_image(
-    template_name: str, template_data: Dict[str, Any], viewport_width: int = 780
-) -> Optional[bytes]:
-    """渲染HTML模板为图片"""
-    try:
-        template = template_env.get_template(template_name)
-        html_content = await template.render_async(template_data)
-
-        return await html_to_pic(
-            html=html_content,
-            viewport={"width": viewport_width, "height": 10},
-            wait=0,
-        )
-    except jinja2.TemplateNotFound:
-        logger.error(f"找不到HTML模板: {TEMPLATE_DIR / template_name}")
-        return None
-    except Exception as e:
-        logger.error(f"渲染HTML模板失败: {template_name}", e=e)
-        return None
+        return UniMessage(segments)
 
 
 async def render_video_info_to_image(info: VideoInfo) -> Optional[bytes]:
@@ -422,6 +405,14 @@ async def render_video_info_to_image(info: VideoInfo) -> Optional[bytes]:
         except Exception as e:
             logger.error(f"获取视频评论失败: {info.aid}", e=e)
 
+    display_summary = None
+    if info.ai_summary:
+        max_summary_len = 180
+        if len(info.ai_summary) > max_summary_len:
+            display_summary = info.ai_summary[:max_summary_len] + "..."
+        else:
+            display_summary = info.ai_summary
+
     template_data = {
         "cover_image_src": cover_image_src,
         "video_category": info.tname,
@@ -443,14 +434,15 @@ async def render_video_info_to_image(info: VideoInfo) -> Optional[bytes]:
         "fav_count": format_number(info.stat.favorite),
         "share_count": format_number(info.stat.share),
         "comments": comments_list,
+        "online_count": info.online_count,
+        "ai_summary": display_summary,
         "font_van_base64": FONT_BASE64_CONTENT,
     }
 
-    return await render_html_to_image(
-        template_name="style_blue_video.html",
-        template_data=template_data,
-        viewport_width=780,
-    )
+    template_path = TEMPLATE_DIR / "style_blue_video.html"
+    component = ui.template(path=template_path, data=template_data)
+
+    return await ui.render(component, viewport={"width": 780, "height": 10})
 
 
 async def render_season_info_to_image(info: SeasonInfo) -> Optional[bytes]:
@@ -502,11 +494,70 @@ async def render_season_info_to_image(info: SeasonInfo) -> Optional[bytes]:
         "font_van_base64": FONT_BASE64_CONTENT,
     }
 
-    return await render_html_to_image(
-        template_name="style_blue_season.html",
-        template_data=template_data,
-        viewport_width=420,
-    )
+    template_path = TEMPLATE_DIR / "style_blue_season.html"
+    component = ui.template(path=template_path, data=template_data)
+
+    return await ui.render(component, viewport={"width": 420, "height": 10})
+
+
+async def render_user_info_to_image(info: UserInfo) -> Optional[bytes]:
+    """使用 zhenxun.ui 渲染更美观的用户信息为图片"""
+    logger.debug(f"开始使用 zhenxun.ui 渲染更美观的用户信息: {info.name}")
+
+    template_data = {
+        "top_photo": info.top_photo
+        or "https://i0.hdslb.com/bfs/space/cb1c36594b2de665b1b10a22a30b4923e3e41b31.png",
+        "face": info.face,
+        "name": info.name,
+        "sign": info.sign or "这个人很神秘，什么都没有写...",
+        "level": info.level,
+        "sex": info.sex,
+        "birthday": info.birthday,
+        "following": format_number(info.stat.following),
+        "follower": format_number(info.stat.follower),
+        "likes": format_number(info.stat.likes),
+        "archive_view": format_number(info.stat.archive_view),
+        "article_view": format_number(info.stat.article_view),
+        "live_status": info.live_room_status,
+        "live_title": info.live_room_title,
+        "font_van_base64": FONT_BASE64_CONTENT,
+    }
+
+    template_path = TEMPLATE_DIR / "user_card.html"
+    component = ui.template(path=template_path, data=template_data)
+
+    return await ui.render(component, viewport={"width": 500, "height": 10})
+
+
+async def render_live_info_to_image(info: LiveInfo) -> Optional[bytes]:
+    """使用 zhenxun.ui 渲染直播间信息为图片"""
+    logger.debug(f"开始使用 zhenxun.ui 渲染直播间信息: {info.title}")
+
+    plain_description = MessageBuilder._clean_html_description(info.description)
+
+    start_time_str = ""
+    if info.live_status == 1 and info.live_start_time > 0:
+        start_time_str = time.strftime(
+            "%Y-%m-%d %H:%M", time.localtime(info.live_start_time)
+        )
+
+    template_data = {
+        "cover": info.cover,
+        "face": info.face,
+        "uname": info.uname,
+        "title": info.title,
+        "area_name": f"{info.parent_area_name} / {info.area_name}",
+        "live_status": info.live_status,
+        "start_time": start_time_str,
+        "description": plain_description,
+        "keyframe": info.keyframe_url,
+        "font_van_base64": FONT_BASE64_CONTENT,
+    }
+
+    template_path = TEMPLATE_DIR / "live_card.html"
+    component = ui.template(path=template_path, data=template_data)
+
+    return await ui.render(component, viewport={"width": 500, "height": 10})
 
 
 async def render_unimsg_to_image(message: UniMsg) -> Optional[bytes]:
@@ -547,7 +598,10 @@ async def render_unimsg_to_image(message: UniMsg) -> Optional[bytes]:
 
             elif seg.raw:
                 try:
-                    img_base64 = base64.b64encode(seg.raw).decode()
+                    raw_data = (
+                        seg.raw.getvalue() if isinstance(seg.raw, BytesIO) else seg.raw
+                    )
+                    img_base64 = base64.b64encode(raw_data).decode()
                     img_src = f"data:image/png;base64,{img_base64}"
                 except Exception as e:
                     logger.error("转换原始图片数据到URI时出错", e=e)
@@ -564,11 +618,27 @@ async def render_unimsg_to_image(message: UniMsg) -> Optional[bytes]:
         logger.warning("消息没有可渲染的内容")
         return None
 
-    template_data = {"content": "".join(html_parts)}
+    md_builder = MarkdownBuilder()
+    for seg in message:
+        if isinstance(seg, Text):
+            md_builder.text(seg.text)
+        elif isinstance(seg, Image):
+            if seg.url:
+                md_builder.image(seg.url)
+            elif seg.path:
+                md_builder.image(Path(seg.path))
+            elif seg.raw:
+                try:
+                    raw_data = (
+                        seg.raw.getvalue() if isinstance(seg.raw, BytesIO) else seg.raw
+                    )
+                    img_base64 = base64.b64encode(raw_data).decode()
+                    md_builder.image(f"data:image/png;base64,{img_base64}")
+                except Exception as e:
+                    logger.error("转换原始图片数据失败", e=e)
+                    md_builder.text("[图片加载失败]")
 
-    return await render_html_to_image(
-        template_name="message.html", template_data=template_data, viewport_width=650
-    )
+    return await ui.render(md_builder.build(), viewport={"width": 650, "height": 10})
 
 
 def _get_user_friendly_error_message(exception: Exception) -> str:
@@ -599,7 +669,7 @@ def _get_user_friendly_error_message(exception: Exception) -> str:
 
 @Retry.api(
     stop_max_attempt=SEND_VIDEO_MAX_RETRIES,
-    wait_fixed_seconds=SEND_VIDEO_RETRY_DELAY,
+    wait_fixed_seconds=SEND_VIDEO_RETRY_DELAY,  # type: ignore
     exception=(asyncio.TimeoutError,),
     log_name="发送视频文件",
 )

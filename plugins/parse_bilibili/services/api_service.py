@@ -1,5 +1,6 @@
 import asyncio
-from typing import Dict, Any, Optional, List
+from urllib.parse import parse_qs, urlparse
+from typing import Dict, Any, Optional, List, cast
 
 import aiohttp
 from bilibili_api import exceptions as BiliExceptions
@@ -164,10 +165,48 @@ class BilibiliApiService:
             logger.debug(f"创建VideoInfo模型: {vid}", "B站解析")
             video_model = BilibiliApiService._map_video_info_to_model(info, parsed_url)
 
+            page_index = 0
+            try:
+                parsed_url_obj = urlparse(parsed_url)
+                if parsed_url_obj.query:
+                    query_params = parse_qs(parsed_url_obj.query)
+                    if p_value := query_params.get("p"):
+                        if p_value[0].isdigit():
+                            page_index = int(p_value[0]) - 1
+            except Exception:
+                pass
+
+            try:
+                logger.debug(
+                    f"尝试获取视频 {vid} (P{page_index + 1}) 的AI总结", "B站解析"
+                )
+                ai_conclusion = await v.get_ai_conclusion(page_index=page_index)
+                if (
+                    ai_conclusion
+                    and (model_result := ai_conclusion.get("model_result"))
+                    and (summary := model_result.get("summary"))
+                ):
+                    video_model.ai_summary = summary
+                    logger.debug(f"成功获取AI总结 for {vid}", "B站解析")
+            except Exception as e:
+                logger.debug(
+                    f"获取AI总结失败 for {vid} (可能无总结或需要更高权限): {e}",
+                    "B站解析",
+                )
+
+            try:
+                logger.debug(f"尝试获取视频 {vid} 的在线人数", "B站解析")
+                online_data = await v.get_online()
+                logger.debug(f"在线人数数据: {online_data}", "B站解析")
+                if online_data and (total := online_data.get("total")):
+                    video_model.online_count = str(total)
+                elif online_data and (count := online_data.get("count")):
+                    video_model.online_count = str(count)
+            except Exception as e:
+                logger.debug(f"获取在线人数失败 for {vid}: {e}", "B站解析")
+
             logger.debug(f"视频信息获取成功: {video_model.title}", "B站解析")
             return video_model
-
-        # 新增的异常捕获块，用于处理无效的视频ID
         except BiliExceptions.ArgsException as e:
             logger.error(f"Bilibili-api参数错误 ({vid}): {e}", "B站解析")
             raise UrlParseError(
@@ -179,12 +218,12 @@ class BilibiliApiService:
             raise ResourceNotFoundError(
                 f"视频未找到: {vid}", context={"vid": vid, "url": parsed_url}
             )
-        except BiliExceptions.ApiException as e:
+        except BiliExceptions.ResponseCodeException as e:
             logger.error(
                 f"B站API错误 ({vid}): 代码 {e.code}, 消息: {e.message}", "B站解析"
             )
 
-            if e.code == -403:
+            if e.code == -403:  # type: ignore
                 raise ResourceForbiddenError(
                     f"视频访问被禁止 ({vid}): {e.message}",
                     cause=e,
@@ -251,13 +290,13 @@ class BilibiliApiService:
                 f"直播间未找到: {room_id}",
                 context={"room_id": room_id, "url": parsed_url},
             )
-        except BiliExceptions.ApiException as e:
+        except BiliExceptions.ResponseCodeException as e:
             logger.error(
                 f"B站API错误 (直播间 {room_id}): 代码 {e.code}, 消息: {e.message}",
                 "B站解析",
             )
 
-            if e.code == -403:
+            if e.code == -403:  # type: ignore
                 raise ResourceForbiddenError(
                     f"直播间访问被禁止 ({room_id}): {e.message}",
                     cause=e,
@@ -299,7 +338,7 @@ class BilibiliApiService:
             )
 
     @staticmethod
-    @Retry.api(exception=RETRYABLE_EXCEPTIONS)
+    @Retry.api(exception=RETRYABLE_EXCEPTIONS)  # type: ignore
     async def get_article_info(cv_id: str, parsed_url: str) -> ArticleInfo:
         """获取专栏文章信息"""
         logger.debug(f"获取专栏信息: {cv_id}", "B站解析")
@@ -342,12 +381,12 @@ class BilibiliApiService:
             logger.debug(f"专栏信息获取成功: {title}", "B站解析")
             return article_info
 
-        except BiliExceptions.ApiException as e:
+        except BiliExceptions.ResponseCodeException as e:
             logger.error(
                 f"B站API错误 (专栏 {cv_id}): 代码 {e.code}, 消息: {e.message}",
                 "B站解析",
             )
-            context["code"] = e.code
+            context["code"] = e.code  # type: ignore
             if e.code == -404 or "获取信息失败" in str(e):
                 raise ResourceNotFoundError(
                     f"专栏未找到: {cv_id}", cause=e, context=context
@@ -368,7 +407,7 @@ class BilibiliApiService:
             )
 
     @staticmethod
-    @Retry.api(exception=RETRYABLE_EXCEPTIONS)
+    @Retry.api(exception=RETRYABLE_EXCEPTIONS)  # type: ignore
     async def get_user_info(uid: int, parsed_url: str) -> UserInfo:
         """获取用户空间信息"""
         logger.debug(f"获取用户信息: {uid}", "B站解析")
@@ -394,31 +433,31 @@ class BilibiliApiService:
                 errors.append(f"get_user_info 失败: {results[0]}")
                 logger.error("获取 user_info 失败", e=results[0])
             else:
-                user_info_data = results[0]
+                user_info_data = cast(Dict[str, Any], results[0])
 
             if isinstance(results[1], Exception):
                 errors.append(f"get_relation_info 失败: {results[1]}")
                 logger.error("获取 relation_info 失败", e=results[1])
             else:
-                relation_info_data = results[1]
+                relation_info_data = cast(Dict[str, Any], results[1])
 
             if isinstance(results[2], Exception):
                 errors.append(f"get_up_stat 失败: {results[2]}")
                 logger.error("获取 up_stat 失败", e=results[2])
             else:
-                up_stat_data = results[2]
+                up_stat_data = cast(Dict[str, Any], results[2])
 
             if not user_info_data:
                 error_msg = ", ".join(errors)
                 if any("-404" in str(e) for e in results if isinstance(e, Exception)):
                     raise ResourceNotFoundError(
                         f"用户未找到: {uid}",
-                        cause=results[0] if errors else None,
+                        cause=results[0] if errors else None,  # type: ignore
                         context=context,
                     )
                 raise BilibiliResponseError(
                     f"获取用户核心信息失败: {error_msg}",
-                    cause=results[0] if errors else None,
+                    cause=results[0] if errors else None,  # type: ignore
                     context=context,
                 )
 
@@ -545,7 +584,7 @@ class BilibiliApiService:
         return season_model
 
     @staticmethod
-    @Retry.api(exception=RETRYABLE_EXCEPTIONS)
+    @Retry.api(exception=RETRYABLE_EXCEPTIONS)  # type: ignore
     async def get_bangumi_info(
         parsed_url: str, season_id: Optional[int] = None, ep_id: Optional[int] = None
     ) -> SeasonInfo:
@@ -567,7 +606,6 @@ class BilibiliApiService:
             season_url = f"https://api.bilibili.com/pgc/view/web/season?{api_param}"
             logger.debug(f"请求番剧API: {season_url}", "B站解析")
 
-            # 使用 AsyncHttpx 替代 NetworkService.get_json
             from ..utils.headers import get_bilibili_headers
 
             cred = get_credential()
@@ -577,7 +615,7 @@ class BilibiliApiService:
             response = await AsyncHttpx.get(
                 season_url, headers=headers, cookies=cookies
             )
-            response.raise_for_status()  # 检查HTTP状态码
+            response.raise_for_status()
             season_resp = response.json()
 
             if not isinstance(season_resp, dict):

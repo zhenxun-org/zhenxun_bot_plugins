@@ -1,248 +1,338 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bilibili 视频详情</title>
     <style>
         @font-face {
-            font-family: 'van'; /* 定义图标字体 */
-            src: url(data:font/truetype;base64,{{ font_van_base64 }}) format('truetype'); /* 嵌入 Base64 字体 */
+            font-family: 'van';
+            src: url(data:font/truetype;base64,{{ font_van_base64 }}) format('truetype');
         }
+
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif; /* 更全面的字体栈 */
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
         }
+
         body {
-            display: inline-block; /* 让截图适应内容宽度 */
-            background-color: #ffffff; /* 白色背景 */
+            display: inline-block;
+            background-color: #ffffff;
         }
-        .card, .up .condition, .video-cover .time, .video-cover .category {
-            /* 这些共享样式可能不再需要，具体看下面 */
+
+        .card,
+        .up .condition,
+        .video-cover .time,
+        .video-cover .category {
             border-radius: 8px;
             text-align: center;
             vertical-align: middle;
         }
-        .video { /* 卡片主体 */
+
+        .video {
             position: relative;
             display: inline-block;
-            width: 750px; /* 增加卡片宽度，使其与链接长度大致相同 */
+            width: 750px;
             padding: 0;
             background-color: #ffffff;
-            border-radius: 12px; /* 圆角加大 */
-            box-shadow: 0 5px 20px rgba(251, 114, 153, 0.15); /* 粉色系阴影 */
-            overflow: hidden; /* 确保内容在圆角内 */
-            margin: 15px; /* 增加外边距让阴影可见 */
+            border-radius: 12px;
+            box-shadow: 0 5px 20px rgba(251, 114, 153, 0.15);
+            overflow: hidden;
+            margin: 15px;
         }
+
         .video-cover {
             position: relative;
-            margin-bottom: 0; /* 移除封面下方外边距 */
-            border-radius: 0; /* 封面本身不需要圆角，由 .video 控制 */
+            margin-bottom: 0;
+            border-radius: 0;
             overflow: hidden;
         }
+
         .video-cover .cover {
             width: 100%;
             height: auto;
             display: block;
-            aspect-ratio: 16 / 9; /* 调整为常见 16:9 比例 */
+            aspect-ratio: 16 / 9;
             object-fit: cover;
         }
-        .video-cover .category { /* 分区标签 */
+
+        .video-cover .category {
             position: absolute;
             top: 12px;
             right: 12px;
             height: auto;
             border-radius: 6px;
-            font-size: 22px; /* 字体稍小 */
+            font-size: 22px;
             line-height: 1.4;
-            background-color: rgba(0, 0, 0, 0.4); /* 半透明黑色背景 */
-            color: #ffffff; /* 白色文字 */
+            background-color: rgba(0, 0, 0, 0.4);
+            color: #ffffff;
             padding: 5px 10px;
             font-weight: 500;
         }
-        .video-cover .time { /* 时长 */
+
+        .video-cover .time {
             position: absolute;
             bottom: 8px;
-            right: 12px; /* 改到右下角 */
+            right: 12px;
             height: auto;
             border-radius: 6px;
             font-size: 24px;
             line-height: 1.4;
-            background-color: rgba(0, 0, 0, 0.6); /* 半透明黑色背景 */
+            background-color: rgba(0, 0, 0, 0.6);
             color: #ffffff;
             padding: 4px 10px;
         }
-        .up { /* UP主信息区域 */
+
+        .up {
             display: flex;
             align-items: center;
-            padding: 15px 20px; /* 内边距 */
-            border-bottom: 1px solid #f0f0f0; /* 添加分隔线 */
+            padding: 18px 25px;
+            border-bottom: 1px solid #e8e8e8;
         }
+
         .up .avatar .img {
-            width: 70px; /* 头像稍小 */
-            height: 70px;
+            width: 65px;
+            height: 65px;
             border: 1px solid #eee;
             border-radius: 50%;
             object-fit: cover;
-            margin-right: 12px; /* 头像和名字间距 */
+            margin-right: 15px;
         }
-        .up .info { padding: 0; flex-grow: 1; min-width: 0; }
+
+        .up .info {
+            padding: 0;
+            flex-grow: 1;
+            min-width: 0;
+        }
+
         .up .info .name {
             display: block;
-            font-size: 28px; /* UP名字号 */
+            font-size: 26px;
             font-weight: 500;
-            color: #fb7299; /* 粉色 UP 名 */
+            color: #fb7299;
             overflow: hidden;
             white-space: nowrap;
             text-overflow: ellipsis;
         }
-        .video-info { /* 视频信息区域 */
+
+        .video-info {
             width: 100%;
-            padding: 18px 22px 15px 22px; /* 内边距调整 */
+            padding: 20px 25px 20px 25px;
         }
+
         .video-info .title {
-            font-size: 32px; /* 标题字号 */
+            font-size: 30px;
             font-weight: 600;
-            line-height: 1.45; /* 调整行高 */
-            margin-bottom: 12px; /* 标题下方间距 */
-            color: #1a1a1a; /* 深色标题 */
-            /* 最多显示两行 */
+            line-height: 1.5;
+            margin-bottom: 15px;
+            color: #1a1a1a;
             display: -webkit-box;
             -webkit-line-clamp: 2;
             -webkit-box-orient: vertical;
             overflow: hidden;
             text-overflow: ellipsis;
         }
-        .video-info .data-part1 { /* 发布时间和 AV 号 */
+
+        .video-info .data-part1 {
             display: flex;
-            justify-content: space-between; /* 两端对齐 */
-            margin-top: 8px;
-            margin-bottom: 15px; /* 增大下方间距 */
-            font-size: 24px;
-            color: #999; /* 灰色文字 */
+            justify-content: space-between;
+            margin-top: 12px;
+            margin-bottom: 18px;
+            font-size: 22px;
+            color: #999;
         }
-        .video-info .summary { /* 简介 */
-            margin-top: 0; /* 移除上方间距 */
-            margin-bottom: 18px; /* 增大下方间距 */
+
+        .video-info .summary {
+            margin-top: 0;
+            margin-bottom: 18px;
             font-size: 25px;
-            color: #666; /* 稍深灰色 */
+            color: #666;
             line-height: 1.6;
             word-wrap: break-word;
-            /* 限制摘要显示行数 */
             display: -webkit-box;
-            -webkit-line-clamp: 3; /* 最多显示3行 */
+            -webkit-line-clamp: 3;
             -webkit-box-orient: vertical;
             overflow: hidden;
             text-overflow: ellipsis;
-            border-left: 3px solid #fce4ec; /* 左侧淡粉色边框 */
-            padding-left: 10px; /* 边框和文字间距 */
+            border-left: 3px solid #fce4ec;
+            padding-left: 10px;
         }
-        .video-info .data-part2 { /* 统计数据 */
+
+        .video-info .ai-summary {
+            margin-top: 18px;
+            margin-bottom: 18px;
+            padding: 15px;
+            background: linear-gradient(135deg, #f5f7fa 0%, #e8f0fe 100%);
+            border-radius: 8px;
+            border-left: 4px solid #4285f4;
+        }
+
+        .video-info .ai-summary-title {
+            font-size: 26px;
+            font-weight: 600;
+            color: #4285f4;
+            margin-bottom: 10px;
+        }
+
+        .video-info .ai-summary-content {
+            font-size: 20px;
+            color: #555;
+            line-height: 1.7;
+            word-wrap: break-word;
+        }
+
+        .video-info .data-part2 {
             display: grid;
-            grid-template-columns: repeat(4, 1fr); /* 保持四列 */
-            gap: 18px 10px; /* 调整间距 */
-            font-size: 24px;
-            color: #555; /* 数据颜色 */
+            grid-template-columns: repeat(7, 1fr);
+            gap: 20px 15px;
+            font-size: 20px;
+            color: #666;
             text-align: center;
-            border-top: 1px solid #f0f0f0; /* 上方加分隔线 */
-            padding-top: 15px; /* 分隔线上方间距 */
+            border-top: 1px solid #e8e8e8;
+            padding-top: 20px;
+            margin-top: 15px;
         }
-        .video-info .data-part2 > span {
+
+        .video-info .data-part2>span {
             display: flex;
             flex-direction: column;
             align-items: center;
+            line-height: 1.4;
         }
-        .video-info .data-part2 > span::before { /* 图标样式 */
+
+        .video-info .data-part2>span::before {
             display: block;
             font-family: 'van';
-            font-size: 42px; /* 图标大小调整 */
-            margin-bottom: 4px;
-            color: #fb7299; /* 粉色图标 */
+            font-size: 36px;
+            margin-bottom: 6px;
+            color: #fb7299;
         }
-        /* --- 图标 content (保持不变) --- */
-        .video-info .data-part2 .view::before   { content: "\e6e6"; }
-        .video-info .data-part2 .dm::before     { content: "\e6e7"; }
-        .video-info .data-part2 .like::before   { content: "\e6e0"; }
-        .video-info .data-part2 .coin::before   { content: "\e6e4"; }
-        .video-info .data-part2 .fav::before    { content: "\e6e1"; }
-        .video-info .data-part2 .share::before  { content: ""; }
-        .video-info .data-part2 .reply::before  { content: ""; }
-        /* --- --- */
-        .video .portal { /* 底部区域 */
-            position: relative;
-            width: 100%;
-            height: 70px; /* 高度减小 */
-            background-color: #fff8fa; /* 淡粉色背景 */
-            margin-top: 0; /* 移除上方间距 */
+
+        .video-info .data-part2 .view::before {
+            content: "\e6e6";
+        }
+
+        .video-info .data-part2 .dm::before {
+            content: "\e6e7";
+        }
+
+        .video-info .data-part2 .like::before {
+            content: "\e6e0";
+        }
+
+        .video-info .data-part2 .coin::before {
+            content: "\e6e4";
+        }
+
+        .video-info .data-part2 .fav::before {
+            content: "\e6e1";
+        }
+
+        .video-info .data-part2 .share::before {
+            content: "";
+        }
+
+        .video-info .data-part2 .reply::before {
+            content: "";
+        }
+
+        .online-count-badge-right {
             display: flex;
             align-items: center;
-            justify-content: center; /* 水平居中 */
-            padding: 0 22px;
-            border-top: 1px solid #f0f0f0; /* 上方分隔线 */
+            gap: 5px;
+            background-color: rgba(35, 169, 110, 0.12);
+            color: #23a96e;
+            padding: 6px 12px;
+            border-radius: 16px;
+            font-size: 20px;
+            font-weight: 500;
+            margin-left: auto;
+            white-space: nowrap;
         }
-        /* 二维码样式已移除 */
+
+        .video .portal {
+            position: relative;
+            width: 100%;
+            height: 70px;
+            background-color: #fff8fa;
+            margin-top: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 22px;
+            border-top: 1px solid #f0f0f0;
+        }
+
         .video .portal .bili-logo {
             font-size: 28px;
             font-weight: bold;
-            color: #fb7299; /* 粉色 Logo */
-            margin: 0 auto; /* 居中显示 */
+            color: #fb7299;
+            margin: 0 auto;
         }
 
-        /* 评论区样式 */
         .comments {
-            padding: 10px 18px 15px 18px; /* 内边距 */
-            border-top: 1px solid #f0f0f0; /* 上方分隔线 */
-            margin-top: 10px; /* 与上方内容间距 */
+            padding: 10px 18px 15px 18px;
+            border-top: 1px solid #f0f0f0;
+            margin-top: 10px;
         }
+
         .comments-title {
-            font-size: 14px;
+            font-size: 16px;
             font-weight: 600;
             color: #555;
             margin-bottom: 8px;
         }
+
         .comment-item {
-            font-size: 13px;
+            font-size: 14px;
             line-height: 1.5;
             margin-bottom: 8px;
             color: #333;
-            display: flex; /* 横向排列 */
-            align-items: flex-start; /* 顶部对齐 */
+            display: flex;
+            align-items: flex-start;
         }
+
         .comment-item:last-child {
             margin-bottom: 0;
         }
+
         .commenter {
-            color: #fb7299; /* 评论者昵称粉色 */
+            color: #fb7299;
             font-weight: 500;
             margin-right: 5px;
-            white-space: nowrap; /* 防止昵称换行 */
+            white-space: nowrap;
         }
+
         .comment-text {
-            word-break: break-all; /* 评论内容自动换行 */
-            flex-grow: 1; /* 占据剩余空间 */
+            word-break: break-all;
+            flex-grow: 1;
         }
+
         .comment-likes {
             font-size: 12px;
             color: #999;
-            margin-left: 8px; /* 与评论内容间距 */
+            margin-left: 8px;
             white-space: nowrap;
         }
-        .comment-likes::before { /* 点赞图标 */
+
+        .comment-likes::before {
             font-family: 'van';
-            content: "\e6e0"; /* 点赞图标 */
+            content: "\e6e0";
             font-size: 14px;
             margin-right: 2px;
-            vertical-align: -1px; /* 微调图标对齐 */
+            vertical-align: -1px;
         }
     </style>
 </head>
+
 <body>
     <div class="video">
         <div class="video-cover">
             {% if cover_image_src %}
-            <img class="cover" src="{{ cover_image_src }}" alt="Video Cover"/>
+            <img class="cover" src="{{ cover_image_src }}" alt="Video Cover" />
             {% endif %}
             <span class="category">{{ video_category }}</span>
             <span class="time">{{ video_duration }}</span>
@@ -256,15 +346,21 @@
             <div class="info">
                 <span class="name" style="color: {{ up_info.name_color }};">{{ up_info.name }}</span>
             </div>
+            {% if online_count %}
+            <div class="online-count-badge-right">
+                <i class="van-icon van-icon-a-20"></i>
+                <span>{{ online_count }} 人在线</span>
+            </div>
+            {% endif %}
         </div>
 
         <div class="video-info">
             <div class="title">{{ video_title }}</div>
             <div class="data-part1">
                 <span>发布于: {{ upload_date }}</span>
-                <span class="av">{{ id_number }}</span> <!-- BV/AV号 -->
+                <span class="av">{{ id_number }}</span>
             </div>
-             <div class="summary">{{ video_summary | replace("\n", "<br>") | safe }}</div>
+            <div class="summary">{{ video_summary | replace("\n", "<br>") | safe }}</div>
             <div class="data-part2">
                 <span class="view">{{ view_count }}<br>播放</span>
                 <span class="dm">{{ dm_count }}<br>弹幕</span>
@@ -273,7 +369,7 @@
                 <span class="fav">{{ fav_count }}<br>收藏</span>
                 <span class="share">{{ share_count }}<br>分享</span>
                 <span class="reply">{{ reply_count }}<br>评论</span>
-                <span></span> <!-- 占位符 -->
+                <span></span>
             </div>
 
             {% if comments %}
@@ -290,10 +386,18 @@
                 {% endfor %}
             </div>
             {% endif %}
+
+            {% if ai_summary %}
+            <div class="ai-summary">
+                <div class="ai-summary-title">🤖 AI 视频总结</div>
+                <div class="ai-summary-content">{{ ai_summary | replace("\n", "<br>") | safe }}</div>
+            </div>
+            {% endif %}
         </div>
         <div class="portal">
             <span class="bili-logo">bilibili</span>
         </div>
     </div>
 </body>
+
 </html>

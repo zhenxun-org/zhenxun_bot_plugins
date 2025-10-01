@@ -1,108 +1,114 @@
 body {
-    margin: 0;
-    padding: 0;
-    /* background-color: #f0f2f5; */ /* 移除背景色，让截图背景透明 */
-    display: inline-block; /* 让 body 宽度适应内容 */
+  margin: 0;
+  padding: 0;
+  display: inline-block;
 }
 
 .card {
-    background-color: #ffffff;
-    border-radius: 10px; /* 圆角稍大 */
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.12); /* 阴影调整 */
-    margin: 10px; /* 外边距 */
-    overflow: hidden;
-    width: 580px; /* 稍微减小宽度以适应边距 */
-    max-width: 90vw;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif; /* 更全面的字体栈 */
-    color: #1a1a1a; /* 主要文字颜色加深 */
+  background-color: #ffffff;
+  border-radius: 10px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.12);
+  margin: 10px;
+  overflow: hidden;
+  width: 580px;
+  max-width: 90vw;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, "PingFang SC", "Hiragino Sans GB",
+    "Microsoft YaHei", sans-serif;
+  color: #1a1a1a;
 }
 
 .cover img {
-    width: 100%;
-    height: auto;
-    display: block;
-    aspect-ratio: 16 / 10;
-    object-fit: cover;
-    border-bottom: 1px solid #f0f0f0; /* 封面下方加分隔线 */
+  width: 100%;
+  height: auto;
+  display: block;
+  aspect-ratio: 16 / 10;
+  object-fit: cover;
+  border-bottom: 1px solid #f0f0f0;
 }
 
 .info {
-    padding: 18px 22px; /* 调整内边距 */
+  padding: 18px 22px;
 }
 
 .title {
-    font-size: 18px; /* 标题字号增大 */
-    font-weight: 600;
-    margin-bottom: 10px; /* 标题下边距增大 */
-    line-height: 1.5; /* 标题行高 */
-    color: #000000; /* 标题黑色 */
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 10px;
+  line-height: 1.5;
+  color: #000000;
 }
 
-.uploader, .details, .ids, .link {
-    font-size: 14px; /* 详细信息字号增大 */
-    color: #555; /* 颜色稍深 */
-    margin-bottom: 8px; /* 间距调整 */
-    line-height: 1.6;
+.uploader,
+.details,
+.ids,
+.link {
+  font-size: 14px;
+  color: #555;
+  margin-bottom: 8px;
+  line-height: 1.6;
 }
 .ids span {
-     margin-right: 8px; /* ID 间距调整 */
+  margin-right: 8px;
 }
 
 .stats {
-    font-size: 14px; /* 统计数据字号增大 */
-    color: #555;
-    line-height: 1.7; /* 统计数据行高增大 */
-    margin-top: 12px;
-    margin-bottom: 12px;
+  font-size: 14px;
+  color: #555;
+  line-height: 1.7;
+  margin-top: 12px;
+  margin-bottom: 12px;
 }
 
 .stats span {
-    margin-right: 12px; /* 统计数据间距增大 */
-    display: inline-block;
-    white-space: nowrap; /* 防止数字内换行 */
+  margin-right: 12px;
+  display: inline-block;
+  white-space: nowrap;
 }
-.stats br { /* 控制换行 */
-    display: block; /* 强制换行 */
-    content: ""; /* 必需 */
-    margin-top: 4px; /* 换行间距 */
+.stats br {
+  display: block;
+  content: "";
+  margin-top: 4px;
 }
-
 
 .divider {
-    border: none;
-    height: 1px;
-    background-color: #e8e8e8; /* 分隔线颜色变浅 */
-    margin: 12px 0; /* 分隔线边距调整 */
+  border: none;
+  height: 1px;
+  background-color: #e8e8e8;
+  margin: 12px 0;
 }
 
 .link a {
-    color: #007bff; /* 链接颜色 */
-    text-decoration: none;
-    word-break: break-all;
-    font-size: 13px; /* 链接字号稍小 */
+  color: #007bff;
+  text-decoration: none;
+  word-break: break-all;
+  font-size: 13px;
 }
 
 .link a:hover {
-    text-decoration: underline;
+  text-decoration: underline;
 }
 
-/* 针对暗色模式的优化 (可选) */
 @media (prefers-color-scheme: dark) {
-    .card {
-        background-color: #2a2a2a;
-        color: #e0e0e0;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-    }
-    .title {
-        color: #ffffff;
-    }
-    .uploader, .details, .ids, .stats, .link a {
-        color: #b0b0b0;
-    }
-    .divider {
-        background-color: #444;
-    }
-    .link a {
-        color: #58a6ff;
-    }
+  .card {
+    background-color: #2a2a2a;
+    color: #e0e0e0;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+  }
+  .title {
+    color: #ffffff;
+  }
+  .uploader,
+  .details,
+  .ids,
+  .stats,
+  .link a {
+    color: #b0b0b0;
+  }
+  .divider {
+    background-color: #444;
+  }
+  .link a {
+    color: #58a6ff;
+  }
 }

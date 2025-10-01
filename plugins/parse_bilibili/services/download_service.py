@@ -2,13 +2,21 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import parse_qs, urlparse
 import asyncio
+from dataclasses import dataclass
 
 from bilibili_api import bangumi, video
 from nonebot import get_driver
 from nonebot.adapters import Bot, Event
+from nonebot_plugin_alconna import AlconnaMatcher
+
 from zhenxun.services.log import logger
 
-from ..config import PLUGIN_TEMP_DIR, base_config, get_credential
+from ..config import (
+    MAX_CONCURRENT_DOWNLOADS,
+    PLUGIN_TEMP_DIR,
+    base_config,
+    get_credential,
+)
 from ..model import SeasonInfo, VideoInfo
 from ..utils.exceptions import BilibiliBaseException, DownloadError, MediaProcessError
 from ..utils.file_utils import merge_media_files
@@ -17,8 +25,75 @@ from .cache_service import CacheService, VIDEO_CACHE_DIR
 from .network_service import download_bilibili_file
 
 
-class DownloadService:
-    """下载服务，封装视频和番剧的完整下载逻辑"""
+@dataclass
+class DownloadTask:
+    """封装一个下载任务所需的所有信息"""
+
+    bot: Bot
+    event: Event
+    info_model: Any
+    is_manual: bool
+
+
+class DownloadManager:
+    """下载管理器，负责队列、并发控制和任务执行"""
+
+    def __init__(self):
+        self._initialized = False
+        self.active_tasks: set[asyncio.Task] = set()
+        self.semaphore: Optional[asyncio.Semaphore] = None
+
+    def initialize(self):
+        """初始化下载管理器，启动工作者协程"""
+        if self._initialized:
+            return
+        self.semaphore = asyncio.Semaphore(MAX_CONCURRENT_DOWNLOADS)
+        self._initialized = True
+        logger.info(f"下载管理器已初始化，最大并发数: {MAX_CONCURRENT_DOWNLOADS}")
+
+    async def add_task(
+        self, task: DownloadTask, matcher: Optional[AlconnaMatcher] = None
+    ):
+        """为下载任务创建后台任务，并进行并发控制"""
+        if matcher and self.semaphore and self.semaphore.locked():
+            await matcher.send(
+                f'"{task.info_model.title}" 已加入下载任务，正在等待空闲下载位...'
+            )
+
+        new_task = asyncio.create_task(self._task_wrapper(task))
+        self.active_tasks.add(new_task)
+        new_task.add_done_callback(self.active_tasks.discard)
+
+    async def _task_wrapper(self, task: DownloadTask):
+        """
+        包装单个下载任务的完整生命周期，包括并发控制、消息通知和异常处理。
+        """
+        try:
+            logger.info(f"任务: {task.info_model.title}, 等待信号量...")
+            assert self.semaphore is not None
+            async with self.semaphore:
+                logger.info(f"信号量已获取，开始处理任务: {task.info_model.title}")
+                if task.is_manual:
+                    try:
+                        await task.bot.send(
+                            task.event, f"▶️ 开始下载: {task.info_model.title}"
+                        )
+                    except Exception as send_err:
+                        logger.warning(f"发送'开始下载'消息失败: {send_err}")
+                await self._execute_download(
+                    task.bot, task.event, task.info_model, task.is_manual
+                )
+        except Exception as e:
+            logger.error(f"下载任务 '{task.info_model.title}' 执行失败", e=e)
+            if task.is_manual:
+                try:
+                    error_message = getattr(e, "message", str(e))
+                    await task.bot.send(
+                        task.event,
+                        f'❌ 下载"{task.info_model.title}"失败: {error_message}',
+                    )
+                except Exception as send_err:
+                    logger.error(f"发送下载失败消息也失败了: {send_err}")
 
     @staticmethod
     def _estimate_video_size(
@@ -61,7 +136,7 @@ class DownloadService:
 
         available_streams = sorted(
             [s for s in video_streams if s.get("id") in quality_preference],
-            key=lambda s: quality_preference.index(s.get("id")),
+            key=lambda s: quality_preference.index(s.get("id")),  # type: ignore
         )
         if initial_quality_id:
             available_streams = [
@@ -76,7 +151,7 @@ class DownloadService:
         selected_video = available_streams[0]
         original_quality_id = selected_video.get("id", 0)
 
-        estimated_size = DownloadService._estimate_video_size(
+        estimated_size = DownloadManager._estimate_video_size(
             selected_video, best_audio, duration_seconds
         )
         logger.debug(
@@ -86,7 +161,7 @@ class DownloadService:
         if estimated_size > max_size_mb:
             quality_reduced = True
             for stream in available_streams[1:]:
-                new_size = DownloadService._estimate_video_size(
+                new_size = DownloadManager._estimate_video_size(
                     stream, best_audio, duration_seconds
                 )
                 logger.debug(
@@ -107,27 +182,10 @@ class DownloadService:
         return selected_video, best_audio, quality_reduced
 
     @staticmethod
-    async def execute_download(
-        bot: Bot,
-        event: Event,
-        info_model: Any,
-        is_manual: bool,
-    ) -> None:
-        """根据模型类型分发到具体的下载方法 (移除 matcher)"""
-        if isinstance(info_model, VideoInfo):
-            await DownloadService._download_video(bot, event, info_model, is_manual)
-        elif isinstance(info_model, SeasonInfo):
-            await DownloadService._download_bangumi(bot, event, info_model)
-        else:
-            raise BilibiliBaseException(
-                f"不支持下载此类型的内容: {type(info_model).__name__}"
-            )
-
-    @staticmethod
     def _check_duration(
         duration_seconds: float, max_duration_minutes: int, user_id: str
     ) -> None:
-        """检查视频时长是否超过限制，不符合则抛出异常"""
+        """检查视频时长是否超过限制"""
         if max_duration_minutes <= 0:
             return
 
@@ -144,14 +202,31 @@ class DownloadService:
             logger.warning(error_msg)
             raise DownloadError(error_msg)
 
-    @staticmethod
+    async def _execute_download(
+        self,
+        bot: Bot,
+        event: Event,
+        info_model: Any,
+        is_manual: bool,
+    ) -> None:
+        """根据模型类型分发到具体的下载方法"""
+        if isinstance(info_model, VideoInfo):
+            await self._download_video(bot, event, info_model, is_manual)
+        elif isinstance(info_model, SeasonInfo):
+            await self._download_bangumi(bot, event, info_model)
+        else:
+            raise BilibiliBaseException(
+                f"不支持下载此类型的内容: {type(info_model).__name__}"
+            )
+
     async def _download_video(
+        self,
         bot: Bot,
         event: Event,
         video_info: VideoInfo,
         is_manual: bool,
     ) -> None:
-        """执行普通视频的下载、合并和发送 (移除 matcher)"""
+        """执行普通视频的下载、合并和发送"""
         video_id = video_info.bvid or f"av{video_info.aid}"
         page_num = 0
         parsed_url = urlparse(video_info.parsed_url)
@@ -176,9 +251,7 @@ class DownloadService:
             else "AUTO_DOWNLOAD_MAX_DURATION"
         )
         max_duration = base_config.get(max_duration_key, 0)
-        DownloadService._check_duration(
-            video_info.duration, max_duration, event.get_user_id()
-        )
+        self._check_duration(video_info.duration, max_duration, event.get_user_id())
 
         v = video.Video(
             bvid=video_info.bvid, aid=video_info.aid, credential=get_credential()
@@ -197,7 +270,7 @@ class DownloadService:
         max_size_mb = base_config.get("MAX_DOWNLOAD_SIZE_MB", 100)
 
         selected_video_stream, selected_audio_stream, _ = (
-            DownloadService._select_appropriate_quality(
+            self._select_appropriate_quality(
                 video_streams,
                 audio_streams,
                 video_info.duration,
@@ -249,17 +322,19 @@ class DownloadService:
             if a_stream_path and a_stream_path.exists():
                 a_stream_path.unlink(missing_ok=True)
 
-    @staticmethod
     async def _download_bangumi(
+        self,
         bot: Bot,
         event: Event,
         season_info: SeasonInfo,
     ) -> None:
-        """执行番剧的下载、合并和发送 (移除 matcher)"""
+        """执行番剧的下载、合并和发送"""
 
         ep_id = season_info.target_ep_id
         duration_seconds = 0
         video_obj = None
+        if ep_id is None:
+            raise DownloadError("番剧分集ID (ep_id) 未找到")
         try:
             ep = bangumi.Episode(epid=ep_id, credential=get_credential())
             video_obj = await ep.turn_to_video()
@@ -278,7 +353,7 @@ class DownloadService:
             )
 
         if duration_seconds > 0:
-            DownloadService._check_duration(
+            self._check_duration(
                 duration_seconds,
                 base_config.get("MANUAL_DOWNLOAD_MAX_DURATION", 0),
                 event.get_user_id(),
@@ -305,7 +380,7 @@ class DownloadService:
             max_size_mb = base_config.get("MAX_DOWNLOAD_SIZE_MB", 100)
 
             selected_video_stream, selected_audio_stream, _ = (
-                DownloadService._select_appropriate_quality(
+                self._select_appropriate_quality(
                     video_streams,
                     audio_streams,
                     duration_seconds,
@@ -376,3 +451,6 @@ class DownloadService:
                 downloaded_file_path.unlink()
         else:
             raise DownloadError("番剧文件下载失败或文件不存在")
+
+
+download_manager = DownloadManager()
