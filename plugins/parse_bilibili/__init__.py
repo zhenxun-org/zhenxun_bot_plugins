@@ -149,7 +149,7 @@ __plugin_meta__ = PluginMetadata(
     """.strip(),
     extra=PluginExtraData(
         author="leekooyo (Refactored by Assistant)",
-        version="1.5.1",
+        version="1.5.2",
         plugin_type=PluginType.DEPENDANT,
         menu_type="其他",
         configs=[
