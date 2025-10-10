@@ -411,7 +411,7 @@ async def handle_clear(
 
 
 @bilisub.assign("login")
-async def handle_login(session: EventSession):
+async def handle_login(matcher: Matcher, session: EventSession):
     user_id = session.id1
     if not user_id:
         await MessageUtils.build_message("无法获取用户ID，无法开始登录。").finish()
@@ -446,20 +446,58 @@ async def handle_login(session: EventSession):
 
         msg_parts = ["请使用B站APP扫描二维码登录：", qr_picture_obj.content]
         await MessageUtils.build_message(msg_parts).send()
-        await MessageUtils.build_message(
-            "扫码登录后请发送 `bilisub status` 检查状态。"
-        ).send()
+
+        asyncio.create_task(check_login_status(matcher, user_id))
     except Exception as e:
         if user_id in login_sessions:
             del login_sessions[user_id]
         await MessageUtils.build_message(f"生成登录二维码失败: {e}").finish()
 
 
+async def check_login_status(matcher: Matcher, user_id: str):
+    """后台轮询检查二维码登录状态，并在成功或失败时通知用户"""
+    if user_id not in login_sessions:
+        return
+
+    login_handler, start_time = login_sessions[user_id]
+    timeout = 120
+    scan_message_sent = False
+
+    logger.info(f"开始为用户 {user_id} 自动检查登录状态...")
+
+    while time.time() - start_time < timeout:
+        try:
+            status = await login_handler.check_state()
+
+            if status == login_v2.QrCodeLoginEvents.DONE:
+                credential = login_handler.get_credential()
+                await save_credential_to_file(credential)
+                dedeuserid = getattr(credential, "dedeuserid", "未知")
+                await matcher.send(f"🎉 登录成功！账号UID {dedeuserid} 的凭证已保存。")
+                break
+            elif status == login_v2.QrCodeLoginEvents.TIMEOUT:
+                await matcher.send("二维码已过期，请重新发送 `bilisub login` 获取。")
+                break
+            elif status == login_v2.QrCodeLoginEvents.SCAN and not scan_message_sent:
+                await matcher.send("已扫码，请在手机上确认登录...")
+                scan_message_sent = True
+
+            await asyncio.sleep(2)
+        except Exception as e:
+            logger.error(f"检查用户 {user_id} 登录状态时出错", e=e)
+            await matcher.send("检查登录状态时发生错误，流程已终止。")
+            break
+
+    if user_id in login_sessions:
+        del login_sessions[user_id]
+
+
 @bilisub.assign("status")
 async def handle_status(session: EventSession):
     user_id = session.id1
     if not user_id:
-        await MessageUtils.build_message("无法获取用户ID，无法检查状态。").finish()
+        await MessageUtils.build_message("无法获取用户ID，无法检查状态。").send()
+        return
 
     if user_id in login_sessions:
         login_session, _ = login_sessions[user_id]
@@ -472,29 +510,32 @@ async def handle_status(session: EventSession):
                 dedeuserid = getattr(credential, "dedeuserid", "未知")
                 await MessageUtils.build_message(
                     f"🎉 登录成功！账号UID {dedeuserid} 的凭证已保存。"
-                ).finish()
+                ).send()
+                return
             elif status == login_v2.QrCodeLoginEvents.TIMEOUT:
                 del login_sessions[user_id]
                 await MessageUtils.build_message(
                     "二维码已过期，请重新发送 `bilisub login` 获取新的二维码。"
-                ).finish()
+                ).send()
+                return
             elif status == login_v2.QrCodeLoginEvents.SCAN:
-                await MessageUtils.build_message(
-                    "已扫码，请在手机上确认登录..."
-                ).finish()
+                await MessageUtils.build_message("已扫码，请在手机上确认登录...").send()
+                return
             else:
-                await MessageUtils.build_message("等待扫码中...").finish()
+                await MessageUtils.build_message("等待扫码中...").send()
+                return
         except Exception as e:
             if user_id in login_sessions:
                 del login_sessions[user_id]
-            await MessageUtils.build_message(f"检查登录状态失败: {e}").finish()
+            await MessageUtils.build_message(f"检查登录状态失败: {e}").send()
+            return
         return
 
     credential = get_credential()
     if not credential:
         await MessageUtils.build_message(
             "当前未登录B站账号。\n请使用 `bilisub login` 扫码登录。"
-        ).finish()
+        ).send()
         return
 
     status_lines = ["B站登录凭证状态："]
@@ -512,7 +553,7 @@ async def handle_status(session: EventSession):
         logger.error("检查凭证有效性时出错", e=e)
         status_lines.append(f"❓ 凭证状态检查失败: {e}")
 
-    await MessageUtils.build_message("\n".join(status_lines)).finish()
+    await MessageUtils.build_message("\n".join(status_lines)).send()
 
 
 @bilisub.assign("logout")
@@ -520,11 +561,12 @@ async def handle_logout():
     try:
         credential = get_credential()
         if not credential:
-            await MessageUtils.build_message("当前没有已登录的账号。").finish()
+            await MessageUtils.build_message("当前没有已登录的账号。").send()
+            return
 
         uid = getattr(credential, "dedeuserid", "未知")
         await clear_credential()
-        await MessageUtils.build_message(f"账号 {uid} 已退出登录").finish()
+        await MessageUtils.build_message(f"账号 {uid} 已退出登录").send()
 
     except Exception as e:
         await MessageUtils.build_message(f"退出登录失败: {e}").finish()

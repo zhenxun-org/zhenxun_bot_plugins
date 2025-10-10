@@ -9,7 +9,7 @@ from nonebot.adapters import Bot, Event
 
 from nonebot_plugin_uninfo import Uninfo
 from nonebot_plugin_session import EventSession
-from nonebot_plugin_alconna import UniMsg, UniMessage, Text, Image
+from nonebot_plugin_alconna import UniMsg, UniMessage, Text, Image, Segment
 
 from zhenxun.services.log import logger
 from zhenxun.utils.enum import PluginType
@@ -149,7 +149,7 @@ __plugin_meta__ = PluginMetadata(
     """.strip(),
     extra=PluginExtraData(
         author="leekooyo (Refactored by Assistant)",
-        version="1.5.1",
+        version="1.5.2",
         plugin_type=PluginType.DEPENDANT,
         menu_type="其他",
         configs=[
@@ -312,7 +312,7 @@ async def _create_rendered_message(
         try:
             image_bytes = await render_func(info_model)
             if image_bytes:
-                segments = [Image(raw=image_bytes)]
+                segments: list[Segment] = [Image(raw=image_bytes)]
                 if link_url:
                     segments.append(Text(f"\n链接: {link_url}"))
                 return UniMessage(segments)
