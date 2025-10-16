@@ -69,7 +69,7 @@ DEFAULT_AVATAR_URL = "https://i0.hdslb.com/bfs/article/a6e3fa3c2a173df4a21651ee2
 
 LOG_COMMAND = "CSGO"
 
-CURRENT_SEASON = "S20"
+CURRENT_SEASON = "S21"
 
 T = TypeVar("T")
 
