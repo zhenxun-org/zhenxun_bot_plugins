@@ -696,7 +696,7 @@ async def send_video_with_retry(bot, event, video_path: Path) -> bool:
     file_uri = "file:///" + path_str
     if env_config.image_to_bytes:
         async with aiofiles.open(video_path, "rb") as f:
-            bytes=await f.read()
+            bytes = await f.read()
             video_segment = V11MessageSegment.video(bytes)
     else:
         video_segment = V11MessageSegment.video(file_uri)
