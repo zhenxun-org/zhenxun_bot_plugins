@@ -9,9 +9,9 @@ from nonebot_plugin_session import EventSession
 
 from zhenxun.services.log import logger
 
-from ..config import base_config, PLUGIN_TEMP_DIR, PLUGIN_CACHE_DIR, IMAGE_CACHE_DIR
+from ..config import base_config, PLUGIN_CACHE_DIR, IMAGE_CACHE_DIR, PLUGIN_TEMP_DIR
 
-VIDEO_CACHE_DIR = PLUGIN_TEMP_DIR / "video_cache"
+VIDEO_CACHE_DIR = PLUGIN_CACHE_DIR / "video_cache"
 VIDEO_CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
 CACHE_INDEX_FILE = PLUGIN_CACHE_DIR / "cache_index.json"

@@ -139,13 +139,13 @@ async def check_and_refresh_credential():
         logger.error("检查或刷新凭证时出错", e=e)
 
 
-PLUGIN_CACHE_DIR = DATA_PATH / MODULE_NAME / "cache"
+PLUGIN_CACHE_DIR = DATA_PATH / "cache" / MODULE_NAME
 PLUGIN_CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
 PLUGIN_TEMP_DIR = TEMP_PATH / MODULE_NAME
 PLUGIN_TEMP_DIR.mkdir(parents=True, exist_ok=True)
 
-IMAGE_CACHE_DIR = PLUGIN_TEMP_DIR / "image"
+IMAGE_CACHE_DIR = PLUGIN_CACHE_DIR / "image"
 IMAGE_CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
 SCREENSHOT_ELEMENT_OPUS = "#app > div.opus-detail > div.bili-opus-view"

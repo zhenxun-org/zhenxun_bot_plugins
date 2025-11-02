@@ -183,15 +183,18 @@ class DownloadManager:
 
     @staticmethod
     def _check_duration(
-        duration_seconds: float, max_duration_minutes: int, user_id: str
+        duration_seconds: float,
+        max_duration_minutes: int,
+        user_id: str,
+        is_manual: bool,
     ) -> None:
         """检查视频时长是否超过限制"""
         if max_duration_minutes <= 0:
             return
 
         superusers = get_driver().config.superusers
-        if user_id in superusers:
-            logger.debug(f"用户 {user_id} 是超级用户，不受时长限制")
+        if is_manual and user_id in superusers:
+            logger.debug(f"用户 {user_id} 是超级用户且为手动下载，不受时长限制")
             return
 
         duration_minutes = round(duration_seconds / 60, 1)
@@ -213,7 +216,7 @@ class DownloadManager:
         if isinstance(info_model, VideoInfo):
             await self._download_video(bot, event, info_model, is_manual)
         elif isinstance(info_model, SeasonInfo):
-            await self._download_bangumi(bot, event, info_model)
+            await self._download_bangumi(bot, event, info_model, is_manual)
         else:
             raise BilibiliBaseException(
                 f"不支持下载此类型的内容: {type(info_model).__name__}"
@@ -251,7 +254,9 @@ class DownloadManager:
             else "AUTO_DOWNLOAD_MAX_DURATION"
         )
         max_duration = base_config.get(max_duration_key, 0)
-        self._check_duration(video_info.duration, max_duration, event.get_user_id())
+        self._check_duration(
+            video_info.duration, max_duration, event.get_user_id(), is_manual
+        )
 
         v = video.Video(
             bvid=video_info.bvid, aid=video_info.aid, credential=get_credential()
@@ -327,6 +332,7 @@ class DownloadManager:
         bot: Bot,
         event: Event,
         season_info: SeasonInfo,
+        is_manual: bool,
     ) -> None:
         """执行番剧的下载、合并和发送"""
 
@@ -353,10 +359,14 @@ class DownloadManager:
             )
 
         if duration_seconds > 0:
+            max_duration_key = (
+                "MANUAL_DOWNLOAD_MAX_DURATION"
+                if is_manual
+                else "AUTO_DOWNLOAD_MAX_DURATION"
+            )
+            max_duration = base_config.get(max_duration_key, 0)
             self._check_duration(
-                duration_seconds,
-                base_config.get("MANUAL_DOWNLOAD_MAX_DURATION", 0),
-                event.get_user_id(),
+                duration_seconds, max_duration, event.get_user_id(), is_manual
             )
 
         title = f"{season_info.title}"

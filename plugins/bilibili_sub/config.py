@@ -11,7 +11,7 @@ except ImportError:
         "请使用以下命令安装：pip install bilibili-api-python"
     )
 from zhenxun.configs.config import Config
-from zhenxun.configs.path_config import DATA_PATH, TEMP_PATH
+from zhenxun.configs.path_config import DATA_PATH
 from zhenxun.services.log import logger
 
 
@@ -154,16 +154,13 @@ async def check_and_refresh_credential():
 PLUGIN_CACHE_DIR = DATA_PATH / "cache" / MODULE_NAME
 PLUGIN_CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
-PLUGIN_TEMP_DIR = TEMP_PATH / MODULE_NAME
-PLUGIN_TEMP_DIR.mkdir(parents=True, exist_ok=True)
-
 AVATAR_CACHE_DIR = PLUGIN_CACHE_DIR / "avatars"
 AVATAR_CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
 BANGUMI_COVER_CACHE_DIR = PLUGIN_CACHE_DIR / "covers"
 BANGUMI_COVER_CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
-IMAGE_CACHE_DIR = PLUGIN_TEMP_DIR / "image"
+IMAGE_CACHE_DIR = PLUGIN_CACHE_DIR / "image"
 IMAGE_CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
 DYNAMIC_PATH = DATA_PATH / MODULE_NAME / "dynamic"

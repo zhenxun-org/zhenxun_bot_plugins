@@ -1,18 +1,147 @@
 import asyncio
-from typing import Optional, Dict, cast
+from typing import Dict, Literal, Optional, cast
 
+import httpx
+from arclet.alconna import Alconna, Arparma, Args, CommandMeta
+from bilibili_api import Picture, exceptions as BiliExceptions, login_v2
+from bilibili_api.utils.network import get_session
 from nonebot import on_command
 from nonebot.adapters import Bot, Event
+from nonebot.adapters.onebot.v11 import GROUP_ADMIN, GROUP_OWNER, MessageSegment
 from nonebot.matcher import Matcher
 from nonebot.permission import SUPERUSER
-from nonebot.adapters.onebot.v11 import MessageSegment
-import aiohttp
-from bilibili_api import login_v2, Picture
-from bilibili_api import exceptions as BiliExceptions
-from bilibili_api.utils.network import get_session
+from nonebot_plugin_alconna import AlconnaMatches, on_alconna, AlconnaMatcher
+from nonebot_plugin_session import EventSession, SessionLevel
 
 from zhenxun.services.log import logger
-from ..config import save_credential_to_file, get_credential
+
+from .config import get_credential, save_credential_to_file
+from .services.cover_service import CoverService
+from .services.download_service import DownloadTask, download_manager
+from .services.network_service import ParserService
+from .services.utility_service import AutoDownloadManager
+from .utils.exceptions import BilibiliBaseException
+from .utils.url_parser import extract_bilibili_url_from_event
+
+
+bili_cover_cmd = Alconna("bili封面")
+
+bili_cover_matcher = on_alconna(
+    bili_cover_cmd,
+    block=True,
+    priority=5,
+    aliases={"b站封面"},
+    skip_for_unmatch=False,
+)
+
+
+@bili_cover_matcher.handle()
+async def handle_bili_cover(matcher: AlconnaMatcher, bot: Bot, event: Event):
+    logger.info("处理 bili封面 命令")
+
+    bilibili_url = await extract_bilibili_url_from_event(bot, event)
+
+    if not bilibili_url:
+        await matcher.finish("请引用包含B站链接的消息后使用此命令。")
+
+    await matcher.send("正在获取封面，请稍候...")
+
+    try:
+        cover_message = await CoverService.get_cover_message(bilibili_url)
+        await cover_message.send()
+        logger.info(f"成功发送封面 for {bilibili_url}")
+    except BilibiliBaseException as e:
+        logger.warning(f"获取封面失败 for {bilibili_url}: {e.message}")
+        await matcher.send(f"获取封面失败: {e.message}")
+    except Exception as e:
+        logger.error(f"处理bili封面命令时发生错误: {e}", e=e)
+        await matcher.send("获取封面时发生错误，请稍后重试。")
+
+
+bili_download_cmd = Alconna("bili下载", Args["link?", str])
+
+bili_download_matcher = on_alconna(
+    bili_download_cmd,
+    block=True,
+    priority=5,
+    aliases={"b站下载"},
+    skip_for_unmatch=False,
+)
+
+
+@bili_download_matcher.handle()
+async def handle_bili_download(
+    matcher: AlconnaMatcher, bot: Bot, event: Event, result: Arparma = AlconnaMatches()
+):
+    logger.info("处理 bili下载 命令")
+    target_url = result.main_args.get("link") or await extract_bilibili_url_from_event(
+        bot, event
+    )
+
+    if not target_url:
+        await matcher.finish(
+            "未找到有效的B站链接或ID，请检查输入或回复包含B站链接的消息。"
+        )
+
+    await matcher.send("正在解析链接...")
+
+    try:
+        parsed_content = await ParserService.parse(target_url)
+
+        task = DownloadTask(
+            bot=bot,
+            event=event,
+            info_model=parsed_content,
+            is_manual=True,
+        )
+        await download_manager.add_task(task, matcher)
+
+    except BilibiliBaseException as e:
+        logger.error(f"下载任务创建失败 (已处理异常): {e}", e=e)
+        await matcher.finish(f"任务创建失败: {e.message}")
+    except Exception as e:
+        logger.error(f"下载任务创建失败 (未处理异常): {e}", e=e)
+        await matcher.finish("任务创建时发生意外错误，请检查日志。")
+
+
+auto_download_cmd = Alconna(
+    "bili自动下载",
+    Args["action", Literal["on", "off"]],
+    meta=CommandMeta(description="开启或关闭当前群聊的B站视频自动下载功能"),
+)
+
+auto_download_matcher = on_alconna(
+    auto_download_cmd,
+    aliases={"b站自动下载"},
+    permission=GROUP_ADMIN | GROUP_OWNER | SUPERUSER,
+    priority=10,
+    block=True,
+)
+
+
+@auto_download_matcher.handle()
+async def handle_auto_download_switch(
+    matcher: AlconnaMatcher,
+    session: EventSession,
+    action: Literal["on", "off"],
+):
+    if session.level != SessionLevel.GROUP:
+        await matcher.finish("此命令仅限群聊使用。")
+
+    group_id = str(session.id2)
+    if action == "on":
+        success = await AutoDownloadManager.enable(session)
+        if success:
+            await matcher.send(f"已为当前群聊({group_id})开启B站视频自动下载功能。")
+        else:
+            await matcher.send(f"当前群聊({group_id})已开启自动下载，无需重复操作。")
+    elif action == "off":
+        success = await AutoDownloadManager.disable(session)
+        if success:
+            await matcher.send(f"已为当前群聊({group_id})关闭B站视频自动下载功能。")
+        else:
+            await matcher.send(f"当前群聊({group_id})未开启自动下载，无需重复操作。")
+
 
 login_matcher = on_command("bili登录", permission=SUPERUSER, priority=5, block=True)
 credential_status_matcher = on_command(
@@ -83,7 +212,7 @@ async def check_login_status(org_matcher: Matcher, user_id: str):
     check_interval = 3
     timeout = 120
     start_time = asyncio.get_running_loop().time()
-    scan_message_sent = False  # 新增一个标志位，用于记录是否已发送"扫描成功"消息
+    scan_message_sent = False
 
     logger.info(f"开始为用户 {user_id} 检查登录状态...")
     await asyncio.sleep(check_interval)
@@ -101,23 +230,18 @@ async def check_login_status(org_matcher: Matcher, user_id: str):
                     await org_matcher.send("登录二维码已超时失效。")
                     return
                 elif event == login_v2.QrCodeLoginEvents.SCAN and not scan_message_sent:
-                    # 仅在第一次检测到扫描状态时发送消息
                     logger.info(f"用户 {user_id} 已扫描，待确认")
                     await org_matcher.send("扫描成功，请在手机上确认登录。")
-                    scan_message_sent = True  # 更新标志位，防止重复发送
+                    scan_message_sent = True
                 elif event == login_v2.QrCodeLoginEvents.DONE:
                     logger.info(f"用户 {user_id} 登录成功！")
                     credential = login.get_credential()
 
                     try:
-                        session = get_session()
-                        if hasattr(session, "cookie_jar"):
-                            session = cast("aiohttp.ClientSession", session)
-                            for cookie in session.cookie_jar:
-                                if cookie.key == "buvid3":
-                                    logger.info(f"成功获取到 buvid3: {cookie.value}")
-                                    credential.buvid3 = cookie.value
-                                    break
+                        session = cast(httpx.AsyncClient, get_session())
+                        if buvid3_cookie := session.cookies.get("buvid3"):
+                            logger.info(f"成功获取到 buvid3: {buvid3_cookie}")
+                            credential.buvid3 = buvid3_cookie
                     except Exception as e:
                         logger.error(f"尝试获取 buvid3 时出错: {e}")
 

@@ -3,10 +3,10 @@ import asyncio
 from typing import Optional, Any
 from nonebot import on_message, get_driver
 from nonebot.plugin import PluginMetadata
-from bilibili_api import session as bili_session
+import httpx
+from bilibili_api import select_client
 
 from nonebot.adapters import Bot, Event
-
 from nonebot_plugin_uninfo import Uninfo
 from nonebot_plugin_session import EventSession
 from nonebot_plugin_alconna import UniMsg, UniMessage, Text, Image, Segment
@@ -48,8 +48,8 @@ from .commands import (
     bili_download_matcher,
     auto_download_matcher,
     bili_cover_matcher,
+    credential_status_matcher,
 )
-from .commands.login import credential_status_matcher
 
 _ = (  # type: ignore
     login_matcher,
@@ -73,6 +73,7 @@ async def _initialize_services():
     await CacheService.initialize()
     await AutoDownloadManager.load_config()
     await load_credential_from_file()
+    select_client("httpx")
     download_manager.initialize()
 
     asyncio.create_task(check_and_refresh_credential())
@@ -88,7 +89,12 @@ async def _startup():
 
 @driver.on_shutdown
 async def _shutdown():
-    await bili_session.close()  # type: ignore
+    from bilibili_api.utils.network import get_session
+    from typing import cast
+
+    session = cast(httpx.AsyncClient, get_session())
+    if session and not session.is_closed:
+        await session.aclose()
 
 
 __plugin_meta__ = PluginMetadata(
@@ -148,8 +154,8 @@ __plugin_meta__ = PluginMetadata(
 > 查询当前 B 站账号的登录凭证状态，如是否有效、是否需要刷新等。
     """.strip(),
     extra=PluginExtraData(
-        author="leekooyo (Refactored by Assistant)",
-        version="1.5.2",
+        author="leekooyo",
+        version="1.5.3",
         plugin_type=PluginType.DEPENDANT,
         menu_type="其他",
         configs=[
