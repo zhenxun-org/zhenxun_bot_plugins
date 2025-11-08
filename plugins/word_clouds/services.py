@@ -105,7 +105,15 @@ class TimeService:
         try:
             start_dt = _parse_date_str(start_str)
             start = start_dt.replace(hour=0, minute=0, second=0, microsecond=0)
-            stop = (_parse_date_str(stop_str).replace(hour=23, minute=59, second=59, microsecond=999999)) if stop_str else (start + timedelta(days=1))
+            stop = (
+                (
+                    _parse_date_str(stop_str).replace(
+                        hour=23, minute=59, second=59, microsecond=999999
+                    )
+                )
+                if stop_str
+                else (start + timedelta(days=1))
+            )
             return start, stop
         except ValueError:
             return None

@@ -49,10 +49,9 @@ class SegmenterPool:
                 segmenter = self._create_segmenter()
                 await self.pool.put(segmenter)
             except Exception as e:
-                logger.error(f"创建第 {i+1} 个分词器实例时失败: {e}", e=e)
+                logger.error(f"创建第 {i + 1} 个分词器实例时失败: {e}", e=e)
                 # 如果创建失败，池的实际大小会小于 POOL_SIZE
                 break
-
 
         self._initialized = True
         logger.info("分词器资源池初始化完成")
