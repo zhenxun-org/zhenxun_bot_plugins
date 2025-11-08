@@ -1,9 +1,4 @@
 wordcloud>=1.8.0
 matplotlib>=3.5.0
-numpy>=1.20.0
-Pillow>=9.0.0
 spacy-pkuseg>=0.0.31
 emoji>=2.0.0
-pytz>=2022.1
-nonebot-plugin-alconna>=0.30.0
-nonebot-plugin-apscheduler>=0.2.0

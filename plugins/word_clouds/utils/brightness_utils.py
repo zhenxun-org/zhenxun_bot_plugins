@@ -320,5 +320,5 @@ def optimize_wordcloud_image(
         return bytes_io.getvalue()
 
     except Exception as e:
-        logger.error(f"优化词云图像亮度失败: {e}", exc_info=True)
+        logger.error(f"优化词云图像亮度失败: {e}", e=e)
         return image_bytes
