@@ -2,7 +2,7 @@ import asyncio
 from urllib.parse import parse_qs, urlparse
 from typing import Dict, Any, Optional, List, cast
 
-import aiohttp
+import httpx
 from bilibili_api import exceptions as BiliExceptions
 from bilibili_api import live, video, article, user
 
@@ -35,7 +35,7 @@ from ..utils.exceptions import (
 
 RETRYABLE_EXCEPTIONS = (
     BiliExceptions.NetworkException,
-    aiohttp.ClientError,
+    httpx.RequestError,
     asyncio.TimeoutError,
     RateLimitError,
 )
@@ -219,31 +219,29 @@ class BilibiliApiService:
                 f"视频未找到: {vid}", context={"vid": vid, "url": parsed_url}
             )
         except BiliExceptions.ResponseCodeException as e:
-            logger.error(
-                f"B站API错误 ({vid}): 代码 {e.code}, 消息: {e.message}", "B站解析"
-            )
+            logger.error(f"B站API错误 ({vid}): 代码 {e.code}, 消息: {e.msg}", "B站解析")
 
             if e.code == -403:  # type: ignore
                 raise ResourceForbiddenError(
-                    f"视频访问被禁止 ({vid}): {e.message}",
+                    f"视频访问被禁止 ({vid}): {e.msg}",
                     cause=e,
                     context={"vid": vid, "url": parsed_url, "code": e.code},
                 )
-            elif e.code == -404:
+            elif e.code in [-404, 62002]:
                 raise ResourceNotFoundError(
-                    f"视频未找到 ({vid}): {e.message}",
+                    f"视频资源不存在或不可见 ({vid}): {e.msg}",
                     cause=e,
                     context={"vid": vid, "url": parsed_url, "code": e.code},
                 )
             elif e.code == -412:
                 raise RateLimitError(
-                    f"请求频率过高 ({vid}): {e.message}",
+                    f"请求频率过高 ({vid}): {e.msg}",
                     retry_after=60,
                     context={"vid": vid, "url": parsed_url, "code": e.code},
                 )
             else:
                 raise BilibiliResponseError(
-                    f"B站API错误 ({vid}): 代码 {e.code}, 消息: {e.message}",
+                    f"B站API错误 ({vid}): 代码 {e.code}, 消息: {e.msg}",
                     cause=e,
                     context={"vid": vid, "url": parsed_url, "code": e.code},
                 )
@@ -292,31 +290,31 @@ class BilibiliApiService:
             )
         except BiliExceptions.ResponseCodeException as e:
             logger.error(
-                f"B站API错误 (直播间 {room_id}): 代码 {e.code}, 消息: {e.message}",
+                f"B站API错误 (直播间 {room_id}): 代码 {e.code}, 消息: {e.msg}",
                 "B站解析",
             )
 
             if e.code == -403:  # type: ignore
                 raise ResourceForbiddenError(
-                    f"直播间访问被禁止 ({room_id}): {e.message}",
+                    f"直播间访问被禁止 ({room_id}): {e.msg}",
                     cause=e,
                     context={"room_id": room_id, "url": parsed_url, "code": e.code},
                 )
             elif e.code == -404:
                 raise ResourceNotFoundError(
-                    f"直播间未找到 ({room_id}): {e.message}",
+                    f"直播间未找到 ({room_id}): {e.msg}",
                     cause=e,
                     context={"room_id": room_id, "url": parsed_url, "code": e.code},
                 )
             elif e.code == -412:
                 raise RateLimitError(
-                    f"请求频率过高 ({room_id}): {e.message}",
+                    f"请求频率过高 ({room_id}): {e.msg}",
                     retry_after=60,
                     context={"room_id": room_id, "url": parsed_url, "code": e.code},
                 )
             else:
                 raise BilibiliResponseError(
-                    f"B站API错误 (直播间 {room_id}): 代码 {e.code}, 消息: {e.message}",
+                    f"B站API错误 (直播间 {room_id}): 代码 {e.code}, 消息: {e.msg}",
                     cause=e,
                     context={"room_id": room_id, "url": parsed_url, "code": e.code},
                 )
@@ -383,7 +381,7 @@ class BilibiliApiService:
 
         except BiliExceptions.ResponseCodeException as e:
             logger.error(
-                f"B站API错误 (专栏 {cv_id}): 代码 {e.code}, 消息: {e.message}",
+                f"B站API错误 (专栏 {cv_id}): 代码 {e.code}, 消息: {e.msg}",
                 "B站解析",
             )
             context["code"] = e.code  # type: ignore
@@ -393,7 +391,7 @@ class BilibiliApiService:
                 )
             else:
                 raise BilibiliResponseError(
-                    f"B站API错误: {e.message}", cause=e, context=context
+                    f"B站API错误: {e.msg}", cause=e, context=context
                 )
         except BiliExceptions.NetworkException as e:
             logger.error(f"获取专栏信息网络错误 ({cv_id}): {e}", "B站解析")

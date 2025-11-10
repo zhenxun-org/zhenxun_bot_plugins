@@ -16,6 +16,7 @@ from nonebot_plugin_alconna import (
     on_alconna,
     Query,
     MultiVar,
+    Arparma,
 )
 from nonebot_plugin_session import EventSession
 from zhenxun import ui
@@ -39,8 +40,9 @@ from .data_source import (
 from .utils import get_cached_avatar, get_user_card, get_cached_bangumi_cover
 
 import nonebot
-from nonebot.adapters import Bot
+from nonebot.adapters import Bot, Event
 import asyncio
+from zhenxun.utils.rules import admin_check
 
 
 async def get_target_ids(session: EventSession, gids: Query[list[int]]) -> list[str]:
@@ -52,39 +54,54 @@ async def get_target_ids(session: EventSession, gids: Query[list[int]]) -> list[
     return [target_id] if target_id else []
 
 
-bilisub = on_alconna(
-    Alconna(
-        "bilisub",
-        Subcommand(
-            "add",
-            Option("--live"),
-            Args["ids", MultiVar(str)],
-            Option("-g|--group", Args["gids", MultiVar(int)]),
-        ),
-        Subcommand(
-            "del",
-            Args["db_ids", MultiVar(int)],
-            Option("-g|--group", Args["gids", MultiVar(int)]),
-        ),
-        Subcommand("config", Args["params", MultiVar(str)]),
-        Subcommand("list", Option("-g|--group", Args["gids", MultiVar(int)])),
-        Subcommand("clear", Option("-g|--group", Args["gids", MultiVar(int)])),
-        Subcommand("login"),
-        Subcommand("status"),
-        Subcommand("logout"),
-        Subcommand("checkall"),
-        Subcommand("forcepush", Args["db_ids", MultiVar(int)]),
+bilisub_admin_cmd = Alconna(
+    "bilisub",
+    Subcommand(
+        "add",
+        Option("--live"),
+        Args["ids", MultiVar(str)],
+        Option("-g|--group", Args["gids", MultiVar(int)]),
     ),
+    Subcommand(
+        "del",
+        Args["db_ids", MultiVar(int)],
+        Option("-g|--group", Args["gids", MultiVar(int)]),
+    ),
+    Subcommand("config", Args["params", MultiVar(str)]),
+    Subcommand("list", Option("-g|--group", Args["gids", MultiVar(int)])),
+    Subcommand(
+        "clear", Option("--all"), Option("-g|--group", Args["gids", MultiVar(int)])
+    ),
+)
+
+bilisub_su_cmd = Alconna(
+    "bilisub",
+    Subcommand("login"),
+    Subcommand("status"),
+    Subcommand("logout"),
+    Subcommand("checkall"),
+    Subcommand("forcepush", Args["db_ids", MultiVar(int)]),
+)
+
+
+bilisub_admin_matcher = on_alconna(
+    bilisub_admin_cmd,
+    priority=5,
+    block=True,
+    rule=admin_check("bilibili_sub", "GROUP_BILIBILI_SUB_LEVEL"),
+)
+
+bilisub_su_matcher = on_alconna(
+    bilisub_su_cmd,
     priority=5,
     block=True,
     permission=SUPERUSER,
 )
 
-
 login_sessions: Dict[str, Tuple[login_v2.QrCodeLogin, float]] = {}
 
 
-@bilisub.assign("list")
+@bilisub_admin_matcher.assign("list")
 async def handle_list(
     session: EventSession, gids: Query[list[int]] = Query("list.group.gids", [])
 ):
@@ -173,7 +190,7 @@ async def handle_list(
     await MessageUtils.build_message(img_bytes).finish()
 
 
-@bilisub.assign("add")
+@bilisub_admin_matcher.assign("add")
 async def handle_add(
     session: EventSession,
     live: Query[Any] = Query("add.live"),
@@ -273,7 +290,7 @@ async def handle_add(
     await MessageUtils.build_message("\n---\n".join(results)).finish()
 
 
-@bilisub.assign("del")
+@bilisub_admin_matcher.assign("del")
 async def handle_del(
     session: EventSession,
     db_ids: Query[list[int]] = Query("del.db_ids"),
@@ -308,7 +325,7 @@ async def handle_del(
     await MessageUtils.build_message(msg).finish()
 
 
-@bilisub.assign("config")
+@bilisub_admin_matcher.assign("config")
 async def handle_config(
     session: EventSession, params: Query[list[str]] = Query("config.params")
 ):
@@ -392,25 +409,76 @@ async def handle_config(
     await MessageUtils.build_message(msg).finish()
 
 
-@bilisub.assign("clear")
+@bilisub_admin_matcher.assign("clear")
 async def handle_clear(
-    session: EventSession, gids: Query[list[int]] = Query("clear.group.gids", [])
+    bot: Bot,
+    event: Event,
+    matcher: Matcher,
+    session: EventSession,
+    arp: Arparma,
 ):
-    target_ids = await get_target_ids(session, gids)
+    use_g = arp.query("clear.group") is not None
+    use_all = arp.query("clear.all") is not None
+    if use_g or use_all:
+        if not await SUPERUSER(bot, event):
+            await MessageUtils.build_message(
+                "❌ 只有超级用户才能使用 --all 或 -g 参数。"
+            ).finish()
+
+    target_ids: list[str] = []
+    description = ""
+    if use_all:
+        target_ids = [
+            str(x)
+            for x in await BiliSubTarget.all()
+            .distinct()
+            .values_list("target_id", flat=True)
+        ]
+        description = f"所有 {len(target_ids)} 个目标"
+    else:
+        gids_tuple = arp.query("clear.group.gids")
+        if gids_tuple:
+            target_ids = [f"group_{gid}" for gid in gids_tuple]
+            description = f"{len(target_ids)} 个指定目标"
+        else:
+            target_id = (
+                f"group_{session.id2}" if session.id2 else f"private_{session.id1}"
+            )
+            target_ids = [target_id] if target_id else []
+            description = "当前会话"
+
     if not target_ids:
         await MessageUtils.build_message("未能确定操作目标，请检查指令。").finish()
 
-    deleted_count = await BiliSubTarget.filter(target_id__in=target_ids).delete()
+    subs_to_delete_count = await BiliSubTarget.filter(target_id__in=target_ids).count()
 
-    if deleted_count > 0:
-        await BiliSubTarget.clean_orphaned_subs()
-        msg = f"已成功清空 {len(target_ids)} 个目标的 {deleted_count} 个订阅。"
-        await MessageUtils.build_message(msg).finish()
-    else:
+    if subs_to_delete_count == 0:
         await MessageUtils.build_message("当前没有任何订阅可供清空。").finish()
 
+    confirm_msg = f"⚠️ 你确定要清空「{description}」的 {subs_to_delete_count} 个订阅吗？\n请在30秒内回复【确认/是/yes】以继续，回复【否/取消/no】或其它内容将取消操作。"
 
-@bilisub.assign("login")
+    def check_confirm(msg: Message):
+        reply_text = msg.extract_plain_text().strip().lower()
+        return reply_text in ["确认", "是", "yes", "否", "取消", "no"]
+
+    confirmed = await prompt_until(confirm_msg, check_confirm, timeout=30)
+
+    if confirmed:
+        reply_text = confirmed.extract_plain_text().strip().lower()
+        if reply_text in ["确认", "是", "yes"]:
+            deleted_count = await BiliSubTarget.filter(
+                target_id__in=target_ids
+            ).delete()
+            await BiliSubTarget.clean_orphaned_subs()
+            msg = f"✅ 已成功清空「{description}」的 {deleted_count} 个订阅。"
+            await MessageUtils.build_message(msg).finish()
+        else:
+            await MessageUtils.build_message("ℹ️ 操作已取消。").finish()
+    else:
+        await MessageUtils.build_message("⌛ 操作超时，已自动取消。").finish()
+
+
+@bilisub_su_matcher.assign("login")
 async def handle_login(matcher: Matcher, session: EventSession):
     user_id = session.id1
     if not user_id:
@@ -492,7 +560,7 @@ async def check_login_status(matcher: Matcher, user_id: str):
         del login_sessions[user_id]
 
 
-@bilisub.assign("status")
+@bilisub_su_matcher.assign("status")
 async def handle_status(session: EventSession):
     user_id = session.id1
     if not user_id:
@@ -556,7 +624,7 @@ async def handle_status(session: EventSession):
     await MessageUtils.build_message("\n".join(status_lines)).send()
 
 
-@bilisub.assign("logout")
+@bilisub_su_matcher.assign("logout")
 async def handle_logout():
     try:
         credential = get_credential()
@@ -572,7 +640,7 @@ async def handle_logout():
         await MessageUtils.build_message(f"退出登录失败: {e}").finish()
 
 
-@bilisub.assign("checkall")
+@bilisub_su_matcher.assign("checkall")
 async def handle_check_all(matcher: Matcher):
     from . import send_sub_msg
 
@@ -621,7 +689,7 @@ async def handle_check_all(matcher: Matcher):
     ).finish()
 
 
-@bilisub.assign("forcepush")
+@bilisub_su_matcher.assign("forcepush")
 async def handle_force_push(
     session: EventSession,
     matcher: Matcher,
