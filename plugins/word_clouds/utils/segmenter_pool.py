@@ -1,11 +1,11 @@
-import spacy_pkuseg as pkuseg
 from typing import Dict, Any
 from pathlib import Path
+import asyncio
+import spacy_pkuseg as pkuseg
 
 from zhenxun.services.log import logger
 from nonebot import get_driver
 
-from .resource_pool import AsyncResourcePool
 from ..config import WordCloudConfig
 
 
@@ -23,7 +23,7 @@ class SegmenterPool:
 
     def __init__(self):
         """初始化分词器池"""
-        self.pool = None
+        self.pool: asyncio.Queue | None = None
         self.stopwords = set()
         self.userdict_path = None
         self.stopwords_path = None
@@ -41,17 +41,17 @@ class SegmenterPool:
 
         await self._load_stopwords()
 
-        self.pool = AsyncResourcePool(
-            factory=self._create_segmenter,
-            max_size=5,
-            min_size=2,
-            max_idle_time=600,
-            cleanup_interval=300,
-            name="SegmenterPool",
-        )
-
-        await self.pool._initialize_pool()
-        await self.pool.start_cleanup()
+        POOL_SIZE = 5
+        self.pool = asyncio.Queue(maxsize=POOL_SIZE)
+        logger.info(f"正在初始化大小为 {POOL_SIZE} 的分词器池...")
+        for i in range(POOL_SIZE):
+            try:
+                segmenter = self._create_segmenter()
+                await self.pool.put(segmenter)
+            except Exception as e:
+                logger.error(f"创建第 {i + 1} 个分词器实例时失败: {e}", e=e)
+                # 如果创建失败，池的实际大小会小于 POOL_SIZE
+                break
 
         self._initialized = True
         logger.info("分词器资源池初始化完成")
@@ -62,6 +62,7 @@ class SegmenterPool:
         default_stopwords_count = 0
         assets_stopwords_count = 0
 
+        assert self.stopwords_path is not None
         if self.stopwords_path.exists() and self.stopwords_path.stat().st_size > 0:
             try:
                 with open(self.stopwords_path, "r", encoding="utf-8") as f:
@@ -91,6 +92,7 @@ class SegmenterPool:
     def _create_segmenter(self):
         """创建分词器实例"""
         pkuseg_userdict_param = "default"
+        assert self.userdict_path is not None
         if self.userdict_path.exists() and self.userdict_path.stat().st_size > 0:
             pkuseg_userdict_param = str(self.userdict_path)
             logger.debug(f"将使用词云用户词典: {self.userdict_path}")
@@ -108,14 +110,16 @@ class SegmenterPool:
         if not self._initialized:
             await self.initialize()
 
-        return await self.pool.acquire()
+        assert self.pool is not None
+        return await self.pool.get()
 
     async def release_segmenter(self, segmenter):
         """释放分词器实例"""
         if not self._initialized:
             return
 
-        await self.pool.release(segmenter)
+        assert self.pool is not None
+        await self.pool.put(segmenter)
 
     async def get_stopwords(self):
         """获取停用词集合"""
@@ -129,15 +133,22 @@ class SegmenterPool:
         if not self._initialized:
             return {"initialized": False}
 
-        stats = await self.pool.get_stats()
-        stats["stopwords_count"] = len(self.stopwords)
-        return stats
+        assert self.pool is not None
+        return {
+            "initialized": True,
+            "pool_size": self.pool.maxsize,
+            "free_resources": self.pool.qsize(),
+            "in_use": self.pool.maxsize - self.pool.qsize(),
+            "stopwords_count": len(self.stopwords),
+        }
 
     async def shutdown(self):
         """关闭资源池"""
         if self.pool:
-            await self.pool.stop_cleanup()
-            logger.info("分词器资源池已关闭")
+            # asyncio.Queue 不需要显式关闭，垃圾回收会处理
+            # 如果 segmenter 有 close 方法，可以在这里清空队列并关闭
+            self.pool = None
+        logger.info("分词器资源池已关闭")
 
 
 segmenter_pool = SegmenterPool.get_instance()

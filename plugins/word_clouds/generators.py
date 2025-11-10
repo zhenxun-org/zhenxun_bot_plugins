@@ -2,23 +2,25 @@ import os
 import random
 from io import BytesIO
 from typing import Dict, Optional
+
 import numpy as np
+from nonebot.utils import run_sync
 from PIL import Image as IMG
 from wordcloud import WordCloud
-from nonebot.utils import run_sync
-from ..utils.file_utils import ensure_resources
-from ..config import WordCloudConfig, base_config
-from .base_generator import BaseGenerator
-from ..utils.colormap_utils import (
+
+from zhenxun.services.log import logger
+
+from .config import WordCloudConfig, base_config
+from .utils.brightness_utils import optimize_wordcloud_image
+from .utils.colormap_utils import (
     get_colormap_category,
     get_dark_bg_colormaps,
     get_white_bg_colormaps,
 )
-from ..utils.brightness_utils import optimize_wordcloud_image
-from zhenxun.services.log import logger
+from .utils.file_utils import ensure_resources
 
 
-class ImageWordCloudGenerator(BaseGenerator):
+class WordCloudGenerator:
     """图片词云生成器"""
 
     async def generate(self, word_frequencies: Dict[str, float]) -> Optional[bytes]:
@@ -197,7 +199,9 @@ class ImageWordCloudGenerator(BaseGenerator):
                 from PIL import Image
 
                 img = Image.open(BytesIO(brightness_optimized_bytes))
-                img = img.resize((target_width, target_height), Image.LANCZOS)
+                img = img.resize(
+                    (target_width, target_height), Image.Resampling.LANCZOS
+                )
 
                 if img.mode != "RGBA":
                     logger.debug("调整大小后转换图像为RGBA模式")
@@ -266,7 +270,7 @@ class ImageWordCloudGenerator(BaseGenerator):
 
     def _get_random_template(self) -> str:
         """获取随机模板路径"""
-        template_dir = str(WordCloudConfig.get_template_dir())
+        template_dir = WordCloudConfig.get_template_dir()
         if not os.path.exists(template_dir) or not os.listdir(template_dir):
             logger.warning(f"词云模板目录 '{template_dir}' 为空或不存在，使用默认模板")
             return str(template_dir / "default.png")
