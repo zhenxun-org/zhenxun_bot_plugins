@@ -1,5 +1,1 @@
 bilibili-api-python>=16.0.0
-# 注意：此插件还需要安装FFmpeg并添加到系统PATH
-# Windows: 从 https://ffmpeg.org/download.html 下载
-# macOS: brew install ffmpeg
-# Linux: apt install ffmpeg 或 yum install ffmpeg
