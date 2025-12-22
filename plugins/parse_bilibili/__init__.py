@@ -16,24 +16,38 @@ from zhenxun.services.log import logger
 from zhenxun.utils.common_utils import CommonUtils
 from zhenxun.utils.enum import PluginType
 
-from .commands import (auto_download_matcher, bili_cover_matcher,
-                       bili_download_matcher, credential_status_matcher,
-                       login_matcher)
-from .config import (MODULE_NAME, base_config, check_and_refresh_credential,
-                     load_credential_from_file)
+from .commands import (
+    auto_download_matcher,
+    bili_cover_matcher,
+    bili_download_matcher,
+    credential_status_matcher,
+    login_matcher,
+)
+from .config import (
+    MODULE_NAME,
+    base_config,
+    check_and_refresh_credential,
+    load_credential_from_file,
+)
 from .model import ArticleInfo, LiveInfo, SeasonInfo, UserInfo, VideoInfo
 from .services.cache_service import CacheService
 from .services.download_service import DownloadTask, download_manager
 from .services.network_service import ParserService
 from .services.utility_service import AutoDownloadManager
-from .utils.exceptions import (BilibiliBaseException, ResourceNotFoundError,
-                               UnsupportedUrlError, UrlParseError)
-from .utils.message import (MessageBuilder, render_live_info_to_image,
-                            render_season_info_to_image,
-                            render_user_info_to_image,
-                            render_video_info_to_image)
-from .utils.url_parser import (UrlParserRegistry,
-                               extract_bilibili_url_from_message)
+from .utils.exceptions import (
+    BilibiliBaseException,
+    ResourceNotFoundError,
+    UnsupportedUrlError,
+    UrlParseError,
+)
+from .utils.message import (
+    MessageBuilder,
+    render_live_info_to_image,
+    render_season_info_to_image,
+    render_user_info_to_image,
+    render_video_info_to_image,
+)
+from .utils.url_parser import UrlParserRegistry, extract_bilibili_url_from_message
 
 _ = (  # type: ignore
     login_matcher,

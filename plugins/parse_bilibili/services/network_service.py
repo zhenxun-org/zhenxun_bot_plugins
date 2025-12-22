@@ -9,8 +9,12 @@ from zhenxun.utils.exception import AllURIsFailedError
 from zhenxun.utils.http_utils import AsyncHttpx
 
 from ..model import ArticleInfo, LiveInfo, SeasonInfo, UserInfo, VideoInfo
-from ..utils.exceptions import (DownloadError, ShortUrlError,
-                                UnsupportedUrlError, UrlParseError)
+from ..utils.exceptions import (
+    DownloadError,
+    ShortUrlError,
+    UnsupportedUrlError,
+    UrlParseError,
+)
 from ..utils.url_parser import ResourceType, UrlParserRegistry
 
 
