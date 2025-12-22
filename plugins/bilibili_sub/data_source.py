@@ -1,35 +1,33 @@
 import asyncio
 import base64
-import httpx
 import json
-import nonebot
 import time
-from bilibili_api.exceptions import ResponseCodeException
 from dataclasses import dataclass
-from enum import Enum, auto
 from datetime import datetime, timedelta
-from zhenxun.services.log import logger
+from enum import Enum, auto
+
+import httpx
+import nonebot
+from bilibili_api import bangumi, search
+from bilibili_api import user as bilibili_user_module
+from bilibili_api.exceptions import ResponseCodeException
+
 from zhenxun import ui
+from zhenxun.services.log import logger
 from zhenxun.ui.builders import NotebookBuilder
 from zhenxun.utils.platform import PlatformUtils
 from zhenxun.utils.utils import ResourceDirManager
 
-from bilibili_api import bangumi, search
-from bilibili_api import user as bilibili_user_module
-from .config import (
-    base_config,
-    DYNAMIC_PATH,
-)
+from .config import DYNAMIC_PATH, base_config, get_credential
 from .filter import is_ad as is_dynamic_ad
 from .model import BiliSub, BiliSubTarget
-from .config import get_credential
 from .utils import (
+    get_cached_bangumi_cover,
     get_dynamic_screenshot,
     get_room_info_by_id,
     get_user_card,
     get_user_dynamics,
     get_videos,
-    get_cached_bangumi_cover,
 )
 
 ResourceDirManager.add_temp_dir(DYNAMIC_PATH)
@@ -53,7 +51,11 @@ class Notification:
 
 async def fetch_image_bytes(url: str) -> bytes:
     async with httpx.AsyncClient() as client:
-        response = await client.get(url)
+        headers = {
+            "Referer": "https://t.bilibili.com/",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
+        }
+        response = await client.get(url, headers=headers, timeout=10)
         response.raise_for_status()
         return response.content
 
@@ -627,10 +629,16 @@ async def _get_up_status(sub: BiliSub, force_push: bool = False) -> list[Notific
 
     dynamic_img = None
     dynamic_upload_time = 0
+    dynamic_images = None
 
     if sub.push_dynamic:
         try:
-            dynamic_img, dynamic_upload_time, _ = await get_user_dynamic(sub)
+            (
+                dynamic_img,
+                dynamic_upload_time,
+                _,
+                dynamic_images,
+            ) = await get_user_dynamic(sub)
         except ResponseCodeException as msg:
             logger.error(
                 f"动态获取失败: UID={sub.uid}, 错误码={getattr(msg, 'code', 'unknown')}, 错误信息={getattr(msg, 'msg', str(msg))}"
@@ -770,6 +778,22 @@ async def _get_up_status(sub: BiliSub, force_push: bool = False) -> list[Notific
         img_bytes = await ui.render(notebook.build(), frameless=True)
         msg_list_content.append(img_bytes)
 
+        # 如果有动态原图，且功能开关已开启，则添加到消息列表中
+        if (
+            notification_type == NotificationType.DYNAMIC
+            and dynamic_images
+            and base_config.get("ENABLE_DYNAMIC_IMAGE", False)
+        ):
+            logger.info(f"动态中包含 {len(dynamic_images)} 张图片，将一并发送")
+            for img_url in dynamic_images:
+                try:
+                    # 下载图片
+                    img_data = await fetch_image_bytes(img_url)
+                    msg_list_content.append(img_data)
+                    logger.debug(f"成功添加动态原图: {img_url}")
+                except Exception as e:
+                    logger.warning(f"下载动态原图失败: {img_url}, 错误: {e}")
+
         if is_new_video_pushed and video:
             video_url_for_msg = (
                 f"https://www.bilibili.com/video/{video.get('bvid', '')}"
@@ -799,7 +823,9 @@ async def _get_up_status(sub: BiliSub, force_push: bool = False) -> list[Notific
     return notifications
 
 
-async def get_user_dynamic(sub: BiliSub) -> tuple[bytes | None, int, str]:
+async def get_user_dynamic(
+    sub: BiliSub,
+) -> tuple[bytes | None, int, str, list[str] | None]:
     """获取用户动态"""
     start_time = time.time()
     uid = sub.uid
@@ -810,10 +836,10 @@ async def get_user_dynamic(sub: BiliSub) -> tuple[bytes | None, int, str]:
         logger.error(
             f"获取用户动态时返回了非JSON内容 (可能被风控): UID={uid}, 异常信息={e}"
         )
-        return None, 0, ""
+        return None, 0, "", None
     except ResponseCodeException as e:
         logger.error(f"获取用户动态API错误: UID={uid}, Code={e.code}, Message={e.msg}")
-        return None, 0, ""
+        return None, 0, "", None
     except Exception as e:
         logger.error(
             f"获取用户动态异常: UID={uid}, 异常类型={type(e).__name__}, 异常信息={e}"
@@ -821,21 +847,21 @@ async def get_user_dynamic(sub: BiliSub) -> tuple[bytes | None, int, str]:
         import traceback
 
         logger.debug(f"异常详细信息:\n{traceback.format_exc()}")
-        return None, 0, ""
+        return None, 0, "", None
 
     if not dynamic_info:
         logger.warning(f"获取到的动态数据为空: UID={uid}")
-        return None, 0, ""
+        return None, 0, "", None
 
     if not dynamic_info.get("cards"):
         logger.warning(
             f"获取到的动态数据中没有cards字段: UID={uid}, 数据={dynamic_info.keys()}"
         )
-        return None, 0, ""
+        return None, 0, "", None
 
     if not dynamic_info["cards"]:
         logger.debug(f"用户没有动态: UID={uid}")
-        return None, 0, ""
+        return None, 0, "", None
 
     dynamic_upload_time = dynamic_info["cards"][0]["desc"]["timestamp"]
     dynamic_id = dynamic_info["cards"][0]["desc"]["dynamic_id"]
@@ -845,6 +871,35 @@ async def get_user_dynamic(sub: BiliSub) -> tuple[bytes | None, int, str]:
     logger.debug(
         f"最新动态信息: UID={uid}, 动态ID={dynamic_id}, 发布时间={dynamic_time_str}"
     )
+
+    # 提取动态中的图片URL
+    dynamic_images = []
+    try:
+        card = dynamic_info["cards"][0]
+        card_str = card.get("card", "{}")
+
+        # 解析卡片内容
+        # 检查card_str是否已经是dict
+        if isinstance(card_str, dict):
+            card_data = card_str
+        else:
+            card_data = json.loads(card_str)
+
+        # 提取不同类型的图片（仅提取用户自己的动态图片，不包括被转发的动态）
+        if "item" in card_data:
+            item = card_data["item"]
+            # 提取图片
+            if "pictures" in item:
+                # 图文动态
+                for pic in item["pictures"]:
+                    if "img_src" in pic:
+                        dynamic_images.append(pic["img_src"])
+            elif "pic" in item:
+                # 单图片动态
+                dynamic_images.append(item["pic"])
+
+    except Exception as e:
+        logger.warning(f"解析动态图片时出错: {e}")
 
     if (
         sub.last_dynamic_timestamp is None
@@ -871,6 +926,7 @@ async def get_user_dynamic(sub: BiliSub) -> tuple[bytes | None, int, str]:
                     image,
                     dynamic_upload_time,
                     f"https://t.bilibili.com/{dynamic_id}",
+                    dynamic_images if dynamic_images else None,
                 )
             else:
                 logger.warning(f"动态截图获取失败: UID={uid}, 动态ID={dynamic_id}")
@@ -888,4 +944,4 @@ async def get_user_dynamic(sub: BiliSub) -> tuple[bytes | None, int, str]:
 
     duration = time.time() - start_time
     logger.debug(f"获取用户动态完成: UID={uid}, 未检测到新动态, 耗时={duration:.2f}秒")
-    return None, 0, ""
+    return None, 0, "", None
