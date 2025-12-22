@@ -1,15 +1,16 @@
-import re
 import json
+import re
 from abc import ABC, abstractmethod
 from enum import Enum, auto
-from typing import List, Optional, Pattern, Tuple, Type, ClassVar, Dict, Any
-from nonebot.adapters import Event, Bot
+from typing import Any, ClassVar, Dict, List, Optional, Pattern, Tuple, Type
+
+from nonebot.adapters import Bot, Event
 from nonebot_plugin_alconna.uniseg import Hyper, Reply
 from nonebot_plugin_alconna.uniseg.tools import reply_fetch
 
 from zhenxun.services.log import logger
 
-from ..utils.exceptions import UrlParseError, UnsupportedUrlError
+from ..utils.exceptions import UnsupportedUrlError, UrlParseError
 
 
 class ResourceType(Enum):

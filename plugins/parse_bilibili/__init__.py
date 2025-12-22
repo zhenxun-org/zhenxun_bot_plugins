@@ -1,55 +1,39 @@
-import traceback
 import asyncio
-from typing import Optional, Any
-from nonebot import on_message, get_driver
-from nonebot.plugin import PluginMetadata
+import traceback
+from typing import Any, Optional
+
 import httpx
 from bilibili_api import select_client
-
+from nonebot import get_driver, on_message
 from nonebot.adapters import Bot, Event
-from nonebot_plugin_uninfo import Uninfo
+from nonebot.plugin import PluginMetadata
+from nonebot_plugin_alconna import Image, Segment, Text, UniMessage, UniMsg
 from nonebot_plugin_session import EventSession
-from nonebot_plugin_alconna import UniMsg, UniMessage, Text, Image, Segment
+from nonebot_plugin_uninfo import Uninfo
 
+from zhenxun.configs.utils import PluginExtraData, RegisterConfig, Task
 from zhenxun.services.log import logger
+from zhenxun.utils.common_utils import CommonUtils
 from zhenxun.utils.enum import PluginType
 
-from zhenxun.utils.common_utils import CommonUtils
-from zhenxun.configs.utils import Task, RegisterConfig, PluginExtraData
-
-from .config import (
-    base_config,
-    MODULE_NAME,
-    load_credential_from_file,
-    check_and_refresh_credential,
-)
-from .services.network_service import ParserService
+from .commands import (auto_download_matcher, bili_cover_matcher,
+                       bili_download_matcher, credential_status_matcher,
+                       login_matcher)
+from .config import (MODULE_NAME, base_config, check_and_refresh_credential,
+                     load_credential_from_file)
+from .model import ArticleInfo, LiveInfo, SeasonInfo, UserInfo, VideoInfo
 from .services.cache_service import CacheService
-from .services.utility_service import AutoDownloadManager
-from .utils.message import (
-    MessageBuilder,
-    render_video_info_to_image,
-    render_season_info_to_image,
-    render_live_info_to_image,
-    render_user_info_to_image,
-)
-from .utils.exceptions import (
-    UrlParseError,
-    UnsupportedUrlError,
-    ResourceNotFoundError,
-)
-from .model import VideoInfo, LiveInfo, ArticleInfo, SeasonInfo, UserInfo
-from .utils.url_parser import UrlParserRegistry, extract_bilibili_url_from_message
-from .utils.exceptions import BilibiliBaseException
-
 from .services.download_service import DownloadTask, download_manager
-from .commands import (
-    login_matcher,
-    bili_download_matcher,
-    auto_download_matcher,
-    bili_cover_matcher,
-    credential_status_matcher,
-)
+from .services.network_service import ParserService
+from .services.utility_service import AutoDownloadManager
+from .utils.exceptions import (BilibiliBaseException, ResourceNotFoundError,
+                               UnsupportedUrlError, UrlParseError)
+from .utils.message import (MessageBuilder, render_live_info_to_image,
+                            render_season_info_to_image,
+                            render_user_info_to_image,
+                            render_video_info_to_image)
+from .utils.url_parser import (UrlParserRegistry,
+                               extract_bilibili_url_from_message)
 
 _ = (  # type: ignore
     login_matcher,
@@ -89,8 +73,9 @@ async def _startup():
 
 @driver.on_shutdown
 async def _shutdown():
-    from bilibili_api.utils.network import get_session
     from typing import cast
+
+    from bilibili_api.utils.network import get_session
 
     session = cast(httpx.AsyncClient, get_session())
     if session and not session.is_closed:
@@ -155,7 +140,7 @@ __plugin_meta__ = PluginMetadata(
     """.strip(),
     extra=PluginExtraData(
         author="leekooyo",
-        version="1.5.3",
+        version="1.5.4",
         plugin_type=PluginType.DEPENDANT,
         menu_type="其他",
         configs=[

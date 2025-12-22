@@ -1,30 +1,32 @@
 import urllib.parse
-from typing import Union, Optional
 from pathlib import Path
+from typing import List, Optional, Union
 
 import httpx
-from zhenxun.utils.http_utils import AsyncHttpx
-from zhenxun.utils.exception import AllURIsFailedError
-from zhenxun.services.log import logger
 
-from ..model import VideoInfo, LiveInfo, ArticleInfo, UserInfo, SeasonInfo
-from ..utils.exceptions import (
-    UrlParseError,
-    UnsupportedUrlError,
-    ShortUrlError,
-    DownloadError,
-)
+from zhenxun.services.log import logger
+from zhenxun.utils.exception import AllURIsFailedError
+from zhenxun.utils.http_utils import AsyncHttpx
+
+from ..model import ArticleInfo, LiveInfo, SeasonInfo, UserInfo, VideoInfo
+from ..utils.exceptions import (DownloadError, ShortUrlError,
+                                UnsupportedUrlError, UrlParseError)
 from ..utils.url_parser import ResourceType, UrlParserRegistry
 
 
-async def download_bilibili_file(url: str, file_path: Path) -> bool:
+async def download_bilibili_file(url: Union[str, List[str]], file_path: Path) -> bool:
     """
     下载B站文件，利用 AsyncHttpx 的健壮下载能力。
+    支持传入单个URL字符串或URL列表，第一个URL为主地址，其余为备用地址。
     """
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.127 Safari/537.36",
         "Referer": "https://www.bilibili.com",
     }
+
+    # 处理URL输入（支持单个URL或URL列表）
+    url_list = url if isinstance(url, list) else [url]
+
     logger.info(f"开始下载文件: {file_path.name} (使用 AsyncHttpx)")
     try:
         success = await AsyncHttpx.download_file(
@@ -37,7 +39,25 @@ async def download_bilibili_file(url: str, file_path: Path) -> bool:
         logger.error(f"下载文件 {file_path.name} 失败，已达到最大重试次数", e=e)
         raise DownloadError(
             f"下载文件 {file_path.name} 失败，已达到最大重试次数",
-            context={"url": url, "file_path": str(file_path)},
+            context={
+                "url": url_list[0] if url_list else "",
+                "file_path": str(file_path),
+            },
+            cause=e,
+        ) from e
+    except Exception as e:
+        logger.error(
+            f"下载文件 {file_path.name} 时发生未预期的错误: {type(e).__name__}: {e}"
+        )
+        logger.error(f"错误详情: {type(e).__name__}: {str(e)}")
+        if hasattr(e, "__dict__"):
+            logger.error(f"错误属性: {e.__dict__}")
+        raise DownloadError(
+            f"下载文件 {file_path.name} 时发生未预期的错误: {type(e).__name__}",
+            context={
+                "url": url_list[0] if url_list else "",
+                "file_path": str(file_path),
+            },
             cause=e,
         ) from e
 
