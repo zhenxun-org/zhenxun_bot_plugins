@@ -1,14 +1,16 @@
 import asyncio
-from pathlib import Path
 import time
-import nonebot
-from typing import List, cast
 from datetime import datetime
-from nonebot.internal.adapter import Bot
+from pathlib import Path
+from typing import List, cast
+
+import nonebot
 from nonebot.drivers import Driver
+from nonebot.internal.adapter import Bot
 from nonebot.plugin import PluginMetadata
 from nonebot_plugin_alconna import UniMessage
 from nonebot_plugin_apscheduler import scheduler
+
 from zhenxun.configs.config import Config
 from zhenxun.configs.utils import PluginExtraData, RegisterConfig
 from zhenxun.models.group_console import GroupConsole
@@ -16,22 +18,11 @@ from zhenxun.services.log import logger
 from zhenxun.utils.message import MessageUtils
 from zhenxun.utils.platform import PlatformUtils
 
-from .config import (
-    base_config,
-    load_credential_from_file,
-    check_and_refresh_credential,
-    AVATAR_CACHE_DIR,
-    BANGUMI_COVER_CACHE_DIR,
-)
-from .data_source import (
-    BiliSub,
-    BiliSubTarget,
-    _get_bangumi_status,
-    get_sub_status,
-    Notification,
-    NotificationType,
-)
-
+from .config import (AVATAR_CACHE_DIR, BANGUMI_COVER_CACHE_DIR, base_config,
+                     check_and_refresh_credential, load_credential_from_file)
+from .data_source import (BiliSub, BiliSubTarget, Notification,
+                          NotificationType, _get_bangumi_status,
+                          get_sub_status)
 
 __plugin_meta__ = PluginMetadata(
     name="B站订阅",
@@ -87,10 +78,19 @@ __plugin_meta__ = PluginMetadata(
     - `bilisub logout`: 清除已保存的B站凭证，退出登录。
     - `bilisub checkall`: 立即对所有已订阅的项目进行一次更新检查。
     - `bilisub forcepush <ID...>`: 强制推送指定ID订阅的最新内容，无论之前是否已推送。
+
+### ⚙ 配置文件
+
+*   **下面的功能需要在配置文件或WebUI中修改**
+    - 检测时间间隔（分钟）
+    - 是否开启B站订阅定时休眠
+    - 是否开启广告过滤
+    - 是否推送动态中的图片
+
 """.strip(),
     extra=PluginExtraData(
         author="HibiKier",
-        version="1.0.2",
+        version="1.2",
         configs=[
             RegisterConfig(
                 module="bilibili_sub",
@@ -104,7 +104,7 @@ __plugin_meta__ = PluginMetadata(
                 module="bilibili_sub",
                 key="CHECK_TIME",
                 value=15,
-                help="b站检测时间间隔(分钟)",
+                help="检测时间间隔（分钟）",
                 default_value=15,
                 type=int,
             ),
@@ -163,6 +163,14 @@ __plugin_meta__ = PluginMetadata(
                 help="头像和封面等缓存的有效期(天)",
                 default_value=15,
                 type=int,
+            ),
+            RegisterConfig(
+                module="bilibili_sub",
+                key="ENABLE_DYNAMIC_IMAGE",
+                value=False,
+                help="是否推送动态中的图片",
+                default_value=False,
+                type=bool,
             ),
             RegisterConfig(
                 module="BiliBili",
