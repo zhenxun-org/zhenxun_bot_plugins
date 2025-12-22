@@ -21,9 +21,14 @@ from zhenxun.utils.utils import ResourceDirManager
 from .config import DYNAMIC_PATH, base_config, get_credential
 from .filter import is_ad as is_dynamic_ad
 from .model import BiliSub, BiliSubTarget
-from .utils import (get_cached_bangumi_cover, get_dynamic_screenshot,
-                    get_room_info_by_id, get_user_card, get_user_dynamics,
-                    get_videos)
+from .utils import (
+    get_cached_bangumi_cover,
+    get_dynamic_screenshot,
+    get_room_info_by_id,
+    get_user_card,
+    get_user_dynamics,
+    get_videos,
+)
 
 ResourceDirManager.add_temp_dir(DYNAMIC_PATH)
 
@@ -48,7 +53,7 @@ async def fetch_image_bytes(url: str) -> bytes:
     async with httpx.AsyncClient() as client:
         headers = {
             "Referer": "https://t.bilibili.com/",
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
         }
         response = await client.get(url, headers=headers, timeout=10)
         response.raise_for_status()
@@ -628,7 +633,12 @@ async def _get_up_status(sub: BiliSub, force_push: bool = False) -> list[Notific
 
     if sub.push_dynamic:
         try:
-            dynamic_img, dynamic_upload_time, _, dynamic_images = await get_user_dynamic(sub)
+            (
+                dynamic_img,
+                dynamic_upload_time,
+                _,
+                dynamic_images,
+            ) = await get_user_dynamic(sub)
         except ResponseCodeException as msg:
             logger.error(
                 f"动态获取失败: UID={sub.uid}, 错误码={getattr(msg, 'code', 'unknown')}, 错误信息={getattr(msg, 'msg', str(msg))}"
@@ -769,9 +779,11 @@ async def _get_up_status(sub: BiliSub, force_push: bool = False) -> list[Notific
         msg_list_content.append(img_bytes)
 
         # 如果有动态原图，且功能开关已开启，则添加到消息列表中
-        if (notification_type == NotificationType.DYNAMIC and 
-            dynamic_images and 
-            base_config.get("ENABLE_DYNAMIC_IMAGE", False)):
+        if (
+            notification_type == NotificationType.DYNAMIC
+            and dynamic_images
+            and base_config.get("ENABLE_DYNAMIC_IMAGE", False)
+        ):
             logger.info(f"动态中包含 {len(dynamic_images)} 张图片，将一并发送")
             for img_url in dynamic_images:
                 try:
@@ -811,7 +823,9 @@ async def _get_up_status(sub: BiliSub, force_push: bool = False) -> list[Notific
     return notifications
 
 
-async def get_user_dynamic(sub: BiliSub) -> tuple[bytes | None, int, str, list[str] | None]:
+async def get_user_dynamic(
+    sub: BiliSub,
+) -> tuple[bytes | None, int, str, list[str] | None]:
     """获取用户动态"""
     start_time = time.time()
     uid = sub.uid
@@ -863,14 +877,14 @@ async def get_user_dynamic(sub: BiliSub) -> tuple[bytes | None, int, str, list[s
     try:
         card = dynamic_info["cards"][0]
         card_str = card.get("card", "{}")
-        
+
         # 解析卡片内容
         # 检查card_str是否已经是dict
         if isinstance(card_str, dict):
             card_data = card_str
         else:
             card_data = json.loads(card_str)
-        
+
         # 提取不同类型的图片（仅提取用户自己的动态图片，不包括被转发的动态）
         if "item" in card_data:
             item = card_data["item"]
@@ -883,10 +897,10 @@ async def get_user_dynamic(sub: BiliSub) -> tuple[bytes | None, int, str, list[s
             elif "pic" in item:
                 # 单图片动态
                 dynamic_images.append(item["pic"])
-                    
+
     except Exception as e:
         logger.warning(f"解析动态图片时出错: {e}")
-    
+
     if (
         sub.last_dynamic_timestamp is None
         or sub.last_dynamic_timestamp < dynamic_upload_time
@@ -912,7 +926,7 @@ async def get_user_dynamic(sub: BiliSub) -> tuple[bytes | None, int, str, list[s
                     image,
                     dynamic_upload_time,
                     f"https://t.bilibili.com/{dynamic_id}",
-                    dynamic_images if dynamic_images else None
+                    dynamic_images if dynamic_images else None,
                 )
             else:
                 logger.warning(f"动态截图获取失败: UID={uid}, 动态ID={dynamic_id}")
