@@ -237,7 +237,7 @@
         "description": "B站内容解析",
         "usage": "usage：\n        被动监听插件，解析B站视频、直播、专栏，支持小程序卡片及文本链接，5分钟内不解析相同内容",
         "author": "leekooyo",
-        "version": "1.5.0",
+        "version": "1.5.4",
         "plugin_type": "DEPENDANT",
         "is_dir": true
     },
