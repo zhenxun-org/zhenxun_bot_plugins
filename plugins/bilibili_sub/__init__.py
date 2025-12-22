@@ -18,11 +18,21 @@ from zhenxun.services.log import logger
 from zhenxun.utils.message import MessageUtils
 from zhenxun.utils.platform import PlatformUtils
 
-from .config import (AVATAR_CACHE_DIR, BANGUMI_COVER_CACHE_DIR, base_config,
-                     check_and_refresh_credential, load_credential_from_file)
-from .data_source import (BiliSub, BiliSubTarget, Notification,
-                          NotificationType, _get_bangumi_status,
-                          get_sub_status)
+from .config import (
+    AVATAR_CACHE_DIR,
+    BANGUMI_COVER_CACHE_DIR,
+    base_config,
+    check_and_refresh_credential,
+    load_credential_from_file,
+)
+from .data_source import (
+    BiliSub,
+    BiliSubTarget,
+    Notification,
+    NotificationType,
+    _get_bangumi_status,
+    get_sub_status,
+)
 
 __plugin_meta__ = PluginMetadata(
     name="B站订阅",
