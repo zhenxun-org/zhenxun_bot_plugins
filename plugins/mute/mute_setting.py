@@ -1,6 +1,6 @@
 from nonebot.plugin import PluginMetadata
 from nonebot_plugin_alconna import Alconna, Args, Arparma, Match, Option, on_alconna
-from nonebot_plugin_session import EventSession
+from nonebot_plugin_uninfo import Uninfo
 
 from zhenxun.configs.config import BotConfig
 from zhenxun.configs.utils import PluginExtraData, RegisterConfig
@@ -8,8 +8,9 @@ from zhenxun.services.log import logger
 from zhenxun.utils.enum import PluginType
 from zhenxun.utils.message import MessageUtils
 from zhenxun.utils.rules import ensure_group
+from zhenxun.utils.utils import get_entity_ids
 
-from ._data_source import base_config, mute_manage
+from ._data_source import base_config, mute_manager
 
 __plugin_meta__ = PluginMetadata(
     name="刷屏禁言",
@@ -82,19 +83,17 @@ _setting_matcher = on_alconna(
 
 @_setting_matcher.handle()
 async def _(
-    session: EventSession,
+    session: Uninfo,
     arparma: Arparma,
     time: Match[int],
     count: Match[int],
     duration: Match[int],
 ):
-    group_id = session.id2
-    if not session.id1 or not group_id:
-        return
+    entity_ids = get_entity_ids(session)
     _time = time.result if time.available else None
     _count = count.result if count.available else None
     _duration = duration.result if duration.available else None
-    group_data = mute_manage.get_group_data(group_id)
+    group_data = mute_manager.get_group_data(entity_ids.group_id or "0")
     if _time is None and _count is None and _duration is None:
         await MessageUtils.build_message(
             f"最大次数：{group_data.count} 次\n"
@@ -114,4 +113,4 @@ async def _(
         arparma.header_result,
         session=session,
     )
-    mute_manage.save_data()
+    mute_manager.save_data()
