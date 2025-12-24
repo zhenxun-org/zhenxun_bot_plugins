@@ -204,7 +204,7 @@
     "description": "三次元也不戳，嘿嘿嘿",
     "usage": "?N连cos/coser\n    示例: cos\n    示例: 5连cos （单次请求张数小于9）",
     "author": "HibiKier",
-    "version": "0.1",
+    "version": "0.2",
     "plugin_type": "NORMAL",
     "is_dir": false
   },
