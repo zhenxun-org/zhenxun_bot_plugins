@@ -362,7 +362,7 @@ class CallApi:
         url = {
             "gemini": "https://generativelanguage.googleapis.com/v1beta/chat/completions",
             "deepseek": "https://api.deepseek.com/v1/chat/completions",
-            "硅基流动": "https://api.siliconflow.cn/v1",
+            "硅基流动": "https://api.siliconflow.cn/v1/chat/completions",
             "阿里云百炼": "https://dashscope.aliyuncs.com/compatible-mode/v1",
             "百度智能云": "https://qianfan.baidubce.com/v2",
             "字节火山引擎": "https://ark.cn-beijing.volces.com/api/v3",
