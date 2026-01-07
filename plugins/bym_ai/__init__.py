@@ -42,7 +42,7 @@ __plugin_meta__ = PluginMetadata(
     """.strip(),
     extra=PluginExtraData(
         author="Chtholly & HibiKier",
-        version="0.7",
+        version="0.8",
         superuser_help="重置所有会话\n重载prompt",
         ignore_prompt=True,
         configs=[
