@@ -94,7 +94,7 @@
         "description": "刷屏禁言相关操作",
         "usage": "刷屏禁言相关操作，需要 {NICKNAME} 有群管理员权限\n    指令：\n        刷屏设置: 查看当前设置\n        -c [count]: 检测最大次数\n        -t [time]: 规定时间内\n        -d [duration]: 禁言时长\n        示例:\n            刷屏设置 -c 10: 设置最大次数为10\n            刷屏设置 -t 100 -d 20: 设置规定时间和禁言时长\n            刷屏设置 -d 10: 设置禁言时长为10\n        * 即 X 秒内发送同样消息 N 次，禁言 M 分钟 *",
         "author": "HibiKier",
-        "version": "0.1-473ecd8",
+        "version": "0.2",
         "plugin_type": "ADMIN",
         "is_dir": true
     },
@@ -115,8 +115,8 @@
         "module_path": "plugins.fudu",
         "description": "群友的本质是什么？是复读机哒！",
         "usage": "usage：\n        重复3次相同的消息时会复读",
-        "author": "HibiKier",
-        "version": "0.2",
+        "author": "HibiKier & webjoin111",
+        "version": "0.4",
         "plugin_type": "DEPENDANT",
         "is_dir": false
     },
@@ -204,7 +204,7 @@
         "description": "三次元也不戳，嘿嘿嘿",
         "usage": "?N连cos/coser\n    示例: cos\n    示例: 5连cos （单次请求张数小于9）",
         "author": "HibiKier",
-        "version": "0.1",
+        "version": "0.2",
         "plugin_type": "NORMAL",
         "is_dir": false
     },
@@ -424,7 +424,7 @@
         "description": "非常便利的B站订阅通知",
         "usage": "B站直播，番剧，UP动态开播等提醒",
         "author": "HibiKier",
-        "version": "0.9",
+        "version": "1.2",
         "plugin_type": "NORMAL",
         "is_dir": true
     },
@@ -446,7 +446,7 @@
         "description": "嗨嗨，这里是小记者真寻哦",
         "usage": "真寻日报",
         "author": "HibiKier",
-        "version": "0.5",
+        "version": "0.6",
         "plugin_type": "NORMAL",
         "is_dir": true
     },
@@ -490,7 +490,7 @@
         "description": "小真寻想成为人类...",
         "usage": "你问小真寻的愿望？小真寻说她想成为人类！",
         "author": "Chtholly & HibiKier",
-        "version": "0.7",
+        "version": "0.8",
         "plugin_type": "NORMAL",
         "is_dir": true
     },
