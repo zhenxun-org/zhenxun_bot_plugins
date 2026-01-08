@@ -27,7 +27,7 @@ __plugin_meta__ = PluginMetadata(
     """.strip(),
     extra=PluginExtraData(
         author="HibiKier",
-        version="0.5",
+        version="0.6",
         superuser_help="""重置真寻日报""",
         commands=[Command(command="真寻日报")],
         tasks=[Task(module="mahiro_report", name="真寻日报")],

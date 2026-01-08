@@ -3,7 +3,7 @@ from datetime import date, timedelta
 import chinese_calendar as calendar
 import lunardate
 
-# 定义2025年农历节日的农历日期
+# 定义2026年农历节日的农历日期
 lunar_festivals = {
     "春节": (1, 1),  # 春节 (农历正月初一)
     "端午节": (5, 5),  # 端午节 (农历五月初五)
@@ -12,9 +12,9 @@ lunar_festivals = {
 
 # 固定日期的节日
 fixed_festivals_dates = {
-    "劳动节": date(2025, 5, 1),  # 劳动节
-    "国庆节": date(2025, 10, 1),  # 国庆节
-    "元旦": date(2025, 1, 1),  # 元旦
+    "劳动节": date(2026, 5, 1),  # 劳动节
+    "国庆节": date(2026, 10, 1),  # 国庆节
+    "元旦": date(2026, 1, 1),  # 元旦
 }
 
 

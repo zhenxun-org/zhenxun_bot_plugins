@@ -446,7 +446,7 @@
         "description": "嗨嗨，这里是小记者真寻哦",
         "usage": "真寻日报",
         "author": "HibiKier",
-        "version": "0.5",
+        "version": "0.6",
         "plugin_type": "NORMAL",
         "is_dir": true
     },
