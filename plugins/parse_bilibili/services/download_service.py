@@ -1,8 +1,8 @@
+import asyncio
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import parse_qs, urlparse
-import asyncio
-from dataclasses import dataclass
 
 from bilibili_api import bangumi, video
 from nonebot import get_driver
@@ -21,7 +21,7 @@ from ..model import SeasonInfo, VideoInfo
 from ..utils.exceptions import BilibiliBaseException, DownloadError, MediaProcessError
 from ..utils.file_utils import merge_media_files
 from ..utils.message import send_video_with_retry
-from .cache_service import CacheService, VIDEO_CACHE_DIR
+from .cache_service import VIDEO_CACHE_DIR, CacheService
 from .network_service import download_bilibili_file
 
 
@@ -289,6 +289,12 @@ class DownloadManager:
             selected_audio_stream.get("baseUrl") if selected_audio_stream else None
         )
 
+        # 获取备用URL列表
+        video_backup_urls = selected_video_stream.get("backupUrl", [])
+        audio_backup_urls = (
+            selected_audio_stream.get("backupUrl", []) if selected_audio_stream else []
+        )
+
         if not video_url:
             raise DownloadError(
                 "未能选择有效的视频流URL", context={"video_id": video_id}
@@ -304,12 +310,24 @@ class DownloadManager:
         output_mp4_path = VIDEO_CACHE_DIR / cache_filename
 
         try:
-            dl_tasks = [download_bilibili_file(video_url, v_stream_path)]
+            # 创建包含主URL和备用URL的列表
+            video_urls = (
+                [video_url] + video_backup_urls if video_backup_urls else [video_url]
+            )
+            dl_tasks = [download_bilibili_file(video_urls, v_stream_path)]
+
             if audio_url and a_stream_path:
-                dl_tasks.append(download_bilibili_file(audio_url, a_stream_path))
+                audio_urls = (
+                    [audio_url] + audio_backup_urls
+                    if audio_backup_urls
+                    else [audio_url]
+                )
+                dl_tasks.append(download_bilibili_file(audio_urls, a_stream_path))
 
             logger.info(f"开始并行下载 {len(dl_tasks)} 个视频媒体流...")
-            if not all(await asyncio.gather(*dl_tasks)):
+            results = await asyncio.gather(*dl_tasks, return_exceptions=True)
+
+            if not all(isinstance(r, bool) and r for r in results):
                 raise DownloadError(f"下载视频媒体流失败: {video_id}")
 
             merge_success = await merge_media_files(
