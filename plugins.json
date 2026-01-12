@@ -537,5 +537,16 @@
         "version": "0.1",
         "plugin_type": "NORMAL",
         "is_dir": true
+    },
+    {
+        "name": "三角洲查询",
+        "module": "dfm_info",
+        "module_path": "plugins.dfm_info",
+        "description": "三角洲查询",
+        "usage": "粥/洲",
+        "author": "ThelevenFD",
+        "version": "0.2",
+        "plugin_type": "NORMAL",
+        "is_dir": true
     }
 ]
