@@ -40,6 +40,7 @@ DEFAULT_HEADERS = {
     "X-Requested-With": "XMLHttpRequest",
 }
 
+
 class DeltaService:
     """处理三角洲数据的服务类"""
 

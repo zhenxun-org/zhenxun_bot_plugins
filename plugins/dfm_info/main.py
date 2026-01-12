@@ -11,6 +11,7 @@ from .data_source import DeltaService, COST_MAPPING
 delta_service = DeltaService()
 command_matcher = on_alconna(Alconna("re:(洲|粥)"), priority=1, block=True)
 
+
 @command_matcher.handle()
 async def handle_delta_command(bot: Bot, event: Event):
     try:

@@ -17,10 +17,10 @@ __plugin_meta__ = PluginMetadata(
 driver = get_driver()
 delta_service = data_source.DeltaService()
 
+
 @driver.on_startup
 async def _():
     try:
         await delta_service._ensure_cookies()
     except Exception:
         pass
-
