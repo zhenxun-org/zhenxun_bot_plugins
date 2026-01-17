@@ -4,7 +4,7 @@ from nonebot.rule import to_me
 from nonebot import on_command
 from nonebot.params import CommandArg
 from nonebot.adapters.onebot.v11.message import Message
-from nonebot_plugin_uninfo import Uninfo, get_interface
+from nonebot_plugin_uninfo import Uninfo
 from zhenxun.configs.utils import BaseBlock, PluginCdBlock, PluginExtraData
 from zhenxun.services.log import logger
 from zhenxun.utils.message import MessageUtils
@@ -151,11 +151,11 @@ if not config_path.exists():
 jm_cmd = on_command("jm", priority=5, block=True, rule=to_me())
 
 @jm_cmd.handle()
-async def _(bot: Bot, event: MessageEvent, arg: Message = CommandArg(), session: Uninfo = get_interface):
+async def _(bot: Bot, event: MessageEvent, arg: Message = CommandArg(), session: Uninfo):
     try:
         # 使用 uninfo 获取用户和群组信息
         user_id = str(session.user.id)
-        group_id = str(session.scene.id) if session.scene and session.scene.type == "group" else None
+        group_id = str(session.scene.id) if session.scene and session.scene.type.name == "GROUP" else None
     except Exception as e:
         logger.warning(f"获取uninfo失败: {e}")
         # uninfo获取失败，则直接返回错误
