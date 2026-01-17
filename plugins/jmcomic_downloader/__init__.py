@@ -50,172 +50,211 @@ if not config_path.exists():
     default_config = {
         "super_users": [],  # 超级用户QQ号列表
         "blacklist": [
-			'114514',
-            '637857',
-            '350234',
-            '136494',
-            '405848',
-            '481481',
-            '568070',
-            '628539',
-            '627898',
-            '628555',
-            '627899',
-            '323666',
-            '363848',
-            '454278',
-            '559716',
-            '629252',
-            '626487',
-            '400002',
-            '208092',
-            '253199',
-            '382596',
-            '418600',
-            '565616',
-            '222458',
-            '636531',
-            '553350',
-            '1087303',
-            '392645',
-            '433651',
-            '642039',
-            '1193291',
-            '139818',
-            '279464',
-            '285644',
-            '287786',
-            '287836',
-            '287837',
-            '288302',
-            '288303',
-            '288304',
-            '288448',
-            '288449',
-            '331189',
-            '333204',
-            '333024',
-            '348899',
-            '350235',
-            '354788',
-            '383386',
-            '427909',
-            '452452',
-            '497544',
-            '517803',
-            '547917',
-            '559722',
-            '574868',
-            '599879',
-            '599880',
-            '599890',
-            '611650',
-            '611674',
-            '630643',
-            '640301',
-            '640557',
-            '642012',
-            '643162',
-            '644152',
-            '652338',
-            '652339',
-            '1024176',
-            '1026836',
-            '1026906',
-            '1027120',
-            '1027637',
-            '1027669',
-            '1045798',
-            '1049076',
-            '1052890',
-            '1053769',
-            '1068396',
-            '1070826',
-            '1075778',
-            '1076266',
-            '1078262',
-            '1092441',
-            '1117798',
-            '1187635',
-            '1205492',
-            '1191294',
-            '1228476',
-            '1229478',
-            '1239341'
-		]     # 默认黑名单album_id列表
+            "114514",
+            "637857",
+            "350234",
+            "136494",
+            "405848",
+            "481481",
+            "568070",
+            "628539",
+            "627898",
+            "628555",
+            "627899",
+            "323666",
+            "363848",
+            "454278",
+            "559716",
+            "629252",
+            "626487",
+            "400002",
+            "208092",
+            "253199",
+            "382596",
+            "418600",
+            "565616",
+            "222458",
+            "636531",
+            "553350",
+            "1087303",
+            "392645",
+            "433651",
+            "642039",
+            "1193291",
+            "139818",
+            "279464",
+            "285644",
+            "287786",
+            "287836",
+            "287837",
+            "288302",
+            "288303",
+            "288304",
+            "288448",
+            "288449",
+            "331189",
+            "333204",
+            "333024",
+            "348899",
+            "350235",
+            "354788",
+            "383386",
+            "427909",
+            "452452",
+            "497544",
+            "517803",
+            "547917",
+            "559722",
+            "574868",
+            "599879",
+            "599880",
+            "599890",
+            "611650",
+            "611674",
+            "630643",
+            "640301",
+            "640557",
+            "642012",
+            "643162",
+            "644152",
+            "652338",
+            "652339",
+            "1024176",
+            "1026836",
+            "1026906",
+            "1027120",
+            "1027637",
+            "1027669",
+            "1045798",
+            "1049076",
+            "1052890",
+            "1053769",
+            "1068396",
+            "1070826",
+            "1075778",
+            "1076266",
+            "1078262",
+            "1092441",
+            "1117798",
+            "1187635",
+            "1205492",
+            "1191294",
+            "1228476",
+            "1229478",
+            "1239341",
+        ],  # 默认黑名单album_id列表
     }
-    with open(config_path, 'w', encoding='utf-8') as f:
+    with open(config_path, "w", encoding="utf-8") as f:
         yaml.dump(default_config, f, default_flow_style=False, allow_unicode=True)
 
 # 使用传统命令处理器
 jm_cmd = on_command("jm", priority=5, block=True, rule=to_me())
 
+
 @jm_cmd.handle()
+<<<<<<< HEAD
 async def _(bot: Bot, event: MessageEvent, session: Uninfo, arg: Message = CommandArg()):
     try:
         # 使用 uninfo 获取用户和群组信息
         user_id = str(session.user.id)
         group_id = str(session.scene.id) if session.scene and session.scene.type.name == "GROUP" else None
+=======
+async def _(
+    bot: Bot,
+    event: MessageEvent,
+    arg: Message = CommandArg(),
+    session: Uninfo = get_interface,
+):
+    try:
+        # 使用 uninfo 获取用户和群组信息
+        user_id = str(session.user.id)
+        group_id = (
+            str(session.scene.id)
+            if session.scene and session.scene.type == "group"
+            else None
+        )
+>>>>>>> e846102ed7c88e89888f79e2a59c7456e4457b72
     except Exception as e:
         logger.warning(f"获取uninfo失败: {e}")
         # uninfo获取失败，则直接返回错误
-        await MessageUtils.build_message("获取用户信息失败，请稍后再试").send(reply_to=True)
-        return
-    
-    raw_arg = arg.extract_plain_text().strip()
-    
-    if not raw_arg:
-        await jm_cmd.finish("请输入命令或JM号喵，格式：jm [album_id] 或 jm [命令] [参数]")
+        await MessageUtils.build_message("获取用户信息失败，请稍后再试").send(
+            reply_to=True
+        )
         return
 
-    
+    raw_arg = arg.extract_plain_text().strip()
+
+    if not raw_arg:
+        await jm_cmd.finish(
+            "请输入命令或JM号喵，格式：jm [album_id] 或 jm [命令] [参数]"
+        )
+        return
+
     # 检查是否为纯数字（下载命令）
     if raw_arg.isdigit():
         album_id = raw_arg
         # 检查是否在黑名单中
         if BlacklistManager.is_blacklisted(album_id):
-            await MessageUtils.build_message(f"本子 {album_id} 已被扔进垃圾桶里了喵").send(reply_to=True)
+            await MessageUtils.build_message(
+                f"本子 {album_id} 已被扔进垃圾桶里了喵"
+            ).send(reply_to=True)
             return
-        
+
         await MessageUtils.build_message("正在翻阅中，请稍后...").send(reply_to=True)
         await JmDownload.download_album(bot, user_id, group_id, album_id)
         logger.info(f"下载了本子 {album_id}", "jmcomic", session=user_id)
     else:
         # 解析指令
-        parts = raw_arg.split(' ', 1)
+        parts = raw_arg.split(" ", 1)
         cmd = parts[0].lower()
-        
-        if cmd == 'add':
+
+        if cmd == "add":
             if len(parts) < 2 or not parts[1].isdigit():
-                await MessageUtils.build_message("添加黑名单格式错误：jm add [album_id]").send(reply_to=True)
+                await MessageUtils.build_message(
+                    "添加黑名单格式错误：jm add [album_id]"
+                ).send(reply_to=True)
                 return
-            
+
             album_id = parts[1]
             if BlacklistManager.is_super_user(user_id):
                 BlacklistManager.add_to_blacklist(album_id)
-                await MessageUtils.build_message(f"已将本子 {album_id} 添加到小本本").send(reply_to=True)
+                await MessageUtils.build_message(
+                    f"已将本子 {album_id} 添加到小本本"
+                ).send(reply_to=True)
             else:
-                await MessageUtils.build_message("权限不足，只有超级用户才能添加黑名单").send(reply_to=True)
-        
-        elif cmd == 'del':
+                await MessageUtils.build_message(
+                    "权限不足，只有超级用户才能添加黑名单"
+                ).send(reply_to=True)
+
+        elif cmd == "del":
             if len(parts) < 2 or not parts[1].isdigit():
-                await MessageUtils.build_message("删除黑名单格式错误：jm del [album_id]").send(reply_to=True)
+                await MessageUtils.build_message(
+                    "删除黑名单格式错误：jm del [album_id]"
+                ).send(reply_to=True)
                 return
-            
+
             album_id = parts[1]
             if BlacklistManager.is_super_user(user_id):
                 BlacklistManager.remove_from_blacklist(album_id)
-                await MessageUtils.build_message(f"已将本子 {album_id} 从小本本中移除").send(reply_to=True)
+                await MessageUtils.build_message(
+                    f"已将本子 {album_id} 从小本本中移除"
+                ).send(reply_to=True)
             else:
-                await MessageUtils.build_message("权限不足，只有超级用户才能删除黑名单").send(reply_to=True)
-        
-        elif cmd == 'list':
+                await MessageUtils.build_message(
+                    "权限不足，只有超级用户才能删除黑名单"
+                ).send(reply_to=True)
+
+        elif cmd == "list":
             blacklist = BlacklistManager.get_blacklist()
             if blacklist:
-                blacklist_str = '\n'.join(blacklist)
-                await MessageUtils.build_message(f"当前小本本列表：\n{blacklist_str}").send(reply_to=True)
+                blacklist_str = "\n".join(blacklist)
+                await MessageUtils.build_message(
+                    f"当前小本本列表：\n{blacklist_str}"
+                ).send(reply_to=True)
             else:
                 await MessageUtils.build_message("当前黑名单为空").send(reply_to=True)
-        
+
         else:
-            await MessageUtils.build_message("未知命令，支持的命令：[id],add, del, list").send(reply_to=True)
+            await MessageUtils.build_message(
+                "未知命令，支持的命令：[id],add, del, list"
+            ).send(reply_to=True)

@@ -13,7 +13,6 @@ import pyminizip
 from zhenxun.configs.path_config import DATA_PATH, TEMP_PATH
 from zhenxun.services.log import logger
 from zhenxun.utils.platform import PlatformUtils
-from zhenxun.utils.utils import ResourceDirManager
 from zhenxun.utils.message import MessageUtils
 from zhenxun.utils.http_utils import AsyncHttpx
 
@@ -94,7 +93,7 @@ plugins:
         pdf_dir: /data/jmcomic/jmcomic_pdf # pdf存放文件夹
         filename_rule: Aname # pdf命名规则，A代表album, name代表使用album.name也就是本子名称
 """
-    with open(OPTION_FILE, 'w', encoding='utf-8') as f:
+    with open(OPTION_FILE, "w", encoding="utf-8") as f:
         f.write(original_option_content)
 
 # 在配置文件存在后再加载选项
@@ -110,66 +109,80 @@ class DetailInfo:
 
 
 class BlacklistManager:
-    #黑名单管理器
+    # 黑名单管理器
     _config = None
     _config_path = CONFIG_FILE
     _synced_at = None  # 记录上次同步时间
 
     @classmethod
     def _load_config(cls):
-        #加载配置文件
+        # 加载配置文件
         if cls._config is None:
             if cls._config_path.exists():
-                with open(cls._config_path, 'r', encoding='utf-8') as f:
-                    cls._config = yaml.safe_load(f) or {"super_users": [], "blacklist": []}
+                with open(cls._config_path, "r", encoding="utf-8") as f:
+                    cls._config = yaml.safe_load(f) or {
+                        "super_users": [],
+                        "blacklist": [],
+                    }
             else:
                 # 初始化配置文件并同步NoneBot超级用户
                 cls._sync_nonebot_superusers()
                 # 重新加载配置
-                with open(cls._config_path, 'r', encoding='utf-8') as f:
-                    cls._config = yaml.safe_load(f) or {"super_users": [], "blacklist": []}
+                with open(cls._config_path, "r", encoding="utf-8") as f:
+                    cls._config = yaml.safe_load(f) or {
+                        "super_users": [],
+                        "blacklist": [],
+                    }
         return cls._config
 
     @classmethod
     def _sync_nonebot_superusers(cls):
-        #同步NoneBot配置中的超级用户到插件配置文件
+        # 同步NoneBot配置中的超级用户到插件配置文件
         try:
             from nonebot import get_driver
+
             driver = get_driver()
-            nonebot_superusers = getattr(driver.config, 'superusers', set())
+            nonebot_superusers = getattr(driver.config, "superusers", set())
             if nonebot_superusers:
                 # 加载现有配置
                 if cls._config_path.exists():
-                    with open(cls._config_path, 'r', encoding='utf-8') as f:
-                        existing_config = yaml.safe_load(f) or {"super_users": [], "blacklist": []}
+                    with open(cls._config_path, "r", encoding="utf-8") as f:
+                        existing_config = yaml.safe_load(f) or {
+                            "super_users": [],
+                            "blacklist": [],
+                        }
                 else:
                     existing_config = {"super_users": [], "blacklist": []}
-                
+
                 # 获取NoneBot超级用户列表
                 nonebot_superusers_list = [str(uid) for uid in nonebot_superusers]
-                
+
                 # 合并现有的超级用户和NoneBot超级用户
                 existing_superusers = existing_config.get("super_users", [])
-                all_superusers = list(set(existing_superusers + nonebot_superusers_list))
-                
+                all_superusers = list(
+                    set(existing_superusers + nonebot_superusers_list)
+                )
+
                 # 更新配置
                 existing_config["super_users"] = all_superusers
-                
+
                 # 保存配置文件
-                with open(cls._config_path, 'w', encoding='utf-8') as f:
-                    yaml.dump(existing_config, f, default_flow_style=False, allow_unicode=True)
+                with open(cls._config_path, "w", encoding="utf-8") as f:
+                    yaml.dump(
+                        existing_config, f, default_flow_style=False, allow_unicode=True
+                    )
         except Exception as e:
             logger.error(f"同步NoneBot超级用户失败: {e}", "jmcomic")
 
     @classmethod
     def _save_config(cls):
-        #保存配置文件
-        with open(cls._config_path, 'w', encoding='utf-8') as f:
+        # 保存配置文件
+        with open(cls._config_path, "w", encoding="utf-8") as f:
             yaml.dump(cls._config, f, default_flow_style=False, allow_unicode=True)
 
     @classmethod
     def _clear_cache(cls):
-        #清除配置缓存
+        # 清除配置缓存
         cls._config = None
 
     @classmethod
@@ -183,8 +196,9 @@ class BlacklistManager:
         # 检查用户是否在NoneBot配置中
         try:
             from nonebot import get_driver
+
             driver = get_driver()
-            nonebot_superusers = getattr(driver.config, 'superusers', set())
+            nonebot_superusers = getattr(driver.config, "superusers", set())
             if str(user_id) in [str(uid) for uid in nonebot_superusers]:
                 return True
         except Exception as e:
@@ -194,13 +208,13 @@ class BlacklistManager:
 
     @classmethod
     def is_blacklisted(cls, album_id: str) -> bool:
-        #检查album_id是否在黑名单中
+        # 检查album_id是否在黑名单中
         config = cls._load_config()
         return str(album_id) in [str(aid) for aid in config.get("blacklist", [])]
 
     @classmethod
     def add_to_blacklist(cls, album_id: str):
-        #添加到黑名单
+        # 添加到黑名单
         config = cls._load_config()
         blacklist = config.get("blacklist", [])
         if str(album_id) not in [str(aid) for aid in blacklist]:
@@ -212,7 +226,7 @@ class BlacklistManager:
 
     @classmethod
     def remove_from_blacklist(cls, album_id: str):
-        #从黑名单中移除
+        # 从黑名单中移除
         config = cls._load_config()
         blacklist = config.get("blacklist", [])
         if str(album_id) in [str(aid) for aid in blacklist]:
@@ -224,7 +238,7 @@ class BlacklistManager:
 
     @classmethod
     def get_blacklist(cls) -> list:
-        #获取黑名单列表
+        # 获取黑名单列表
         config = cls._load_config()
         return config.get("blacklist", [])
 
@@ -238,9 +252,9 @@ class CreateZip:
         self.encrypted_pdf_path = PDF_OUTPUT_PATH / f"encrypted_{data.album_id}.pdf"
 
     def encrypt_pdf(self):
-        #加密PDF文件
+        # 加密PDF文件
         with Pdf.open(self.pdf_path) as pdf:
-            #设置加密选项
+            # 设置加密选项
             pdf.save(
                 self.encrypted_pdf_path,
                 encryption=Encryption(user=self.password, owner=self.password, R=6),
@@ -248,7 +262,7 @@ class CreateZip:
             logger.info(f"PDF 已加密并保存到: {self.encrypted_pdf_path}", "jmcomic")
 
     def create_password_protected_zip(self):
-        #创建带密码的ZIP文件
+        # 创建带密码的ZIP文件
         pyminizip.compress(
             str(self.encrypted_pdf_path.absolute()),
             None,
@@ -267,7 +281,7 @@ class CreateZip:
 
 class JmDownload:
     _data: ClassVar[dict[str, list[DetailInfo]]] = {}
-	
+
     @classmethod
     async def upload_file(cls, data: DetailInfo, zip_path: Path | None = None):
         if not zip_path:
@@ -333,22 +347,30 @@ class JmDownload:
 
         if zip_path.exists():
             await cls.upload_file(
-                DetailInfo(bot=bot, user_id=user_id, group_id=group_id, album_id=album_id),
+                DetailInfo(
+                    bot=bot, user_id=user_id, group_id=group_id, album_id=album_id
+                ),
                 zip_path=zip_path,
             )
         else:
             # 检查本子是否存在
             exists = await cls.check_album_exists(album_id)
             if not exists:
-                await MessageUtils.build_message(f"本子 {album_id} 飞到天堂去了喵~").send(reply_to=True)
+                await MessageUtils.build_message(
+                    f"本子 {album_id} 飞到天堂去了喵~"
+                ).send(reply_to=True)
                 return
 
             if album_id not in cls._data:
                 cls._data[album_id] = []
             cls._data[album_id].append(
-                DetailInfo(bot=bot, user_id=user_id, group_id=group_id, album_id=album_id)
+                DetailInfo(
+                    bot=bot, user_id=user_id, group_id=group_id, album_id=album_id
                 )
-            await asyncio.to_thread(jmcomic.download_album, album_id, option, callback=cls.call_send)
+            )
+            await asyncio.to_thread(
+                jmcomic.download_album, album_id, option, callback=cls.call_send
+            )
 
     @classmethod
     async def check_album_exists(cls, album_id: str) -> bool:
@@ -361,17 +383,27 @@ class JmDownload:
         except Exception as e:
             # 捕获jmcomic库抛出的异常（通常是404或请求失败）
             logger.warning(f"检查本子 {album_id} 存在性失败: {str(e)}", "jmcomic")
-            
+
             # 尝试使用 requests 直接请求网页
             try:
                 url = f"https://18comic.vip/album/{album_id}/"
-                r = await AsyncHttpx.get(url, headers={
-                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
-                })
-                if r.status_code == 200 and "404" not in r.text and "不存在" not in r.text:
+                r = await AsyncHttpx.get(
+                    url,
+                    headers={
+                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+                    },
+                )
+                if (
+                    r.status_code == 200
+                    and "404" not in r.text
+                    and "不存在" not in r.text
+                ):
                     return True
                 else:
                     return False
             except Exception as req_e:
-                logger.warning(f"使用AsyncHttpx检查本子 {album_id} 存在性也失败: {str(req_e)}", "jmcomic")
+                logger.warning(
+                    f"使用AsyncHttpx检查本子 {album_id} 存在性也失败: {str(req_e)}",
+                    "jmcomic",
+                )
                 return False
