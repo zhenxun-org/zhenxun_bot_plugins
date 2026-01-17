@@ -10,6 +10,7 @@ from nonebot_plugin_uninfo import Uninfo, get_interface
 from zhenxun.configs.utils import BaseBlock, PluginCdBlock, PluginExtraData
 from zhenxun.services.log import logger
 from zhenxun.utils.message import MessageUtils
+from zhenxun.configs.path_config import DATA_PATH
 
 from .data_source import JmDownload, BlacklistManager
 import re
@@ -43,8 +44,10 @@ __plugin_meta__ = PluginMetadata(
 from pathlib import Path
 import yaml
 
-# 检查并创建配置文件
-config_path = Path(__file__).parent / "blacklist_config.yml"
+# 检查并创建DATA_PATH下的配置文件
+config_path = DATA_PATH / "jmcomic" / "blacklist_config.yml"
+config_path.parent.mkdir(parents=True, exist_ok=True)
+
 if not config_path.exists():
     # 创建默认配置文件
     default_config = {
@@ -117,6 +120,3 @@ async def _(bot: Bot, event: MessageEvent, arg: Message = CommandArg()):
         
         else:
             await MessageUtils.build_message("未知命令，支持的命令：[id],add, del, list").send(reply_to=True)
-
-
-

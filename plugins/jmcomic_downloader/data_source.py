@@ -25,11 +25,79 @@ ZIP_OUTPUT_PATH = DATA_PATH / "jmcomic" / "jmcomic_zip"
 PDF_OUTPUT_PATH.mkdir(parents=True, exist_ok=True)
 ZIP_OUTPUT_PATH.mkdir(parents=True, exist_ok=True)
 
-OPTION_FILE = Path(__file__).parent / "option.yml"
-CONFIG_FILE = Path(__file__).parent / "blacklist_config.yml"
+OPTION_FILE = DATA_PATH / "jmcomic" / "option.yml"
+CONFIG_FILE = DATA_PATH / "jmcomic" / "blacklist_config.yml"
 
-ResourceDirManager.add_temp_dir(PDF_OUTPUT_PATH)
+# 确保配置文件所在目录存在
+OPTION_FILE.parent.mkdir(parents=True, exist_ok=True)
 
+# 检查并创建option.yml配置文件，使用原始配置内容
+if not OPTION_FILE.exists():
+    # 创建与原始完全相同的option.yml配置文件
+    original_option_content = """# 开启jmcomic的日志输出，默认为true
+# 对日志有需求的可进一步参考文档 → https://jmcomic.readthedocs.io/en/latest/tutorial/11_log_custom/
+log: true
+
+# 下载配置
+download:
+  cache: true # 如果要下载的文件在磁盘上已存在，不用再下一遍了吧？默认为true
+  image:
+    decode: true # JM的原图是混淆过的，要不要还原？默认为true
+    suffix: .jpg # 把图片都转为.jpg格式，默认为null，表示不转换。
+  threading:
+    # image: 同时下载的图片数，默认是30张图
+    # 数值大，下得快，配置要求高，对禁漫压力大
+    # 数值小，下得慢，配置要求低，对禁漫压力小
+    # PS: 禁漫网页一次最多请求50张图
+    image: 30
+    # photo: 同时下载的章节数，不配置默认是cpu的线程数。例如8核16线程的cpu → 16.
+    photo: 16
+
+# 文件夹规则配置，决定图片文件存放在你的电脑上的哪个文件夹
+dir_rule:
+  # base_dir: 根目录。
+  # 此配置也支持引用环境变量，例如
+  # base_dir: ${JM_DIR}/下载文件夹/
+  base_dir: ./resources/temp/jmcomic
+
+  # rule: 规则dsl。
+  # 本项只建议了解编程的朋友定制，实现在这个类: jmcomic.jm_option.DirRule
+  # 写法:
+  # 1. 以'Bd'开头，表示根目录
+  # 2. 文件夹每增加一层，使用 '_' 或者 '/' 区隔
+  # 3. 用Pxxx或者Ayyy指代文件夹名，意思是 JmPhotoDetail.xxx / JmAlbumDetail的.yyy。xxx和yyy可以写什么需要看源码。
+  #
+  # 下面演示如果要使用禁漫网站的默认下载方式，该怎么写:
+  # 规则: 根目录 / 本子id / 章节序号 / 图片文件
+  # rule: 'Bd  / Aid   / Pindex'
+  # rule: 'Bd_Aid_Pindex'
+
+  # 默认规则是: 根目录 / 章节标题 / 图片文件
+  rule: Bd_Ptitle
+
+# 插件的配置示例
+plugins:
+  after_photo:
+    # 把章节的所有图片合并为一个pdf的插件
+    # 使用前需要安装依赖库: [pip install img2pdf]
+    - plugin: img2pdf
+      kwargs:
+        pdf_dir: ./data/jmcomic/jmcomic_pdf # pdf存放文件夹
+        filename_rule: Pid # pdf命名规则，P代表photo, id代表使用photo.id也就是章节id
+
+  after_album:
+    # img2pdf也支持合并整个本子，把上方的after_photo改为after_album即可。
+    # https://github.com/hect0x7/JMComic-Crawler-Python/discussions/258
+    # 配置到after_album时，需要修改filename_rule参数，不能写Pxx只能写Axx示例如下
+    - plugin: img2pdf
+      kwargs:
+        pdf_dir: /data/jmcomic/jmcomic_pdf # pdf存放文件夹
+        filename_rule: Aname # pdf命名规则，A代表album, name代表使用album.name也就是本子名称
+"""
+    with open(OPTION_FILE, 'w', encoding='utf-8') as f:
+        f.write(original_option_content)
+
+# 在配置文件存在后再加载选项
 option = jmcomic.create_option_by_file(str(OPTION_FILE.absolute()))
 
 @dataclass
@@ -53,8 +121,43 @@ class BlacklistManager:
                 with open(cls._config_path, 'r', encoding='utf-8') as f:
                     cls._config = yaml.safe_load(f) or {"super_users": [], "blacklist": []}
             else:
-                cls._config = {"super_users": [], "blacklist": []}
+                # 初始化配置文件并同步NoneBot超级用户
+                cls._sync_nonebot_superusers()
+                # 重新加载配置
+                with open(cls._config_path, 'r', encoding='utf-8') as f:
+                    cls._config = yaml.safe_load(f) or {"super_users": [], "blacklist": []}
         return cls._config
+
+    @classmethod
+    def _sync_nonebot_superusers(cls):
+        """同步NoneBot配置中的超级用户到插件配置文件"""
+        try:
+            from nonebot import get_driver
+            driver = get_driver()
+            nonebot_superusers = getattr(driver.config, 'superusers', set())
+            if nonebot_superusers:
+                # 加载现有配置
+                if cls._config_path.exists():
+                    with open(cls._config_path, 'r', encoding='utf-8') as f:
+                        existing_config = yaml.safe_load(f) or {"super_users": [], "blacklist": []}
+                else:
+                    existing_config = {"super_users": [], "blacklist": []}
+                
+                # 获取NoneBot超级用户列表
+                nonebot_superusers_list = [str(uid) for uid in nonebot_superusers]
+                
+                # 合并现有的超级用户和NoneBot超级用户
+                existing_superusers = existing_config.get("super_users", [])
+                all_superusers = list(set(existing_superusers + nonebot_superusers_list))
+                
+                # 更新配置
+                existing_config["super_users"] = all_superusers
+                
+                # 保存配置文件
+                with open(cls._config_path, 'w', encoding='utf-8') as f:
+                    yaml.dump(existing_config, f, default_flow_style=False, allow_unicode=True)
+        except Exception as e:
+            logger.error(f"同步NoneBot超级用户失败: {e}", "jmcomic")
 
     @classmethod
     def _save_config(cls):
@@ -69,8 +172,21 @@ class BlacklistManager:
 
     @classmethod
     def is_super_user(cls, user_id: str) -> bool:
-        """检查是否为超级用户"""
+        """检查是否为超级用户，包括NoneBot配置和插件配置中的用户"""
+        # 先同步NoneBot超级用户
+        cls._sync_nonebot_superusers()
+        # 加载配置文件中的超级用户
         config = cls._load_config()
+        # 检查用户是否在NoneBot配置中
+        try:
+            from nonebot import get_driver
+            driver = get_driver()
+            nonebot_superusers = getattr(driver.config, 'superusers', set())
+            if str(user_id) in [str(uid) for uid in nonebot_superusers]:
+                return True
+        except Exception as e:
+            logger.error(f"检查NoneBot超级用户失败: {e}", "jmcomic")
+        # 检查用户是否在插件配置文件中
         return str(user_id) in [str(uid) for uid in config.get("super_users", [])]
 
     @classmethod
