@@ -151,7 +151,7 @@ if not config_path.exists():
 jm_cmd = on_command("jm", priority=5, block=True, rule=to_me())
 
 @jm_cmd.handle()
-async def _(bot: Bot, event: MessageEvent, arg: Message = CommandArg(), session: Uninfo):
+async def _(bot: Bot, event: MessageEvent, session: Uninfo, arg: Message = CommandArg()):
     try:
         # 使用 uninfo 获取用户和群组信息
         user_id = str(session.user.id)
