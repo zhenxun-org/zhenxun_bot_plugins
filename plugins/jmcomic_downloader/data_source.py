@@ -1,4 +1,3 @@
-# data_source.py
 import asyncio
 from dataclasses import dataclass
 from pathlib import Path
@@ -33,7 +32,6 @@ OPTION_FILE.parent.mkdir(parents=True, exist_ok=True)
 
 # 检查并创建option.yml配置文件，使用原始配置内容
 if not OPTION_FILE.exists():
-    # 创建与原始完全相同的option.yml配置文件
     original_option_content = """# 开启jmcomic的日志输出，默认为true
 # 对日志有需求的可进一步参考文档 → https://jmcomic.readthedocs.io/en/latest/tutorial/11_log_custom/
 log: true
@@ -109,13 +107,13 @@ class DetailInfo:
 
 
 class BlacklistManager:
-    """黑名单管理器"""
+    #黑名单管理器
     _config = None
     _config_path = CONFIG_FILE
 
     @classmethod
     def _load_config(cls):
-        """加载配置文件"""
+        #加载配置文件
         if cls._config is None:
             if cls._config_path.exists():
                 with open(cls._config_path, 'r', encoding='utf-8') as f:
@@ -130,7 +128,7 @@ class BlacklistManager:
 
     @classmethod
     def _sync_nonebot_superusers(cls):
-        """同步NoneBot配置中的超级用户到插件配置文件"""
+        #同步NoneBot配置中的超级用户到插件配置文件
         try:
             from nonebot import get_driver
             driver = get_driver()
@@ -161,18 +159,18 @@ class BlacklistManager:
 
     @classmethod
     def _save_config(cls):
-        """保存配置文件"""
+        #保存配置文件
         with open(cls._config_path, 'w', encoding='utf-8') as f:
             yaml.dump(cls._config, f, default_flow_style=False, allow_unicode=True)
 
     @classmethod
     def _clear_cache(cls):
-        """清除配置缓存"""
+        #清除配置缓存
         cls._config = None
 
     @classmethod
     def is_super_user(cls, user_id: str) -> bool:
-        """检查是否为超级用户，包括NoneBot配置和插件配置中的用户"""
+        #检查是否为超级用户，包括NoneBot配置和插件配置中的用户
         # 先同步NoneBot超级用户
         cls._sync_nonebot_superusers()
         # 加载配置文件中的超级用户
@@ -191,13 +189,13 @@ class BlacklistManager:
 
     @classmethod
     def is_blacklisted(cls, album_id: str) -> bool:
-        """检查album_id是否在黑名单中"""
+        #检查album_id是否在黑名单中
         config = cls._load_config()
         return str(album_id) in [str(aid) for aid in config.get("blacklist", [])]
 
     @classmethod
     def add_to_blacklist(cls, album_id: str):
-        """添加到黑名单"""
+        #添加到黑名单
         config = cls._load_config()
         blacklist = config.get("blacklist", [])
         if str(album_id) not in [str(aid) for aid in blacklist]:
@@ -209,7 +207,7 @@ class BlacklistManager:
 
     @classmethod
     def remove_from_blacklist(cls, album_id: str):
-        """从黑名单中移除"""
+        #从黑名单中移除
         config = cls._load_config()
         blacklist = config.get("blacklist", [])
         if str(album_id) in [str(aid) for aid in blacklist]:
@@ -221,7 +219,7 @@ class BlacklistManager:
 
     @classmethod
     def get_blacklist(cls) -> list:
-        """获取黑名单列表"""
+        #获取黑名单列表
         config = cls._load_config()
         return config.get("blacklist", [])
 
@@ -235,9 +233,9 @@ class CreateZip:
         self.encrypted_pdf_path = PDF_OUTPUT_PATH / f"encrypted_{data.album_id}.pdf"
 
     def encrypt_pdf(self):
-        """加密 PDF 文件"""
+        #加密PDF文件
         with Pdf.open(self.pdf_path) as pdf:
-            # 设置加密选项
+            #设置加密选项
             pdf.save(
                 self.encrypted_pdf_path,
                 encryption=Encryption(user=self.password, owner=self.password, R=6),
@@ -245,7 +243,7 @@ class CreateZip:
             logger.info(f"PDF 已加密并保存到: {self.encrypted_pdf_path}", "jmcomic")
 
     def create_password_protected_zip(self):
-        """创建带密码的 ZIP 文件"""
+        #创建带密码的ZIP文件
         pyminizip.compress(
             str(self.encrypted_pdf_path.absolute()),
             None,
@@ -354,7 +352,7 @@ class JmDownload:
 
     @classmethod
     def check_album_exists(cls, album_id: str) -> bool:
-        """检查本子是否存在 - 使用 jmcomic.JmClient 直接请求替代 get_album_detail"""
+        #检查本子是否存在 - 使用 jmcomic.JmClient 直接请求替代 get_album_detail
         try:
             # 使用 jmcomic.JmClient 直接请求
             client = option.build_jm_client()
@@ -381,7 +379,3 @@ class JmDownload:
             except Exception as req_e:
                 logger.warning(f"使用requests检查本子 {album_id} 存在性也失败: {str(req_e)}", "jmcomic")
                 return False
-
-
-
-

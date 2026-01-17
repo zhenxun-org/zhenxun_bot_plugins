@@ -1,4 +1,3 @@
-# __init__.py
 from nonebot.adapters.onebot.v11 import Bot, MessageEvent
 from nonebot.plugin import PluginMetadata
 from nonebot.rule import to_me
@@ -31,8 +30,8 @@ __plugin_meta__ = PluginMetadata(
         jm list
     """.strip(),
     extra=PluginExtraData(
-        author="HibiKier",
-        version="0.4",
+        author="HibiKier、inventling",
+        version="0.6",
         menu_type="一些工具",
         limits=[
             BaseBlock(result="当前有本子正在下载喵，请稍等..."),
@@ -154,9 +153,22 @@ if not config_path.exists():
 jm_cmd = on_command("jm", priority=5, block=True, rule=to_me())
 
 @jm_cmd.handle()
-async def _(bot: Bot, event: MessageEvent, arg: Message = CommandArg()):
-    user_id = str(event.user_id)
-    group_id = str(event.group_id) if hasattr(event, 'group_id') and event.group_id else None
+async def _(bot: Bot, event: MessageEvent, arg: Message = CommandArg(), uninfo: Uninfo = get_interface):
+    try:
+        # 根据uninfo的结构获取用户ID
+        user_id = str(uninfo.account.id) if hasattr(uninfo, 'account') and uninfo.account and hasattr(uninfo.account, 'id') else str(event.user_id)
+        
+        # 获取群组ID
+        if hasattr(uninfo, 'chat') and uninfo.chat and uninfo.chat.type == "group":
+            group_id = str(uninfo.chat.id)
+        else:
+            group_id = str(event.group_id) if hasattr(event, 'group_id') and event.group_id else None
+    except Exception as e:
+        # 如果uninfo获取失败，回退到原有方式
+        logger.warning(f"获取uninfo失败: {e}, 使用event信息")
+        user_id = str(event.user_id)
+        group_id = str(event.group_id) if hasattr(event, 'group_id') and event.group_id else None
+    
     raw_arg = arg.extract_plain_text().strip()
     
     if not raw_arg:
