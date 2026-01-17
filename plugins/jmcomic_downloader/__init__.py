@@ -5,12 +5,10 @@ from nonebot import on_command
 from nonebot.params import CommandArg
 from nonebot.adapters.onebot.v11.message import Message
 from nonebot_plugin_uninfo import Uninfo, get_interface
-
 from zhenxun.configs.utils import BaseBlock, PluginCdBlock, PluginExtraData
 from zhenxun.services.log import logger
 from zhenxun.utils.message import MessageUtils
 from zhenxun.configs.path_config import DATA_PATH
-
 from .data_source import JmDownload, BlacklistManager
 import re
 
@@ -153,27 +151,23 @@ if not config_path.exists():
 jm_cmd = on_command("jm", priority=5, block=True, rule=to_me())
 
 @jm_cmd.handle()
-async def _(bot: Bot, event: MessageEvent, arg: Message = CommandArg(), uninfo: Uninfo = get_interface):
+async def _(bot: Bot, event: MessageEvent, arg: Message = CommandArg(), session: Uninfo = get_interface):
     try:
-        # 根据uninfo的结构获取用户ID
-        user_id = str(uninfo.account.id) if hasattr(uninfo, 'account') and uninfo.account and hasattr(uninfo.account, 'id') else str(event.user_id)
-        
-        # 获取群组ID
-        if hasattr(uninfo, 'chat') and uninfo.chat and uninfo.chat.type == "group":
-            group_id = str(uninfo.chat.id)
-        else:
-            group_id = str(event.group_id) if hasattr(event, 'group_id') and event.group_id else None
+        # 使用 uninfo 获取用户和群组信息
+        user_id = str(session.user.id)
+        group_id = str(session.scene.id) if session.scene and session.scene.type == "group" else None
     except Exception as e:
-        # 如果uninfo获取失败，回退到原有方式
-        logger.warning(f"获取uninfo失败: {e}, 使用event信息")
-        user_id = str(event.user_id)
-        group_id = str(event.group_id) if hasattr(event, 'group_id') and event.group_id else None
+        logger.warning(f"获取uninfo失败: {e}")
+        # uninfo获取失败，则直接返回错误
+        await MessageUtils.build_message("获取用户信息失败，请稍后再试").send(reply_to=True)
+        return
     
     raw_arg = arg.extract_plain_text().strip()
     
     if not raw_arg:
         await jm_cmd.finish("请输入命令或JM号喵，格式：jm [album_id] 或 jm [命令] [参数]")
         return
+
     
     # 检查是否为纯数字（下载命令）
     if raw_arg.isdigit():

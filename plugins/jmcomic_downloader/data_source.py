@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import ClassVar
 import yaml
-
+import time
 import jmcomic
 from jmcomic import JmAlbumDetail
 from nonebot.adapters.onebot.v11 import Bot
@@ -15,6 +15,8 @@ from zhenxun.services.log import logger
 from zhenxun.utils.platform import PlatformUtils
 from zhenxun.utils.utils import ResourceDirManager
 from zhenxun.utils.message import MessageUtils
+from zhenxun.utils.http_utils import AsyncHttpx
+
 
 IMAGE_OUTPUT_PATH = TEMP_PATH / "jmcomic"
 IMAGE_OUTPUT_PATH.mkdir(parents=True, exist_ok=True)
@@ -98,6 +100,7 @@ plugins:
 # 在配置文件存在后再加载选项
 option = jmcomic.create_option_by_file(str(OPTION_FILE.absolute()))
 
+
 @dataclass
 class DetailInfo:
     bot: Bot
@@ -110,6 +113,7 @@ class BlacklistManager:
     #黑名单管理器
     _config = None
     _config_path = CONFIG_FILE
+    _synced_at = None  # 记录上次同步时间
 
     @classmethod
     def _load_config(cls):
@@ -170,10 +174,11 @@ class BlacklistManager:
 
     @classmethod
     def is_super_user(cls, user_id: str) -> bool:
-        #检查是否为超级用户，包括NoneBot配置和插件配置中的用户
-        # 先同步NoneBot超级用户
-        cls._sync_nonebot_superusers()
-        # 加载配置文件中的超级用户
+        # 只在必要时同步（5分钟内不重复）
+        if not cls._synced_at or time.time() - cls._synced_at > 300:
+            cls._sync_nonebot_superusers()
+            cls._synced_at = time.time()
+
         config = cls._load_config()
         # 检查用户是否在NoneBot配置中
         try:
@@ -328,31 +333,25 @@ class JmDownload:
 
         if zip_path.exists():
             await cls.upload_file(
-                DetailInfo(
-                    bot=bot, user_id=user_id, group_id=group_id, album_id=album_id
-                ),
+                DetailInfo(bot=bot, user_id=user_id, group_id=group_id, album_id=album_id),
                 zip_path=zip_path,
             )
         else:
             # 检查本子是否存在
-            exists = await asyncio.to_thread(cls.check_album_exists, album_id)
+            exists = await cls.check_album_exists(album_id)
             if not exists:
                 await MessageUtils.build_message(f"本子 {album_id} 飞到天堂去了喵~").send(reply_to=True)
                 return
+
             if album_id not in cls._data:
                 cls._data[album_id] = []
             cls._data[album_id].append(
-                DetailInfo(
-                    bot=bot, user_id=user_id, group_id=group_id, album_id=album_id
+                DetailInfo(bot=bot, user_id=user_id, group_id=group_id, album_id=album_id)
                 )
-            )
-            await asyncio.to_thread(
-                jmcomic.download_album, album_id, option, callback=cls.call_send
-            )
+            await asyncio.to_thread(jmcomic.download_album, album_id, option, callback=cls.call_send)
 
     @classmethod
-    def check_album_exists(cls, album_id: str) -> bool:
-        #检查本子是否存在 - 使用 jmcomic.JmClient 直接请求替代 get_album_detail
+    async def check_album_exists(cls, album_id: str) -> bool:
         try:
             # 使用 jmcomic.JmClient 直接请求
             client = option.build_jm_client()
@@ -365,17 +364,14 @@ class JmDownload:
             
             # 尝试使用 requests 直接请求网页
             try:
-                import requests
-                headers = {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-                }
                 url = f"https://18comic.vip/album/{album_id}/"
-                response = requests.get(url, headers=headers)
-                # 检查是否返回404或错误页面
-                if response.status_code == 200 and "404" not in response.text and "不存在" not in response.text:
+                r = await AsyncHttpx.get(url, headers={
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+                })
+                if r.status_code == 200 and "404" not in r.text and "不存在" not in r.text:
                     return True
                 else:
                     return False
             except Exception as req_e:
-                logger.warning(f"使用requests检查本子 {album_id} 存在性也失败: {str(req_e)}", "jmcomic")
+                logger.warning(f"使用AsyncHttpx检查本子 {album_id} 存在性也失败: {str(req_e)}", "jmcomic")
                 return False
