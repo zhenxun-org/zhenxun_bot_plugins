@@ -10,7 +10,6 @@ from zhenxun.services.log import logger
 from zhenxun.utils.message import MessageUtils
 from zhenxun.configs.path_config import DATA_PATH
 from .data_source import JmDownload, BlacklistManager
-import re
 
 __plugin_meta__ = PluginMetadata(
     name="Jm下载器",
@@ -38,7 +37,6 @@ __plugin_meta__ = PluginMetadata(
     ).to_dict(),
 )
 
-from pathlib import Path
 import yaml
 
 # 检查并创建DATA_PATH下的配置文件
