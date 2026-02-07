@@ -486,8 +486,7 @@ class WordCloudCache:
             quarter = (start_time.month - 1) // 3 + 1
             current_month = datetime.now().month
             key_str = (
-                f"{user_part}:{group_id}:quarterly:{year}:Q{quarter}:"
-                f"{current_month}"
+                f"{user_part}:{group_id}:quarterly:{year}:Q{quarter}:{current_month}"
             )
             logger.debug(f"生成季度词云缓存键: {key_str}")
 

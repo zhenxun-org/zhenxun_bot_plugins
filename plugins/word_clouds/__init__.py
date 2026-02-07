@@ -68,7 +68,7 @@ __plugin_meta__ = PluginMetadata(
                 key="WORD_CLOUDS_TEMPLATE",
                 value=1,
                 help="词云模板 参1：图片生成，默认使用真寻图片，可在项目路径resources/image/wordcloud下配置图片，多张则随机 "
-                     "| 参2/其他：黑底图片",
+                "| 参2/其他：黑底图片",
                 type=int,
             ),
             RegisterConfig(
