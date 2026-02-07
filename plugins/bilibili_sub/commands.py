@@ -171,9 +171,7 @@ async def handle_list(
         else:
             dynamic_text = "@ 动态" if sub.at_all_dynamic else "动态"
             dynamic_color = "success" if sub.push_dynamic else "info"
-            status_layout.add_item(
-                ui.badge(dynamic_text, color_scheme=dynamic_color)
-            )
+            status_layout.add_item(ui.badge(dynamic_text, color_scheme=dynamic_color))
 
             video_text = "@ 视频" if sub.at_all_video else "视频"
             video_color = "success" if sub.push_video else "info"

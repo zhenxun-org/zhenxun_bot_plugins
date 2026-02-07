@@ -426,7 +426,10 @@ async def _(
             await CacheService.add_url_to_cache(target_url, session)
             logger.info(f"被动解析：成功解析并发送: {target_url}", session=session)
 
-            if isinstance(parsed_content, VideoInfo) and group_config.auto_download_enabled:
+            if (
+                isinstance(parsed_content, VideoInfo)
+                and group_config.auto_download_enabled
+            ):
                 await _handle_auto_download(bot, event, parsed_content)
         else:
             logger.info(
