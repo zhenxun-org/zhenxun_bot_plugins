@@ -1,28 +1,30 @@
-from datetime import datetime as dt
-import uuid
 import asyncio
 from collections import Counter
-from typing import Dict, Optional, Union, Any, cast
-from nonebot import get_driver, get_bots
-from nonebot.adapters.onebot.v11 import Message, Bot
+from datetime import datetime as dt
+from typing import Any, cast
+import uuid
+
+from nonebot import get_bots, get_driver
+from nonebot.adapters.onebot.v11 import Bot, Message
 from nonebot.adapters.onebot.v11.event import GroupMessageEvent
+from nonebot.exception import FinishedException
 from nonebot.matcher import Matcher
 from nonebot.params import Arg
 from nonebot.typing import T_State
-from nonebot.exception import FinishedException
-from nonebot_plugin_alconna import Arparma, Match, At
+from nonebot_plugin_alconna import Arparma, At, Match
+
+from zhenxun.services.log import logger
 from zhenxun.utils.message import MessageUtils
 from zhenxun.utils.platform import PlatformUtils
-from zhenxun.services.log import logger
 
+from .generators import WordCloudGenerator
+from .models import MessageData, WordCloudTaskParams
 from .services import (
     DataService,
     TextProcessor,
     TimeService,
     word_cloud_cache,
 )
-from .generators import WordCloudGenerator
-from .models import MessageData, WordCloudTaskParams
 
 _wordcloud_semaphore = asyncio.Semaphore(5)
 
@@ -78,7 +80,7 @@ class CloudHandler:
         date: Match[str],
         arparma: Arparma,
         z_date: Match[str],
-    ) -> Optional[Any]:
+    ) -> Any | None:
         """处理命令并解析参数"""
         state["my"] = arparma.find("my")
 
@@ -116,16 +118,14 @@ class CloudHandler:
         async def _key_parser(
             matcher: Matcher,
             state: T_State,
-            input_: Union[dt, Message] = Arg(key),
+            input_: dt | Message = Arg(key),
         ):
             if isinstance(input_, dt):
                 return
 
             plaintext = cast(Message, input_).extract_plain_text().strip()
             try:
-                # 只接受 YYYY-MM-DD 格式
                 parsed_dt = dt.strptime(plaintext, "%Y-%m-%d")
-                # 转换为带时区的datetime对象
                 state[key] = parsed_dt.astimezone()
             except ValueError:
                 await matcher.reject_arg(
@@ -141,7 +141,7 @@ class CloudHandler:
         start: dt,
         stop: dt,
         my: bool,
-        target_group_id: Optional[int] = None,
+        target_group_id: int | None = None,
     ) -> None:
         """处理消息并生成词云"""
         group_id = (
@@ -165,20 +165,21 @@ class CloudHandler:
     ) -> None:
         """统一的词云生成核心逻辑，包含并发控制。"""
         task_id = f"wordcloud_task_{uuid.uuid4().hex[:8]}"
-        try:
-            group_id = params.group_id
-            user_id = params.user_id
-            start = params.start_time
-            stop = params.end_time
-            is_yearly = params.is_yearly
-            my = params.my
+        group_id = params.group_id
+        user_id = params.user_id
+        start = params.start_time
+        stop = params.end_time
+        is_yearly = params.is_yearly
+        my = params.my
 
+        timeout = 1800 if is_yearly else 1200
+
+        try:
             logger.info(
-                f"开始处理词云任务 {task_id}: 用户={user_id}, 群组={group_id}, "
-                f"时间范围={start}~{stop}, 缓存键={cache_key}"
+                f"开始处理词云任务 {task_id}: 用户={user_id}, "
+                f"群组={group_id}, 时间范围={start}~{stop}, 缓存键={cache_key}"
             )
 
-            timeout = 1800 if is_yearly else 1200
             async with _wordcloud_semaphore:
                 logger.debug(f"任务 {task_id} 已获取信号量，开始执行。")
 
@@ -215,7 +216,8 @@ class CloudHandler:
 
                     total_messages_processed += len(message_chunk)
                     logger.debug(
-                        f"任务 {task_id} 正在处理消息批次，数量: {len(message_chunk)}，累计: {total_messages_processed}"
+                        f"任务 {task_id} 正在处理消息批次，"
+                        f"数量: {len(message_chunk)}，累计: {total_messages_processed}"
                     )
 
                     config = get_driver().config
@@ -231,7 +233,8 @@ class CloudHandler:
                         word_frequencies.update(chunk_freqs)
 
                 logger.info(
-                    f"任务 {task_id} 流式处理完成，共处理 {total_messages_processed} 条消息。"
+                    f"任务 {task_id} 流式处理完成，"
+                    f"共处理 {total_messages_processed} 条消息。"
                 )
 
                 if not word_frequencies:
@@ -264,7 +267,7 @@ class CloudHandler:
             logger.error(f"生成词云任务 {task_id} 发生错误: {e}", e=e)
             if not params.is_scheduled_task:
                 await self._send_error_message(
-                    f"生成词云时发生错误: {str(e)}", at_sender=params.my
+                    f"生成词云时发生错误: {e!s}", at_sender=params.my
                 )
 
     async def _cache_word_cloud_result(
@@ -275,7 +278,7 @@ class CloudHandler:
         logger.info(f"已缓存词云结果: {cache_key}, 日期类型={params.date_type}")
 
     async def _send_word_cloud_result(
-        self, image_bytes: Optional[bytes], params: WordCloudTaskParams
+        self, image_bytes: bytes | None, params: WordCloudTaskParams
     ) -> None:
         """发送词云结果"""
         logger.info(
@@ -318,9 +321,9 @@ class CloudHandler:
         start: dt,
         stop: dt,
         my: bool,
-        target_group_id: Optional[int] = None,
+        target_group_id: int | None = None,
         is_task: bool = False,
-    ) -> Optional[MessageData]:
+    ) -> MessageData | None:
         """获取消息数据"""
         user_id = int(event.user_id) if my else None
         group_id = (
@@ -331,7 +334,8 @@ class CloudHandler:
         stop_tz = self.time_service.convert_to_timezone(stop, self.timezone)
 
         logger.debug(
-            f"开始获取消息数据: 用户={user_id}, 群组={group_id}, 时间范围={start_tz}~{stop_tz}"
+            f"开始获取消息数据: 用户={user_id}, "
+            f"群组={group_id}, 时间范围={start_tz}~{stop_tz}"
         )
 
         message_data = await DataService.get_messages(
@@ -361,8 +365,8 @@ class CloudHandler:
         return message_data
 
     async def _generate_word_cloud(
-        self, word_frequencies: Dict[str, float]
-    ) -> Optional[bytes]:
+        self, word_frequencies: dict[str, float]
+    ) -> bytes | None:
         """生成词云图片"""
         logger.debug(f"开始生成词云图片，词汇数量: {len(word_frequencies)}")
 
@@ -380,7 +384,7 @@ class CloudHandler:
         event: GroupMessageEvent,
         image_bytes: bytes,
         my: bool,
-        target_group_id: Optional[int] = None,
+        target_group_id: int | None = None,
         is_task: bool = True,
     ) -> None:
         """发送词云消息（通过事件）"""
@@ -407,14 +411,14 @@ class CloudHandler:
 
     async def _send_word_cloud_message_direct(
         self,
-        image_bytes: Optional[bytes],
+        image_bytes: bytes | None,
         my: bool,
-        group_id: Optional[int],
-        user_id: Optional[int],
-        target_group_id: Optional[int] = None,
+        group_id: int | None,
+        user_id: int | None,
+        target_group_id: int | None = None,
         is_cached: bool = False,
-        date_type: Optional[str] = None,
-        time_range: Optional[str] = None,
+        date_type: str | None = None,
+        time_range: str | None = None,
     ) -> None:
         """直接发送词云消息（不依赖事件）"""
         if not group_id:
@@ -492,13 +496,13 @@ class CloudHandler:
             logger.error(f"发送信息消息失败: {e}", e=e)
 
     def _is_target_group(
-        self, event: GroupMessageEvent, target_group_id: Optional[int]
+        self, event: GroupMessageEvent, target_group_id: int | None
     ) -> bool:
         """检查目标群"""
         return target_group_id is not None and target_group_id != int(event.group_id)
 
     def _format_message(
-        self, template: str, is_target_group: bool, target_group_id: Optional[int]
+        self, template: str, is_target_group: bool, target_group_id: int | None
     ) -> str:
         """格式化消息"""
         prefix = f"目标群 {target_group_id} 的" if is_target_group else ""
@@ -522,11 +526,11 @@ class CloudHandler:
 
     def _prepare_word_cloud_message(
         self,
-        date_type: Optional[str],
-        time_range: Optional[str],
-        target_group_id: Optional[int],
+        date_type: str | None,
+        time_range: str | None,
+        target_group_id: int | None,
         my: bool,
-        user_id: Optional[int],
+        user_id: int | None,
         image_bytes: bytes,
         is_cached: bool = False,
     ) -> tuple[str, list]:
@@ -551,7 +555,7 @@ class CloudHandler:
 
         return prefix, content
 
-    def _get_cloud_type_from_date_type(self, date_type: Optional[str]) -> str:
+    def _get_cloud_type_from_date_type(self, date_type: str | None) -> str:
         """根据日期类型获取词云类型"""
         if not date_type:
             return "词云"
@@ -574,14 +578,14 @@ class CloudHandler:
         self,
         cache_key: str,
         my: bool,
-        group_id: Optional[int],
-        user_id: Optional[int],
-        target_group_id: Optional[int],
+        group_id: int | None,
+        user_id: int | None,
+        target_group_id: int | None,
         start: dt,
         stop: dt,
-        date_type: Optional[str],
-        log_user_id: Optional[int] = None,
-        log_group_id: Optional[int] = None,
+        date_type: str | None,
+        log_user_id: int | None = None,
+        log_group_id: int | None = None,
     ) -> bool:
         """检查并使用缓存"""
         cached_image = word_cloud_cache.get(cache_key)
@@ -589,7 +593,8 @@ class CloudHandler:
             return False
 
         logger.info(
-            f"使用缓存的词云结果: 用户={log_user_id}, 群组={log_group_id}, 缓存键={cache_key}"
+            f"使用缓存的词云结果: 用户={log_user_id}, "
+            f"群组={log_group_id}, 缓存键={cache_key}"
         )
 
         time_range_desc = self._get_time_range_description(start, stop)

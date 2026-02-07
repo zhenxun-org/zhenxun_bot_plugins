@@ -1,9 +1,9 @@
-from typing import Dict, List, Optional, Union
 import random
+
 import matplotlib as mpl
 
 
-def get_all_colormaps() -> Dict[str, List[str]]:
+def get_all_colormaps() -> dict[str, list[str]]:
     """获取所有可用的颜色映射，按类别分组"""
     all_cmaps = list(mpl.colormaps)
 
@@ -111,7 +111,7 @@ def get_all_colormaps() -> Dict[str, List[str]]:
     return cmap_categories
 
 
-def get_recommended_colormaps() -> List[str]:
+def get_recommended_colormaps() -> list[str]:
     """获取推荐的颜色映射列表"""
     return [
         "viridis",
@@ -137,7 +137,7 @@ def get_recommended_colormaps() -> List[str]:
     ]
 
 
-def get_dark_bg_colormaps() -> List[str]:
+def get_dark_bg_colormaps() -> list[str]:
     """获取适合黑色背景的颜色映射列表"""
     return [
         "plasma",
@@ -161,7 +161,7 @@ def get_dark_bg_colormaps() -> List[str]:
     ]
 
 
-def get_white_bg_colormaps() -> List[str]:
+def get_white_bg_colormaps() -> list[str]:
     """获取适合白色背景的颜色映射列表"""
     return [
         "viridis",
@@ -188,7 +188,7 @@ def get_white_bg_colormaps() -> List[str]:
     ]
 
 
-def get_random_colormap(category: Optional[str] = None) -> str:
+def get_random_colormap(category: str | None = None) -> str:
     """获取随机的颜色映射，可指定类别"""
     cmap_categories = get_all_colormaps()
 
@@ -209,7 +209,7 @@ def get_colormap_category(colormap_name: str) -> str:
     return "未知类别"
 
 
-def resolve_colormap(colormap: Union[str, List[str]]) -> str:
+def resolve_colormap(colormap: str | list[str]) -> str:
     """解析颜色映射配置，列表则随机选择一个"""
     if isinstance(colormap, list):
         if not colormap:

@@ -1,16 +1,17 @@
+from collections import Counter
+from collections.abc import AsyncGenerator
+from datetime import datetime, timedelta
 import hashlib
 import os
+from pathlib import Path
 import pickle
 import re
 import time
-from collections import Counter
-from datetime import datetime, timedelta
-from pathlib import Path
-from typing import Any, AsyncGenerator, Dict, List, Optional, Tuple
+from typing import Any
 
-import pytz
 from emoji import replace_emoji
 from nonebot.utils import run_sync
+import pytz
 
 from zhenxun.configs.path_config import DATA_PATH
 from zhenxun.models.chat_history import ChatHistory
@@ -35,7 +36,7 @@ class TimeService:
         return datetime.fromisoformat(date_string).astimezone()
 
     @staticmethod
-    def get_time_range(time_type: str) -> Tuple[datetime, datetime]:
+    def get_time_range(time_type: str) -> tuple[datetime, datetime]:
         """获取时间范围"""
         dt = TimeService.get_datetime_now_with_timezone()
 
@@ -84,15 +85,13 @@ class TimeService:
         return start, stop
 
     @staticmethod
-    def parse_time_range(time_str: str) -> Optional[Tuple[datetime, datetime]]:
+    def parse_time_range(time_str: str) -> tuple[datetime, datetime] | None:
         """解析 YYYY-MM-DD 或 MM-DD 格式的日期范围字符串"""
 
         def _parse_date_str(d_str: str) -> datetime:
             d_str = d_str.strip()
-            # 检查是否省略了年份
             if re.fullmatch(r"^\d{1,2}-\d{1,2}$", d_str):
                 d_str = f"{datetime.now().year}-{d_str}"
-            # 尝试解析 YYYY-MM-DD
             dt = datetime.strptime(d_str, "%Y-%m-%d")
             return dt.astimezone()
 
@@ -131,8 +130,8 @@ class DataService:
 
     @staticmethod
     async def get_messages(
-        user_id: Optional[int], group_id: int, time_range: Tuple[datetime, datetime]
-    ) -> Optional[MessageData]:
+        user_id: int | None, group_id: int, time_range: tuple[datetime, datetime]
+    ) -> MessageData | None:
         """获取消息数据"""
         start, stop = time_range
 
@@ -156,11 +155,11 @@ class DataService:
 
     @staticmethod
     async def get_messages_stream(
-        user_id: Optional[int],
+        user_id: int | None,
         group_id: int,
-        time_range: Tuple[datetime, datetime],
+        time_range: tuple[datetime, datetime],
         chunk_size: int = 50000,
-    ) -> AsyncGenerator[List[str], None]:
+    ) -> AsyncGenerator[list[str], None]:
         """
         以流式（异步生成器）方式分块获取消息数据。
         这用于处理可能导致内存溢出的大量数据查询。
@@ -195,12 +194,12 @@ class TextProcessor:
     def __init__(self):
         pass
 
-    async def preprocess(self, messages: List[str], command_start: tuple) -> List[str]:
+    async def preprocess(self, messages: list[str], command_start: tuple) -> list[str]:
         """预处理消息文本，移除命令、链接和表情等"""
         return await self._preprocess_sync(messages, command_start)
 
     @run_sync
-    def _preprocess_sync(self, messages: List[str], command_start: tuple) -> List[str]:
+    def _preprocess_sync(self, messages: list[str], command_start: tuple) -> list[str]:
         """同步预处理消息文本"""
         processed_messages = []
         for message in messages:
@@ -222,8 +221,8 @@ class TextProcessor:
         return processed_messages
 
     async def extract_keywords(
-        self, messages: List[str], top_k: Optional[int] = None
-    ) -> Dict[str, float]:
+        self, messages: list[str], top_k: int | None = None
+    ) -> dict[str, float]:
         """分词并统计词频"""
         if not messages:
             return {}
@@ -247,8 +246,8 @@ class TextProcessor:
 
     @run_sync
     def _extract_keywords_sync(
-        self, messages: List[str], segmenter, stopwords, top_k: Optional[int] = None
-    ) -> Dict[str, float]:
+        self, messages: list[str], segmenter, stopwords, top_k: int | None = None
+    ) -> dict[str, float]:
         """同步执行分词和关键词提取（在线程池中执行）"""
         message_word_sets = []
         total_words_count = 0
@@ -286,8 +285,10 @@ class TextProcessor:
 
         if message_word_sets:
             logger.debug(
-                f"[过滤统计] 总词数: {total_words_count}个, 停用词过滤: {total_stopword_filtered}个, "
-                f"单字词过滤: {total_length_filtered}个, 剩余: {total_remaining_words}个, "
+                f"[过滤统计] 总词数: {total_words_count}个, "
+                f"停用词过滤: {total_stopword_filtered}个, "
+                f"单字词过滤: {total_length_filtered}个, "
+                f"剩余: {total_remaining_words}个, "
                 f"停用词表大小: {len(stopwords)}个"
             )
         else:
@@ -333,7 +334,7 @@ class WordCloudCache:
         return cls._instance
 
     def __init__(self):
-        self.cache: Dict[str, CacheEntry] = {}
+        self.cache: dict[str, CacheEntry] = {}
         self.default_ttl = WordCloudConfig.DEFAULT_CACHE_TTL * 3600
         self.yearly_ttl = WordCloudConfig.YEARLY_CACHE_TTL * 3600
         self.quarterly_ttl = WordCloudConfig.QUARTERLY_CACHE_TTL * 3600
@@ -377,7 +378,7 @@ class WordCloudCache:
             logger.error(f"保存缓存到磁盘失败: {e}")
             return False
 
-    def _load_from_disk(self, key: str) -> Optional[CacheEntry]:
+    def _load_from_disk(self, key: str) -> CacheEntry | None:
         """从磁盘加载缓存"""
         try:
             cache_file = self._get_cache_file_path(key)
@@ -454,7 +455,7 @@ class WordCloudCache:
 
     def _build_cache_key_from_date_type(
         self,
-        user_id: Optional[int],
+        user_id: int | None,
         group_id: int,
         date_type: str,
         start_time: datetime,
@@ -522,7 +523,7 @@ class WordCloudCache:
         )
 
     def _calculate_ttl(
-        self, date_type: Optional[str], start_time: datetime, end_time: datetime
+        self, date_type: str | None, start_time: datetime, end_time: datetime
     ) -> int:
         """根据日期类型和时间范围计算缓存TTL"""
         if date_type in ["本月", "上月"]:
@@ -543,7 +544,7 @@ class WordCloudCache:
 
         return ttl
 
-    def get(self, key: str) -> Optional[Any]:
+    def get(self, key: str) -> Any | None:
         """获取缓存数据"""
         if key in self.cache:
             entry = self.cache[key]
@@ -702,8 +703,8 @@ class WordCloudCache:
 word_cloud_cache = WordCloudCache.get_instance()
 
 __all__ = [
-    "TimeService",
     "DataService",
     "TextProcessor",
+    "TimeService",
     "word_cloud_cache",
 ]

@@ -1,12 +1,25 @@
-from typing import Dict, Any
-from pathlib import Path
 import asyncio
+from pathlib import Path
+from typing import Any
+
+from nonebot import get_driver
+from nonebot.utils import run_sync
 import spacy_pkuseg as pkuseg
 
 from zhenxun.services.log import logger
-from nonebot import get_driver
 
 from ..config import WordCloudConfig
+
+
+def _read_file_sync(file_path: Path) -> str:
+    """同步读取文件内容"""
+    with open(file_path, encoding="utf-8") as f:
+        return f.read()
+
+
+async def run_async_file_read(file_path: Path) -> str:
+    """异步读取文件内容"""
+    return await run_sync(_read_file_sync)(file_path)
 
 
 class SegmenterPool:
@@ -50,7 +63,6 @@ class SegmenterPool:
                 await self.pool.put(segmenter)
             except Exception as e:
                 logger.error(f"创建第 {i + 1} 个分词器实例时失败: {e}", e=e)
-                # 如果创建失败，池的实际大小会小于 POOL_SIZE
                 break
 
         self._initialized = True
@@ -65,10 +77,12 @@ class SegmenterPool:
         assert self.stopwords_path is not None
         if self.stopwords_path.exists() and self.stopwords_path.stat().st_size > 0:
             try:
-                with open(self.stopwords_path, "r", encoding="utf-8") as f:
-                    default_stopwords = {line.strip() for line in f if line.strip()}
-                    default_stopwords_count = len(default_stopwords)
-                    self.stopwords.update(default_stopwords)
+                content = await run_async_file_read(self.stopwords_path)
+                default_stopwords = {
+                    line.strip() for line in content.splitlines() if line.strip()
+                }
+                default_stopwords_count = len(default_stopwords)
+                self.stopwords.update(default_stopwords)
             except Exception as e:
                 logger.error(f"加载默认停用词表失败: {self.stopwords_path}", e=e)
 
@@ -77,16 +91,19 @@ class SegmenterPool:
         )
         if assets_stopwords_path.exists() and assets_stopwords_path.stat().st_size > 0:
             try:
-                with open(assets_stopwords_path, "r", encoding="utf-8") as f:
-                    assets_stopwords = {line.strip() for line in f if line.strip()}
-                    assets_stopwords_count = len(assets_stopwords)
-                    self.stopwords.update(assets_stopwords)
+                content = await run_async_file_read(assets_stopwords_path)
+                assets_stopwords = {
+                    line.strip() for line in content.splitlines() if line.strip()
+                }
+                assets_stopwords_count = len(assets_stopwords)
+                self.stopwords.update(assets_stopwords)
             except Exception as e:
                 logger.error(f"加载额外停用词表失败: {assets_stopwords_path}", e=e)
 
         total_stopwords = len(self.stopwords)
         logger.debug(
-            f"[停用词加载] 默认停用词: {default_stopwords_count}个 + 额外停用词: {assets_stopwords_count}个 = 总计: {total_stopwords}个"
+            f"[停用词加载] 默认停用词: {default_stopwords_count}个 + "
+            f"额外停用词: {assets_stopwords_count}个 = 总计: {total_stopwords}个"
         )
 
     def _create_segmenter(self):
@@ -128,7 +145,7 @@ class SegmenterPool:
 
         return self.stopwords
 
-    async def get_stats(self) -> Dict[str, Any]:
+    async def get_stats(self) -> dict[str, Any]:
         """获取资源池统计信息"""
         if not self._initialized:
             return {"initialized": False}
@@ -145,8 +162,6 @@ class SegmenterPool:
     async def shutdown(self):
         """关闭资源池"""
         if self.pool:
-            # asyncio.Queue 不需要显式关闭，垃圾回收会处理
-            # 如果 segmenter 有 close 方法，可以在这里清空队列并关闭
             self.pool = None
         logger.info("分词器资源池已关闭")
 

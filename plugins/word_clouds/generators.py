@@ -1,10 +1,9 @@
+from io import BytesIO
 import os
 import random
-from io import BytesIO
-from typing import Dict, Optional
 
-import numpy as np
 from nonebot.utils import run_sync
+import numpy as np
 from PIL import Image as IMG
 from wordcloud import WordCloud
 
@@ -23,7 +22,7 @@ from .utils.file_utils import ensure_resources
 class WordCloudGenerator:
     """图片词云生成器"""
 
-    async def generate(self, word_frequencies: Dict[str, float]) -> Optional[bytes]:
+    async def generate(self, word_frequencies: dict[str, float]) -> bytes | None:
         """生成词云图片"""
         if not await ensure_resources():
             return None
@@ -42,7 +41,7 @@ class WordCloudGenerator:
             return await self._generate_plain(word_frequencies, bg_color)
 
     async def _get_background_and_colormap(
-        self, bg_color: Optional[str], is_mask_mode: bool
+        self, bg_color: str | None, is_mask_mode: bool
     ) -> tuple[str, str, list]:
         """获取背景颜色和颜色映射"""
         log_prefix = "使用蒙版图片生成词云" if is_mask_mode else "生成纯色背景词云"
@@ -85,7 +84,8 @@ class WordCloudGenerator:
         high_res_height = int(base_height * resolution_factor)
 
         logger.debug(
-            f"使用高分辨率生成词云: {high_res_width}x{high_res_height} (倍数: {resolution_factor})"
+            f"使用高分辨率生成词云: {high_res_width}x{high_res_height} "
+            f"(倍数: {resolution_factor})"
         )
 
         base_options = {
@@ -111,8 +111,8 @@ class WordCloudGenerator:
         return wordcloud_options
 
     async def _generate_wordcloud_image(
-        self, word_frequencies: Dict[str, float], wordcloud_options: dict
-    ) -> Optional[bytes]:
+        self, word_frequencies: dict[str, float], wordcloud_options: dict
+    ) -> bytes | None:
         """生成词云图片"""
         try:
             bg_color = wordcloud_options.get("background_color", "black")
@@ -152,7 +152,7 @@ class WordCloudGenerator:
     @run_sync
     def _generate_wordcloud_image_sync(
         self,
-        word_frequencies: Dict[str, float],
+        word_frequencies: dict[str, float],
         wordcloud_options: dict,
         is_white_bg: bool,
         white_bg_max_brightness: float,
@@ -160,7 +160,7 @@ class WordCloudGenerator:
         resolution_factor: float,
         target_width: int,
         target_height: int,
-    ) -> Optional[bytes]:
+    ) -> bytes | None:
         """在线程池中同步生成词云图片"""
         try:
             logger.debug("生成高分辨率词云...")
@@ -228,8 +228,8 @@ class WordCloudGenerator:
             return None
 
     async def _generate_with_mask(
-        self, word_frequencies: Dict[str, float], bg_color: Optional[str] = None
-    ) -> Optional[bytes]:
+        self, word_frequencies: dict[str, float], bg_color: str | None = None
+    ) -> bytes | None:
         """使用蒙版生成词云"""
         template_path = self._get_random_template()
         mask = np.array(IMG.open(template_path))
@@ -250,8 +250,8 @@ class WordCloudGenerator:
         return await self._generate_wordcloud_image(word_frequencies, wordcloud_options)
 
     async def _generate_plain(
-        self, word_frequencies: Dict[str, float], bg_color: Optional[str] = None
-    ) -> Optional[bytes]:
+        self, word_frequencies: dict[str, float], bg_color: str | None = None
+    ) -> bytes | None:
         """生成纯色词云"""
         user_bg, log_prefix, colormaps = await self._get_background_and_colormap(
             bg_color, is_mask_mode=False

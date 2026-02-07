@@ -1,7 +1,7 @@
-from typing import List, Optional
 from datetime import datetime
-from pydantic import BaseModel, Field, ConfigDict
+
 from nonebot.adapters.onebot.v11.event import GroupMessageEvent
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class MessageData:
@@ -9,11 +9,11 @@ class MessageData:
 
     def __init__(
         self,
-        messages: List[str],
+        messages: list[str],
         group_id: int,
         start_time: datetime,
         end_time: datetime,
-        user_id: Optional[int] = None,
+        user_id: int | None = None,
     ):
         self.messages = messages
         self.user_id = user_id
@@ -21,14 +21,17 @@ class MessageData:
         self.start_time = start_time
         self.end_time = end_time
 
-    def get_plain_text(self) -> List[str]:
+    def get_plain_text(self) -> list[str]:
         """获取消息列表"""
         return self.messages
 
     @property
     def time_range_str(self) -> str:
         """时间范围字符串"""
-        return f"{self.start_time.strftime('%Y-%m-%d')} ~ {self.end_time.strftime('%Y-%m-%d')}"
+        return (
+            f"{self.start_time.strftime('%Y-%m-%d')} ~ "
+            f"{self.end_time.strftime('%Y-%m-%d')}"
+        )
 
 
 class WordCloudTaskParams(BaseModel):
@@ -42,12 +45,12 @@ class WordCloudTaskParams(BaseModel):
     destination_group_id: int
 
     my: bool = False
-    user_id: Optional[int] = None
+    user_id: int | None = None
 
-    event: Optional[GroupMessageEvent] = None
+    event: GroupMessageEvent | None = None
     is_scheduled_task: bool = False
 
-    date_type: Optional[str] = None
+    date_type: str | None = None
 
     is_yearly: bool = Field(default=False)
     is_today: bool = Field(default=False)
