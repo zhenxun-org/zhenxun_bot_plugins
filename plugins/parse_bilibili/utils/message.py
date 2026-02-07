@@ -7,18 +7,13 @@ from io import BytesIO
 from .common import format_number, format_duration
 
 import aiofiles
-from nonebot import get_driver
-
-# 获取全局配置对象
 
 from bs4 import BeautifulSoup
 import jinja2
 from nonebot_plugin_alconna import UniMsg, UniMessage, Text, Image
 
 from zhenxun import ui
-from zhenxun.ui.builders import (
-    MarkdownBuilder,
-)
+from zhenxun.ui.models import MarkdownData
 from zhenxun.utils.http_utils import AsyncHttpx
 
 from bilibili_api import comment
@@ -40,7 +35,7 @@ from ..config import (
 )
 from ..utils.exceptions import DownloadError
 
-env_config = get_driver().config
+
 TEMPLATE_DIR = Path(__file__).parent.parent / "templates"
 FONT_FILE = TEMPLATE_DIR / "vanfont.ttf"
 FONT_BASE64_CONTENT = ""
@@ -621,7 +616,7 @@ async def render_unimsg_to_image(message: UniMsg) -> Optional[bytes]:
         logger.warning("消息没有可渲染的内容")
         return None
 
-    md_builder = MarkdownBuilder()
+    md_builder = MarkdownData(elements=[])
     for seg in message:
         if isinstance(seg, Text):
             md_builder.text(seg.text)
@@ -641,7 +636,7 @@ async def render_unimsg_to_image(message: UniMsg) -> Optional[bytes]:
                     logger.error("转换原始图片数据失败", e=e)
                     md_builder.text("[图片加载失败]")
 
-    return await ui.render(md_builder.build(), viewport={"width": 650, "height": 10})
+    return await ui.render(md_builder, viewport={"width": 650, "height": 10})
 
 
 def _get_user_friendly_error_message(exception: Exception) -> str:
@@ -694,12 +689,7 @@ async def send_video_with_retry(bot, event, video_path: Path) -> bool:
 
     path_str = str(video_path.resolve()).replace("\\", "/")
     file_uri = "file:///" + path_str
-    if env_config.image_to_bytes:
-        async with aiofiles.open(video_path, "rb") as f:
-            bytes = await f.read()
-            video_segment = V11MessageSegment.video(bytes)
-    else:
-        video_segment = V11MessageSegment.video(file_uri)
+    video_segment = V11MessageSegment.video(file_uri)
 
     try:
         await _send_video_core(bot, event, video_segment)

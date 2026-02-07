@@ -237,7 +237,7 @@
         "description": "B站内容解析",
         "usage": "usage：\n        被动监听插件，解析B站视频、直播、专栏，支持小程序卡片及文本链接，5分钟内不解析相同内容",
         "author": "leekooyo",
-        "version": "1.5.4",
+        "version": "1.6.0",
         "plugin_type": "DEPENDANT",
         "is_dir": true
     },
@@ -424,7 +424,7 @@
         "description": "非常便利的B站订阅通知",
         "usage": "B站直播，番剧，UP动态开播等提醒",
         "author": "HibiKier",
-        "version": "1.2",
+        "version": "1.2.1",
         "plugin_type": "NORMAL",
         "is_dir": true
     },

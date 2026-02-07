@@ -13,9 +13,9 @@ from bilibili_api import user as bilibili_user_module
 from bilibili_api.exceptions import ResponseCodeException
 
 from zhenxun import ui
-from zhenxun.services.log import logger
-from zhenxun.ui.builders import NotebookBuilder
+from zhenxun.ui.models import NotebookData
 from zhenxun.utils.platform import PlatformUtils
+from zhenxun.services.log import logger
 from zhenxun.utils.utils import ResourceDirManager
 
 from .config import DYNAMIC_PATH, base_config, get_credential
@@ -417,7 +417,7 @@ async def _get_live_status(sub: BiliSub) -> list[Notification]:
     if old_live_status in [0, 2] and live_status == 1 and cover:
         logger.info(f"检测到开播: 房间ID={sub.room_id}, 主播={sub.uname}, 标题={title}")
 
-        notebook = NotebookBuilder()
+        notebook = NotebookData(elements=[])
         notebook.image(cover)
         notebook.head(f"{sub.uname} 开播啦！🎉", level=2)
         notebook.text(f"**标题：** {title}")
@@ -425,7 +425,7 @@ async def _get_live_status(sub: BiliSub) -> list[Notification]:
             f"**直播间：** [https://live.bilibili.com/{room_id}](https://live.bilibili.com/{room_id})"
         )
 
-        img_bytes = await ui.render(notebook.build(), use_cache=False)
+        img_bytes = await ui.render(notebook, use_cache=False)
         notifications.append(
             Notification(
                 content=[img_bytes, f"直播间链接: https://live.bilibili.com/{room_id}"],
@@ -493,9 +493,7 @@ async def _get_bangumi_status(
             )
             return []
 
-        from zhenxun.ui.builders import NotebookBuilder
-
-        notebook = NotebookBuilder()
+        notebook = NotebookData(elements=[])
         cover_url = latest_ep.get("cover", "")
         cover_path = None
         if cover_url:
@@ -510,7 +508,7 @@ async def _get_bangumi_status(
         notebook.text(f"**标题：** {latest_ep.get('long_title', '未知标题')}")
         notebook.text(f"**Bvid：** {latest_ep.get('bvid', '未知')}")
 
-        img_bytes = await ui.render(notebook.build(), use_cache=False)
+        img_bytes = await ui.render(notebook, use_cache=False)
         notifications.append(
             Notification(
                 content=[
@@ -612,7 +610,7 @@ async def _get_up_status(sub: BiliSub, force_push: bool = False) -> list[Notific
         return []
 
     notifications: list[Notification] = []
-    notebook: NotebookBuilder | None = None
+    notebook: NotebookData | None = None
     notification_type: NotificationType | None = None
     is_new_video_pushed = False
 
@@ -693,7 +691,7 @@ async def _get_up_status(sub: BiliSub, force_push: bool = False) -> list[Notific
                     )
 
             if not notebook:
-                notebook = NotebookBuilder()
+                notebook = NotebookData(elements=[])
             notebook.head(f"{uname} 发布了动态！📢", level=2)
             base64_str = base64.b64encode(dynamic_img).decode()
             notebook.image(f"data:image/png;base64,{base64_str}")
@@ -735,7 +733,7 @@ async def _get_up_status(sub: BiliSub, force_push: bool = False) -> list[Notific
             logger.info(f"检测到新视频 (或强制推送): UID={sub.uid}, 标题={video_title}")
             is_new_video_pushed = True
 
-            notebook = NotebookBuilder()
+            notebook = NotebookData(elements=[])
             notification_type = NotificationType.VIDEO
 
             notebook.head(f"{uname} 投稿了新视频啦！🎉", level=2)
@@ -775,7 +773,7 @@ async def _get_up_status(sub: BiliSub, force_push: bool = False) -> list[Notific
 
     if notebook:
         msg_list_content = []
-        img_bytes = await ui.render(notebook.build(), frameless=True)
+        img_bytes = await ui.render(notebook, frameless=True)
         msg_list_content.append(img_bytes)
 
         # 如果有动态原图，且功能开关已开启，则添加到消息列表中

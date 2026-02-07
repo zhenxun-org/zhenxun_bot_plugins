@@ -100,7 +100,7 @@ __plugin_meta__ = PluginMetadata(
 """.strip(),
     extra=PluginExtraData(
         author="HibiKier",
-        version="1.2",
+        version="1.2.1",
         configs=[
             RegisterConfig(
                 module="bilibili_sub",
@@ -195,7 +195,7 @@ __plugin_meta__ = PluginMetadata(
                 value="4",
                 default_value="4",
                 help="群内bilibili订阅需要管理的权限",
-            ),
+            )
         ],
     ).to_dict(),
 )

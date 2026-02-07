@@ -10,9 +10,18 @@ except ImportError:
         "请确保已安装 bilibili-api-python 包，而不是 bilibili-api。\n"
         "请使用以下命令安装：pip install bilibili-api-python"
     )
+from pydantic import BaseModel, Field
 from zhenxun.configs.config import Config
 from zhenxun.configs.path_config import DATA_PATH, TEMP_PATH
 from zhenxun.services.log import logger
+
+
+class GroupSettings(BaseModel):
+    """B站解析插件分群配置"""
+
+    auto_download_enabled: bool = Field(
+        False, description="是否为当前群组开启B站视频自动下载"
+    )
 
 
 def cookies_str_to_dict(cookies_str: str) -> Dict[str, str]:
@@ -158,5 +167,4 @@ SEND_VIDEO_MAX_RETRIES = 3
 SEND_VIDEO_RETRY_DELAY = 5
 SEND_VIDEO_TIMEOUT = 120
 
-# 下载并发控制
 MAX_CONCURRENT_DOWNLOADS = 2

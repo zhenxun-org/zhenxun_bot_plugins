@@ -52,10 +52,7 @@ class CoverService:
                 raise BilibiliBaseException("下载封面图片失败。")
 
             title = f"《{parsed_content.title}》的封面"
-            image_segment = Image(
-                raw=image_data,
-                name=f"{getattr(parsed_content, 'bvid', None) or getattr(parsed_content, 'season_id', 'cover')}.jpg",
-            )
+            image_segment = Image(raw=image_data, name=f"{getattr(parsed_content, 'bvid', None) or getattr(parsed_content, 'season_id', 'cover')}.jpg")
             text_segment = f"\n{title}\n原始链接: {cover_url}"
             return UniMessage([image_segment, text_segment])
 

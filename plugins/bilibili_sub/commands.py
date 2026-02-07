@@ -21,8 +21,8 @@ from nonebot_plugin_alconna import (
 from nonebot_plugin_session import EventSession
 from zhenxun import ui
 from nonebot_plugin_waiter import prompt_until
-from zhenxun.ui.builders import BadgeBuilder, LayoutBuilder, NotebookBuilder
-from zhenxun.ui.models.components import UserInfoBlock
+from zhenxun.ui.models import LayoutData, NotebookData
+from zhenxun.ui.models import UserInfoBlock
 from zhenxun.utils.message import MessageUtils
 
 from .config import get_credential, save_credential_to_file, clear_credential
@@ -121,7 +121,7 @@ async def handle_list(
             msg = f"指定的 {len(target_ids)} 个目标群组目前没有任何订阅..."
         await MessageUtils.build_message(msg).finish()
 
-    notebook = NotebookBuilder()
+    notebook = NotebookData(elements=[])
     if len(target_ids) == 1:
         notebook.head("B站订阅列表", level=1)
     else:
@@ -162,31 +162,33 @@ async def handle_list(
         )
         notebook.add_component(user_block)
 
-        status_layout = LayoutBuilder.row(gap="8px", align_items="center")
+        status_layout = LayoutData.row(gap="8px", align_items="center")
 
         if sub.uid < 0:
             badge_text = "@ 剧集" if sub.at_all_video else "剧集推送"
             color_scheme = "success" if sub.push_video else "info"
-            status_layout.add_item(BadgeBuilder(badge_text, color_scheme=color_scheme))
+            status_layout.add_item(ui.badge(badge_text, color_scheme=color_scheme))
         else:
             dynamic_text = "@ 动态" if sub.at_all_dynamic else "动态"
             dynamic_color = "success" if sub.push_dynamic else "info"
             status_layout.add_item(
-                BadgeBuilder(dynamic_text, color_scheme=dynamic_color)
+                ui.badge(dynamic_text, color_scheme=dynamic_color)
             )
 
             video_text = "@ 视频" if sub.at_all_video else "视频"
             video_color = "success" if sub.push_video else "info"
-            status_layout.add_item(BadgeBuilder(video_text, color_scheme=video_color))
+            status_layout.add_item(ui.badge(video_text, color_scheme=video_color))
 
             live_text = "@ 直播" if sub.at_all_live else "直播"
             live_color = "success" if sub.push_live else "info"
-            status_layout.add_item(BadgeBuilder(live_text, color_scheme=live_color))
+            status_layout.add_item(ui.badge(live_text, color_scheme=live_color))
 
         notebook.add_component(status_layout.build())
-        notebook.add_divider(color="#fce4ec", thickness="1px", margin="25px 0")
+        # 创建一个自定义的分隔线组件并添加
+        custom_divider = ui.divider(color="#fce4ec", thickness="1px", margin="25px 0")
+        notebook.add_component(custom_divider)
 
-    img_bytes = await ui.render(notebook.build(), use_cache=False)
+    img_bytes = await ui.render(notebook, use_cache=False)
     await MessageUtils.build_message(img_bytes).finish()
 
 
@@ -231,7 +233,7 @@ async def handle_add(
                     season_id = search_results[0]["season_id"]
                     result = await add_bangumi_sub(season_id, target_id)
                 else:
-                    notebook = NotebookBuilder()
+                    notebook = NotebookData(elements=[])
                     notebook.head(
                         f"🔍 找到多个与「{bilibili_id_str}」相关的番剧", level=2
                     )
@@ -252,7 +254,7 @@ async def handle_add(
                         )
                         notebook.add_component(user_block)
 
-                    img_bytes = await ui.render(notebook.build(), use_cache=False)
+                    img_bytes = await ui.render(notebook, use_cache=False)
                     choice_msg = MessageUtils.build_message(img_bytes)
 
                     def check_choice(msg: Message):
