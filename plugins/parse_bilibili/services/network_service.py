@@ -15,6 +15,7 @@ from ..utils.exceptions import (
     UnsupportedUrlError,
     UrlParseError,
 )
+from ..utils.headers import get_bilibili_headers
 from ..utils.url_parser import ResourceType, UrlParserRegistry
 
 
@@ -80,7 +81,9 @@ class ParserService:
                 if not original_url.startswith(("http://", "https://")):
                     original_url = f"https://{original_url}"
 
-                response = await AsyncHttpx.get(original_url, timeout=10)
+                response = await AsyncHttpx.get(
+                    original_url, timeout=10, headers=get_bilibili_headers()
+                )
                 resolved_url = str(response.url)
 
                 parsed_url_obj = urllib.parse.urlparse(resolved_url)

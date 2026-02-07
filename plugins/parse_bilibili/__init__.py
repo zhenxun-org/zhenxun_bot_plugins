@@ -1,58 +1,59 @@
-import asyncio
 import traceback
-from typing import Any, Optional
-
+import asyncio
+from typing import Optional, Any
+from nonebot import on_message, get_driver
+from nonebot.plugin import PluginMetadata
 import httpx
 from bilibili_api import select_client
-from nonebot import get_driver, on_message
-from nonebot.adapters import Bot, Event
-from nonebot.plugin import PluginMetadata
-from nonebot_plugin_alconna import Image, Segment, Text, UniMessage, UniMsg
-from nonebot_plugin_session import EventSession
-from nonebot_plugin_uninfo import Uninfo
 
-from zhenxun.configs.utils import PluginExtraData, RegisterConfig, Task
+from nonebot.adapters import Bot, Event
+from nonebot_plugin_uninfo import Uninfo
+from nonebot_plugin_session import EventSession
+from nonebot_plugin_alconna import UniMsg, UniMessage, Text, Image, Segment
+
 from zhenxun.services.log import logger
-from zhenxun.utils.common_utils import CommonUtils
 from zhenxun.utils.enum import PluginType
 
-from .commands import (
-    auto_download_matcher,
-    bili_cover_matcher,
-    bili_download_matcher,
-    credential_status_matcher,
-    login_matcher,
-)
+from zhenxun.utils.depends import GetGroupConfig
+from zhenxun.utils.common_utils import CommonUtils
+from zhenxun.configs.utils import Task, RegisterConfig, PluginExtraData
+
 from .config import (
-    MODULE_NAME,
     base_config,
-    check_and_refresh_credential,
+    MODULE_NAME,
+    GroupSettings,
     load_credential_from_file,
+    check_and_refresh_credential,
 )
-from .model import ArticleInfo, LiveInfo, SeasonInfo, UserInfo, VideoInfo
-from .services.cache_service import CacheService
-from .services.download_service import DownloadTask, download_manager
 from .services.network_service import ParserService
-from .services.utility_service import AutoDownloadManager
-from .utils.exceptions import (
-    BilibiliBaseException,
-    ResourceNotFoundError,
-    UnsupportedUrlError,
-    UrlParseError,
-)
+from .services.cache_service import CacheService
 from .utils.message import (
     MessageBuilder,
-    render_live_info_to_image,
-    render_season_info_to_image,
-    render_user_info_to_image,
     render_video_info_to_image,
+    render_season_info_to_image,
+    render_live_info_to_image,
+    render_user_info_to_image,
 )
+from .utils.exceptions import (
+    UrlParseError,
+    UnsupportedUrlError,
+    ResourceNotFoundError,
+)
+from .model import VideoInfo, LiveInfo, ArticleInfo, SeasonInfo, UserInfo
 from .utils.url_parser import UrlParserRegistry, extract_bilibili_url_from_message
+from .utils.exceptions import BilibiliBaseException
+
+from .services.download_service import DownloadTask, download_manager
+from .commands import (
+    login_matcher,
+    bili_download_matcher,
+    bili_cover_matcher,
+    credential_status_matcher,
+)
 
 _ = (  # type: ignore
     login_matcher,
     bili_download_matcher,
-    auto_download_matcher,
     bili_cover_matcher,
     credential_status_matcher,
 )
@@ -69,7 +70,6 @@ async def _handle_auto_download(bot: Bot, event: Event, video_info: VideoInfo):
 
 async def _initialize_services():
     await CacheService.initialize()
-    await AutoDownloadManager.load_config()
     await load_credential_from_file()
     select_client("httpx")
     download_manager.initialize()
@@ -87,9 +87,8 @@ async def _startup():
 
 @driver.on_shutdown
 async def _shutdown():
-    from typing import cast
-
     from bilibili_api.utils.network import get_session
+    from typing import cast
 
     session = cast(httpx.AsyncClient, get_session())
     if session and not session.is_closed:
@@ -134,11 +133,13 @@ __plugin_meta__ = PluginMetadata(
 
 **4. 自动下载控制 (需要**管理员**权限)**
 
-- **命令**: 
+- **命令**:
     - `bili自动下载 on`: 为当前群聊开启视频自动下载。
     - `bili自动下载 off`: 为当前群聊关闭视频自动下载。
+    - (别名: `b站自动下载`)
 
 > 开启后，被动解析到视频链接时，会自动下载并发送视频文件。
+> **超级用户**可追加 `-g <群号...>` 或 `-t <标签>` 对指定群组进行批量操作。
 
 **5. B站账号登录 (仅限**超级用户**)**
 
@@ -154,7 +155,7 @@ __plugin_meta__ = PluginMetadata(
     """.strip(),
     extra=PluginExtraData(
         author="leekooyo",
-        version="1.5.4",
+        version="1.6.0",
         plugin_type=PluginType.DEPENDANT,
         menu_type="其他",
         configs=[
@@ -246,6 +247,7 @@ __plugin_meta__ = PluginMetadata(
             ),
         ],
         tasks=[Task(module="parse_bilibili", name="b站解析")],
+        group_config_model=GroupSettings,
     ).dict(),
 )
 
@@ -396,6 +398,7 @@ async def _(
     event: Event,
     session: EventSession,
     message: UniMsg,
+    group_config: GroupSettings = GetGroupConfig(GroupSettings),
 ):
     check_hyper = base_config.get("ENABLE_MINIAPP_PARSE", True)
     target_url = extract_bilibili_url_from_message(message, check_hyper=check_hyper)
@@ -423,9 +426,10 @@ async def _(
             await CacheService.add_url_to_cache(target_url, session)
             logger.info(f"被动解析：成功解析并发送: {target_url}", session=session)
 
-            if isinstance(
-                parsed_content, VideoInfo
-            ) and await AutoDownloadManager.is_enabled(session):
+            if (
+                isinstance(parsed_content, VideoInfo)
+                and group_config.auto_download_enabled
+            ):
                 await _handle_auto_download(bot, event, parsed_content)
         else:
             logger.info(

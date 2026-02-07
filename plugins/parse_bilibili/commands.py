@@ -1,25 +1,23 @@
 import asyncio
-from typing import Dict, Literal, Optional, cast
+from typing import Dict, Optional, cast
 
 import httpx
-from arclet.alconna import Alconna, Arparma, Args, CommandMeta
+from arclet.alconna import Alconna, Arparma, Args
 from bilibili_api import Picture, exceptions as BiliExceptions, login_v2
 from bilibili_api.utils.network import get_session
 from nonebot import on_command
 from nonebot.adapters import Bot, Event
-from nonebot.adapters.onebot.v11 import GROUP_ADMIN, GROUP_OWNER, MessageSegment
+from nonebot.adapters.onebot.v11 import MessageSegment
 from nonebot.matcher import Matcher
 from nonebot.permission import SUPERUSER
-from nonebot_plugin_alconna import AlconnaMatches, on_alconna, AlconnaMatcher
-from nonebot_plugin_session import EventSession, SessionLevel
+from nonebot_plugin_alconna import AlconnaMatches, AlconnaMatcher, on_alconna
+from zhenxun.builtin_plugins.superuser.plugin_config_manager import pconf_cmd
 
 from zhenxun.services.log import logger
-
 from .config import get_credential, save_credential_to_file
 from .services.cover_service import CoverService
 from .services.download_service import DownloadTask, download_manager
 from .services.network_service import ParserService
-from .services.utility_service import AutoDownloadManager
 from .utils.exceptions import BilibiliBaseException
 from .utils.url_parser import extract_bilibili_url_from_event
 
@@ -104,44 +102,41 @@ async def handle_bili_download(
         await matcher.finish("任务创建时发生意外错误，请检查日志。")
 
 
-auto_download_cmd = Alconna(
-    "bili自动下载",
-    Args["action", Literal["on", "off"]],
-    meta=CommandMeta(description="开启或关闭当前群聊的B站视频自动下载功能"),
+pconf_cmd.shortcut(
+    r"(bili|b站)自动下载 on\s*(?P<targets>.*)",
+    command="pconf",
+    arguments=[
+        "set",
+        "auto_download_enabled=True",
+        "-p",
+        "parse_bilibili",
+        "{targets}",
+    ],
+    prefix=True,
 )
-
-auto_download_matcher = on_alconna(
-    auto_download_cmd,
-    aliases={"b站自动下载"},
-    permission=GROUP_ADMIN | GROUP_OWNER | SUPERUSER,
-    priority=10,
-    block=True,
+pconf_cmd.shortcut(
+    r"(bili|b站)自动下载 off\s*(?P<targets>.*)",
+    command="pconf",
+    arguments=[
+        "set",
+        "auto_download_enabled=False",
+        "-p",
+        "parse_bilibili",
+        "{targets}",
+    ],
+    prefix=True,
 )
-
-
-@auto_download_matcher.handle()
-async def handle_auto_download_switch(
-    matcher: AlconnaMatcher,
-    session: EventSession,
-    action: Literal["on", "off"],
-):
-    if session.level != SessionLevel.GROUP:
-        await matcher.finish("此命令仅限群聊使用。")
-
-    group_id = str(session.id2)
-    if action == "on":
-        success = await AutoDownloadManager.enable(session)
-        if success:
-            await matcher.send(f"已为当前群聊({group_id})开启B站视频自动下载功能。")
-        else:
-            await matcher.send(f"当前群聊({group_id})已开启自动下载，无需重复操作。")
-    elif action == "off":
-        success = await AutoDownloadManager.disable(session)
-        if success:
-            await matcher.send(f"已为当前群聊({group_id})关闭B站视频自动下载功能。")
-        else:
-            await matcher.send(f"当前群聊({group_id})未开启自动下载，无需重复操作。")
-
+pconf_cmd.shortcut(
+    r"(bili|b站)配置\s*(?P<targets>.*)",
+    command="pconf",
+    arguments=[
+        "list",
+        "-p",
+        "parse_bilibili",
+        "{targets}",
+    ],
+    prefix=True,
+)
 
 login_matcher = on_command("bili登录", permission=SUPERUSER, priority=5, block=True)
 credential_status_matcher = on_command(
