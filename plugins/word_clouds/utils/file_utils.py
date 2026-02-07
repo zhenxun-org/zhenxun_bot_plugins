@@ -1,4 +1,5 @@
 import os
+
 from zhenxun.configs.path_config import FONT_PATH, IMAGE_PATH
 from zhenxun.services.log import logger
 from zhenxun.utils.http_utils import AsyncHttpx

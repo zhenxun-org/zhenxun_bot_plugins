@@ -1,31 +1,31 @@
+from nonebot.adapters.onebot.v11 import Bot
+from nonebot.adapters.onebot.v11.event import GroupMessageEvent
+from nonebot.exception import FinishedException
+from nonebot.permission import SUPERUSER
+from nonebot.typing import T_State
 from nonebot_plugin_alconna import (
     Alconna,
+    AlconnaMatch,
+    AlconnaQuery,
     Args,
+    Arparma,
     At,
+    Match,
     Option,
+    Query,
     on_alconna,
     store_true,
-    Match,
-    Arparma,
-    AlconnaMatch,
-    Query,
-    AlconnaQuery,
 )
-from nonebot.typing import T_State
-from nonebot.adapters.onebot.v11.event import GroupMessageEvent
-from nonebot.adapters.onebot.v11 import Bot
-from nonebot.permission import SUPERUSER
-from nonebot.exception import FinishedException
+
 from zhenxun.builtin_plugins.scheduler_admin.commands import schedule_cmd
-from zhenxun.utils.rules import ensure_group
 from zhenxun.services import scheduler_manager
-from zhenxun.services.scheduler import ScheduleContext
 from zhenxun.services.log import logger
+from zhenxun.services.scheduler import ScheduleContext
+from zhenxun.utils.rules import ensure_group
 
 from .handlers import CloudHandler, dispatch_wordcloud_task
-from .services import TimeService
-
 from .models import WordCloudTaskParams
+from .services import TimeService
 
 
 async def scheduled_wordcloud_job(context: ScheduleContext, **kwargs):
@@ -189,7 +189,8 @@ schedule_cmd.shortcut(
 )
 
 schedule_cmd.shortcut(
-    r"^定时词云 (?P<action>暂停|恢复|查看)(?:\s+(?P<target>--all|-g\s+[\d\s]+|-t\s+\S+))?$",
+    r"^定时词云 (?P<action>暂停|恢复|查看)"
+    r"(?:\s+(?P<target>--all|-g\s+[\d\s]+|-t\s+\S+))?$",
     command="定时任务",
     arguments=["{action}", "{target}", "-p", "word_clouds"],
     prefix=True,

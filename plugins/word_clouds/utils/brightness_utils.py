@@ -1,8 +1,9 @@
-from typing import Tuple
+from io import BytesIO
+
 import numpy as np
 from PIL import Image
 from wordcloud import WordCloud
-from io import BytesIO
+
 from zhenxun.services.log import logger
 
 
@@ -13,7 +14,7 @@ def adjust_color_brightness(
     is_white_bg: bool,
     white_bg_max_brightness: float = 0.7,
     black_bg_min_brightness: float = 0.3,
-) -> Tuple[int, int, int]:
+) -> tuple[int, int, int]:
     """根据背景颜色调整RGB亮度，确保文字清晰可见"""
     r_float, g_float, b_float = r / 255.0, g / 255.0, b / 255.0
 

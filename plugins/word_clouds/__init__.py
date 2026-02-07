@@ -2,7 +2,7 @@ from nonebot.plugin import PluginMetadata
 
 from zhenxun.configs.utils import Command, PluginExtraData, RegisterConfig
 from zhenxun.utils.enum import PluginType
-from typing import List
+
 from . import command  # noqa: F401
 
 __plugin_meta__ = PluginMetadata(
@@ -51,29 +51,24 @@ __plugin_meta__ = PluginMetadata(
 """.strip(),
     extra=PluginExtraData(
         author="yajiwa",
-        version="1.4.0",
+        version="1.5.0",
         plugin_type=PluginType.NORMAL,
         commands=[
             Command(command="今日词云"),
+            Command(command="我的词云"),
             Command(command="昨日词云"),
             Command(command="本周词云"),
-            Command(command="上周词云"),
             Command(command="本月词云"),
-            Command(command="上月词云"),
-            Command(command="本季词云"),
             Command(command="年度词云"),
-            Command(command="历史词云"),
-            Command(command="定时词云 开启"),
-            Command(command="定时词云 关闭"),
-            Command(command="定时词云 查看"),
-            Command(command="定时词云 清空"),
+            Command(command="我的年度词云"),
         ],
         configs=[
             RegisterConfig(
                 module="word_clouds",
                 key="WORD_CLOUDS_TEMPLATE",
                 value=1,
-                help="词云模板 参1：图片生成，默认使用真寻图片，可在项目路径resources/image/wordcloud下配置图片，多张则随机 | 参2/其他：黑底图片",
+                help="词云模板 参1：图片生成，默认使用真寻图片，可在项目路径resources/image/wordcloud下配置图片，多张则随机 "
+                     "| 参2/其他：黑底图片",
                 type=int,
             ),
             RegisterConfig(
@@ -135,7 +130,7 @@ __plugin_meta__ = PluginMetadata(
                     "PiYG",
                 ],
                 help="白色背景时使用的颜色映射列表，会随机选择其中之一",
-                type=List[str],
+                type=list[str],
             ),
             RegisterConfig(
                 module="word_clouds",
@@ -155,7 +150,7 @@ __plugin_meta__ = PluginMetadata(
                     "Spectral",
                 ],
                 help="黑色背景时使用的颜色映射列表，会随机选择其中之一",
-                type=List[str],
+                type=list[str],
             ),
             RegisterConfig(
                 module="word_clouds",
