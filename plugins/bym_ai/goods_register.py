@@ -5,7 +5,7 @@ from zhenxun.configs.config import BotConfig
 from zhenxun.utils.decorator.shop import NotMeetUseConditionsException, shop_register
 
 from .config import base_config
-from .data_source import Conversation
+from .memory_backend import Conversation
 
 driver: Driver = nonebot.get_driver()
 

@@ -1,34 +1,30 @@
 import asyncio
-import base64
+from datetime import datetime
 import os
 import random
 import re
-import time
-import uuid
-from collections.abc import Sequence
-from datetime import datetime
-from pathlib import Path
 from typing import ClassVar, Literal
 
-from nonebot.adapters import Bot, MessageSegment
-from nonebot.compat import model_dump
-from nonebot_plugin_alconna import Image, Reply, Text, UniMessage, UniMsg
+from nonebot.adapters import Bot
+from nonebot_plugin_alconna import UniMessage, UniMsg
 from nonebot_plugin_uninfo import Uninfo
+
 from zhenxun.builtin_plugins.sign_in.utils import (
     get_level_and_next_impression,
     level2attitude,
 )
 from zhenxun.configs.config import BotConfig, Config
-from zhenxun.configs.path_config import IMAGE_PATH, TEMP_PATH
-from zhenxun.configs.utils import AICallableTag
+from zhenxun.configs.path_config import IMAGE_PATH
 from zhenxun.models.group_console import GroupConsole
 from zhenxun.models.sign_user import SignUser
+from zhenxun.services.llm import AI, LLMContentPart, LLMResponse
+from zhenxun.services.llm.tools import RunContext, ToolInvoker, tool_provider_manager
+from zhenxun.services.llm.utils import extract_text_from_content, unimsg_to_llm_parts
 from zhenxun.services.log import logger
 from zhenxun.utils.decorator.retry import Retry
 from zhenxun.utils.http_utils import AsyncHttpx
 from zhenxun.utils.message import MessageUtils
 
-from .call_tool import AiCallTool
 from .config import (
     BYM_CONTENT,
     DEEP_SEEK_SPLIT,
@@ -38,26 +34,19 @@ from .config import (
     NO_RESULT_IMAGE,
     NORMAL_CONTENT,
     NORMAL_IMPRESSION_CONTENT,
-    PROMPT_FILE,
     TIP_CONTENT,
-    ChatMessage,
     FunctionParam,
-    Message,
     MessageCache,
-    OpenAiResult,
     base_config,
 )
-from .exception import CallApiParamException, NotResultException
-from .models.bym_chat import BymChat
+from .exception import NotResultException
+from .memory_backend import BymMemory
 from .models.bym_gift_log import GiftLog
-from .storage_strategy.storage_strategy_factory import StorageStrategyFactory
 
 semaphore = asyncio.Semaphore(3)
 
 
 GROUP_NAME_CACHE = {}
-
-image_cache_path = TEMP_PATH / "bym_ai" / "image_cache"
 
 
 def split_text(text: str) -> list[tuple[str, float]]:
@@ -97,40 +86,57 @@ def _filter_result(result: str) -> str:
     return re.sub(r"(.)\1{5,}", r"\1" * 5, result)
 
 
+def _strip_noise(text: str) -> str:
+    for pattern in (
+        r"```tool_code([\s\S]*?)```",
+        r"```json([\s\S]*?)```",
+        r"</?思考过程>([\s\S]*?)</?思考过程>",
+        r"</?thought>([\s\S]*?)</?thought>",
+    ):
+        text = re.sub(pattern, "", text).strip()
+    return text
+
+
 def remove_deep_seek(text: str, is_tool: bool) -> str:
     """去除深度探索"""
     logger.debug(f"去除深度思考前原文：{text}", "BYM_AI")
     if "```" in text.strip() and not text.strip().endswith("```"):
         text += "```"
-    match_text = None
-    if match := re.findall(r"</?content>([\s\S]*?)</?content>", text, re.DOTALL):
-        match_text = match[-1]
-    elif match := re.findall(r"```<content>([\s\S]*?)```", text, re.DOTALL):
-        match_text = match[-1]
-    elif match := re.findall(r"```xml([\s\S]*?)```", text, re.DOTALL):
-        match_text = match[-1]
-    elif match := re.findall(r"```content([\s\S]*?)```", text, re.DOTALL):
-        match_text = match[-1]
-    elif match := re.search(r"instruction[:,：](.*)<\/code>", text, re.DOTALL):
-        match_text = match[2]
-    elif match := re.findall(r"<think>\n(.*?)\n</think>", text, re.DOTALL):
-        match_text = match[1]
-    elif len(re.split(r"最终(回复|结果)[：,:]", text, re.DOTALL)) > 1:
-        match_text = re.split(r"最终(回复|结果)[：,:]", text, re.DOTALL)[-1]
-    elif match := re.search(r"Response[:,：]\*?\*?(.*)", text, re.DOTALL):
-        match_text = match[2]
-    elif "回复用户" in text:
-        match_text = re.split("回复用户.{0,1}", text)[-1]
-    elif "最终回复" in text:
-        match_text = re.split("最终回复.{0,1}", text)[-1]
-    elif "Response text:" in text:
-        match_text = re.split("Response text[:,：]", text)[-1]
+
+    def _extract(text_value: str) -> str | None:
+        patterns = (
+            ("findall", r"</?content>([\s\S]*?)</?content>"),
+            ("findall", r"```<content>([\s\S]*?)```"),
+            ("findall", r"```xml([\s\S]*?)```"),
+            ("findall", r"```content([\s\S]*?)```"),
+            ("search", r"instruction[:,：](.*)<\/code>"),
+            ("findall", r"<think>\n(.*?)\n</think>"),
+            ("search", r"Response[:,：]\*?\*?(.*)"),
+        )
+        for mode, pattern in patterns:
+            if mode == "findall":
+                match = re.findall(pattern, text_value, re.DOTALL)
+                if match:
+                    return match[-1]
+            else:
+                match = re.search(pattern, text_value, re.DOTALL)
+                if match:
+                    return match[1]
+        if len(re.split(r"最终(回复|结果)[：,:]", text_value, re.DOTALL)) > 1:
+            return re.split(r"最终(回复|结果)[：,:]", text_value, re.DOTALL)[-1]
+        if "回复用户" in text_value:
+            return re.split("回复用户.{0,1}", text_value)[-1]
+        if "最终回复" in text_value:
+            return re.split("最终回复.{0,1}", text_value)[-1]
+        if "Response text:" in text_value:
+            return re.split("Response text[:,：]", text_value)[-1]
+        return None
+
+    match_text = _extract(text)
     if match_text:
         return _extracted_from_remove_deep_seek_30(match_text)
-    text = re.sub(r"```tool_code([\s\S]*?)```", "", text).strip()
-    text = re.sub(r"```json([\s\S]*?)```", "", text).strip()
-    text = re.sub(r"</?思考过程>([\s\S]*?)</?思考过程>", "", text).strip()
-    text = re.sub(r"</?thought>([\s\S]*?)</?thought>", "", text).strip()
+
+    text = _strip_noise(text)
     if is_tool:
         if DEEP_SEEK_SPLIT in text:
             return text.split(DEEP_SEEK_SPLIT, 1)[-1].strip()
@@ -175,261 +181,12 @@ def _extracted_from_remove_deep_seek_30(match_text):
     return re.sub(r"<\/?content>", "", match_text)
 
 
-class TokenCounter:
-    def __init__(self):
-        if tokens := base_config.get("BYM_AI_CHAT_TOKEN"):
-            if isinstance(tokens, str):
-                tokens = [tokens]
-            self.tokens = dict.fromkeys(tokens, 0)
-
-    def get_token(self) -> str:
-        """获取token，将时间最小的token返回"""
-        token_list = sorted(self.tokens.keys(), key=lambda x: self.tokens[x])
-        return token_list[0]
-
-    def delay(self, token: str):
-        """延迟token"""
-        if token in self.tokens:
-            """等待15分钟"""
-            self.tokens[token] = int(time.time()) + 60 * 15
-
-
-token_counter = TokenCounter()
-
-
-class Conversation:
-    """预设存储"""
-
-    history_data: ClassVar[dict[str, list[ChatMessage]]] = {}
-
-    chat_prompt: str = ""
-
-    @classmethod
-    async def reload_prompt(cls):
-        """重载prompt"""
-        cls.chat_prompt = PROMPT_FILE.open(encoding="utf8").read()
-
-    @classmethod
-    def add_system(cls) -> ChatMessage:
-        """添加系统预设"""
-        if not cls.chat_prompt:
-            cls.chat_prompt = PROMPT_FILE.open(encoding="utf8").read()
-        return ChatMessage(role="system", content=cls.chat_prompt)
-
-    @classmethod
-    async def get_db_data(
-        cls, user_id: str | None, group_id: str | None = None
-    ) -> list[ChatMessage]:
-        """从数据库获取记录
-
-        参数:
-            user_id: 用户id
-            group_id: 群组id，获取群组内记录时使用
-
-        返回:
-            list[ChatMessage]: 记录列表
-        """
-        conversation = []
-        enable_group_chat = base_config.get("ENABLE_GROUP_CHAT")
-        if enable_group_chat and group_id:
-            db_filter = BymChat.filter(group_id=group_id)
-        elif enable_group_chat:
-            db_filter = BymChat.filter(user_id=user_id, group_id=None)
-        else:
-            db_filter = BymChat.filter(user_id=user_id)
-        db_data_list = (
-            await db_filter.order_by("-id")
-            .limit(int(base_config.get("CACHE_SIZE") / 2))
-            .all()
-        )
-        for db_data in db_data_list:
-            if db_data.is_reset:
-                break
-            conversation.extend(
-                (
-                    ChatMessage(role="assistant", content=db_data.result),
-                    ChatMessage(role="user", content=db_data.plain_text),
-                )
-            )
-        conversation.reverse()
-        return conversation
-
-    @classmethod
-    async def get_conversation(
-        cls, user_id: str | None, group_id: str | None
-    ) -> list[ChatMessage]:
-        """获取预设
-
-        参数:
-            user_id: 用户id
-
-        返回:
-            list[ChatMessage]: 预设数据
-        """
-        conversation = []
-        if (
-            base_config.get("ENABLE_GROUP_CHAT")
-            and group_id
-            and group_id in cls.history_data
-        ):
-            conversation = cls.history_data[group_id]
-        elif user_id and user_id in cls.history_data:
-            conversation = cls.history_data[user_id]
-        # 尝试从数据库中获取历史对话
-        if not conversation:
-            conversation = await cls.get_db_data(user_id, group_id)
-        # 必须带有人设
-        conversation = [c for c in conversation if c.role != "system"]
-        conversation.insert(0, cls.add_system())
-        return conversation
-
-    @classmethod
-    def set_history(
-        cls, user_id: str, group_id: str | None, conversation: list[ChatMessage]
-    ):
-        """设置历史预设
-
-        参数:
-            user_id: 用户id
-            conversation: 消息记录
-        """
-        cache_size = base_config.get("CACHE_SIZE")
-        group_cache_size = base_config.get("GROUP_CACHE_SIZE")
-        size = group_cache_size if group_id else cache_size
-        if len(conversation) > size:
-            conversation = conversation[-size:]
-        if base_config.get("ENABLE_GROUP_CHAT") and group_id:
-            cls.history_data[group_id] = conversation
-        else:
-            cls.history_data[user_id] = conversation
-
-    @classmethod
-    async def reset_all(cls) -> int:
-        """重置所有会话"""
-        update_list = []
-        distinct_pairs = await BymChat.all().distinct().values("user_id", "group_id")
-        for pair in distinct_pairs:
-            user_id = pair["user_id"]
-            group_id = pair["group_id"]
-
-            # 查找该组合的最新记录
-            latest_chat = (
-                await BymChat.filter(user_id=user_id, group_id=group_id)
-                .order_by("-create_time")
-                .first()
-            )
-
-            if latest_chat and not latest_chat.is_reset:
-                latest_chat.is_reset = True
-                update_list.append(latest_chat)
-        await BymChat.bulk_update(update_list, ["is_reset"])
-        cls.history_data = {}
-        return len(update_list)
-
-    @classmethod
-    async def reset(cls, user_id: str, group_id: str | None):
-        """重置预设
-
-        参数:
-            user_id: 用户id
-        """
-        if base_config.get("ENABLE_GROUP_CHAT") and group_id:
-            # 群组内重置
-            if (
-                db_data := await BymChat.filter(group_id=group_id)
-                .order_by("-id")
-                .first()
-            ):
-                db_data.is_reset = True
-                await db_data.save(update_fields=["is_reset"])
-            if group_id in cls.history_data:
-                del cls.history_data[group_id]
-        elif user_id:
-            # 个人重置
-            if (
-                db_data := await BymChat.filter(user_id=user_id, group_id=None)
-                .order_by("-id")
-                .first()
-            ):
-                db_data.is_reset = True
-                await db_data.save(update_fields=["is_reset"])
-            if user_id in cls.history_data:
-                del cls.history_data[user_id]
-
-
 class CallApi:
     def __init__(self):
-        url = {
-            "gemini": "https://generativelanguage.googleapis.com/v1beta/chat/completions",
-            "deepseek": "https://api.deepseek.com/v1/chat/completions",
-            "硅基流动": "https://api.siliconflow.cn/v1/chat/completions",
-            "阿里云百炼": "https://dashscope.aliyuncs.com/compatible-mode/v1",
-            "百度智能云": "https://qianfan.baidubce.com/v2",
-            "字节火山引擎": "https://ark.cn-beijing.volces.com/api/v3",
-        }
-        # 对话
-        chat_url = base_config.get("BYM_AI_CHAT_URL") or ""
-        self.chat_url = url.get(chat_url.lower(), chat_url)
-        self.chat_model = base_config.get("BYM_AI_CHAT_MODEL")
-        self.tool_model = base_config.get("BYM_AI_TOOL_MODEL")
-        self.chat_token = token_counter.get_token()
-        # tts语音
+        # tts 语音相关配置仍使用原有实现
         self.tts_url = Config.get_config("bym_ai", "BYM_AI_TTS_URL")
         self.tts_token = Config.get_config("bym_ai", "BYM_AI_TTS_TOKEN")
         self.tts_voice = Config.get_config("bym_ai", "BYM_AI_TTS_VOICE")
-
-    async def fetch_chat(
-        self,
-        user_id: str,
-        conversation: list[ChatMessage],
-        tools: Sequence[AICallableTag] | None,
-    ) -> OpenAiResult:
-        if not self.chat_url:
-            logger.warning("请求接口错误, 未配置接口地址", "BYM_AI")
-            raise Exception("请求接口错误, 未配置接口地址")
-        send_json = {
-            "stream": False,
-            "model": self.tool_model if tools else self.chat_model,
-            "temperature": 0.7,
-        }
-        if tools:
-            send_json["tools"] = [
-                {"type": "function", "function": tool.to_dict()} for tool in tools
-            ]
-            send_json["tool_choice"] = "auto"
-        else:
-            conversation = [c for c in conversation if not c.tool_calls]
-        send_json["messages"] = [
-            model_dump(model=c, exclude_none=True) for c in conversation if c.content
-        ]
-        response = await AsyncHttpx.post(
-            self.chat_url,
-            headers={
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {self.chat_token}",
-            },
-            json=send_json,
-            verify=False,
-            timeout=120.0,
-        )
-
-        if response.status_code == 429:
-            logger.info(
-                f"fetch_chat 请求失败: 限速, token: {self.chat_token} 延迟 15 分钟",
-                "BYM_AI",
-                session=user_id,
-            )
-            token_counter.delay(self.chat_token)
-        if response.status_code == 400:
-            logger.warning(f"请求接口错误 code: 400 {response.text}", "BYM_AI")
-            raise CallApiParamException()
-
-        response.raise_for_status()
-        result = OpenAiResult(**response.json())
-        if not result.choices:
-            logger.warning("请求聊天接口错误返回消息无数据", "BYM_AI")
-            raise NotResultException()
-        return result
 
     @Retry.api(exception=(NotResultException,))
     async def fetch_tts(
@@ -471,7 +228,8 @@ class CallApi:
 
 class ChatManager:
     group_cache: ClassVar[dict[str, list[MessageCache]]] = {}
-    user_impression: ClassVar[dict[str, float]] = {}
+    user_impression: ClassVar[dict[str, tuple[float, float]]] = {}
+    user_impression_ttl = 6 * 60 * 60
 
     @classmethod
     def format(
@@ -495,39 +253,7 @@ class ChatManager:
             }
 
     @classmethod
-    async def _process_image_content(cls, path: Path) -> str | None:
-        submit_strategy = base_config.get("IMAGE_UNDERSTANDING_DATA_SUBMIT_STRATEGY")
-
-        if submit_strategy == "base64":
-            base64_str = base64.b64encode(path.read_bytes()).decode("utf-8")
-            return f"data:image/jpeg;base64,{base64_str}"
-        elif submit_strategy == "image_url":
-            if upload_strategy := StorageStrategyFactory.create_strategy(
-                api_key=token_counter.get_token()
-            ):
-                return await upload_strategy.upload(path)
-        else:
-            return None
-
-    @classmethod
-    async def _process_image(cls, message: MessageSegment | None) -> str | None:
-        if isinstance(message, MessageSegment) and message.type == "image":
-            file_name = message.data.get("file")
-            if not file_name:
-                file_name = f"{uuid.uuid4()!s}.jpg"
-
-            path = image_cache_path / file_name
-            if not path.exists():
-                if not await AsyncHttpx.download_file(
-                    url=message.data["url"], path=path
-                ):
-                    logger.error("图片下载失败", "BYM_AI")
-            return await cls._process_image_content(path=path)
-
-    @classmethod
-    async def __build_content(
-        cls, message: UniMsg
-    ) -> list[dict[str, str | dict[str, str]]]:
+    async def __build_content(cls, message: UniMsg) -> list[LLMContentPart]:
         """
         获取消息内容
 
@@ -535,46 +261,15 @@ class ChatManager:
             message: 消息内容
 
         返回:
-            list[dict[str, str | dict[str, str]]]: 消息列表
+            list[LLMContentPart]: 消息内容片段列表
         """
-        tasks = []
-        all_parts = []
-
-        async def process_segments(segments):
-            for seg in segments:
-                if isinstance(seg, Text):
-                    all_parts.append(("text", cls.format("text", seg.text)))
-                elif isinstance(seg, Image) and seg.url:
-                    image_task = asyncio.create_task(cls._process_image(seg.origin))
-                    tasks.append(image_task)
-                    all_parts.append(("image_task", image_task))
-                elif isinstance(seg, Reply) and seg.msg:
-                    await process_segments(await UniMessage.generate(message=seg.msg))  # type: ignore
-
-        await process_segments(message)
-
-        await asyncio.gather(*tasks)
-
-        res: list[dict[str, str | dict[str, str]]] = []
-        for part_type, content in all_parts:
-            if part_type == "text":
-                res.append(content)
-            elif part_type == "image_task":
-                if url := content.result():
-                    res.append(
-                        cls.format(
-                            "text",
-                            f"下面图片的源为: {url}, 该源为图片的base64编码或图片地址，可用于网络搜索",
-                        )
-                    )
-                    res.append(cls.format("image_url", url))
-
-        return res
+        # 完全交给 LLM 的 UniMessage → LLMContentPart 转换逻辑处理
+        return await unimsg_to_llm_parts(message)
 
     @classmethod
     async def __get_normal_content(
         cls, user_id: str, group_id: str | None, nickname: str, message: UniMsg
-    ) -> list[dict[str, str | dict[str, str]]]:
+    ) -> list[LLMContentPart]:
         """获取普通回答文本内容
 
         参数:
@@ -583,24 +278,30 @@ class ChatManager:
             message: 消息内容
 
         返回:
-            list[dict[str, str]]: 文本序列
+            list[LLMContentPart]: 文本序列（多模态）
         """
-        content = await cls.__build_content(message)
-        if user_id not in cls.user_impression:
+        content_parts = await cls.__build_content(message)
+        now_ts = datetime.now().timestamp()
+        impression_cache = cls.user_impression.get(user_id)
+        if (
+            not impression_cache
+            or now_ts - impression_cache[1] > cls.user_impression_ttl
+        ):
             sign_user = await SignUser.get_user(user_id)
-            cls.user_impression[user_id] = float(sign_user.impression)
+            cls.user_impression[user_id] = (float(sign_user.impression), now_ts)
+        impression_value = cls.user_impression[user_id][0]
         gift_count = await GiftLog.filter(
             user_id=user_id, create_time__gte=datetime.now().date()
         ).count()
-        level, _, _ = get_level_and_next_impression(cls.user_impression[user_id])
+        level, _, _ = get_level_and_next_impression(impression_value)
         level = "1" if level in ["0"] else level
         content_result = (
             NORMAL_IMPRESSION_CONTENT.format(
                 time=datetime.now(),
                 nickname=nickname,
                 user_id=user_id,
-                impression=cls.user_impression[user_id],
-                max_impression=cls.user_impression[user_id] + 30,
+                impression=impression_value,
+                max_impression=impression_value + 30,
                 attitude=level2attitude[str(level)],
                 gift_count=gift_count,
             )
@@ -620,16 +321,15 @@ class ChatManager:
                 )
                 + content_result
             )
-        content.insert(
-            0,
-            cls.format("text", content_result),
-        )
-        return content
+        # 将前置的描述拼到最前面
+        parts: list[LLMContentPart] = [LLMContentPart.text_part(content_result)]
+        parts.extend(content_parts)
+        return parts
 
     @classmethod
     async def __get_bym_content(
         cls, bot: Bot, user_id: str, group_id: str | None, nickname: str
-    ) -> list[dict[str, str | dict[str, str]]]:
+    ) -> list[LLMContentPart]:
         """获取伪人回答文本内容
 
         参数:
@@ -638,31 +338,26 @@ class ChatManager:
             nickname: 用户昵称
 
         返回:
-            list[dict[str, str]]: 文本序列
+            list[LLMContentPart]: 文本序列（纯文本）
         """
         if not group_id:
             group_id = DEFAULT_GROUP
-        content = [
-            cls.format(
-                "text",
-                BYM_CONTENT.format(
-                    user_id=user_id,
-                    group_id=group_id,
-                    nickname=nickname,
-                    self_id=bot.self_id,
-                ),
-            )
-        ]
+        base_text = BYM_CONTENT.format(
+            user_id=user_id,
+            group_id=group_id,
+            nickname=nickname,
+            self_id=bot.self_id,
+        )
+        content: list[LLMContentPart] = [LLMContentPart.text_part(base_text)]
         if group_message := cls.group_cache.get(group_id):
             for message in group_message:
                 content.append(
-                    cls.format(
-                        "text",
-                        f"用户昵称：{message.nickname} 用户ID：{message.user_id}",
+                    LLMContentPart.text_part(
+                        f"用户昵称：{message.nickname} 用户ID：{message.user_id}"
                     )
                 )
                 content.extend(await cls.__build_content(message.message))
-        content.append(cls.format("text", TIP_CONTENT))
+        content.append(LLMContentPart.text_part(TIP_CONTENT))
         return content
 
     @classmethod
@@ -686,18 +381,37 @@ class ChatManager:
             cls.group_cache[group_id] = [message_cache]
         else:
             cls.group_cache[group_id].append(message_cache)
-        if len(cls.group_cache[group_id]) >= 30:
+        cache_size = base_config.get("GROUP_CACHE_SIZE") or 30
+        if len(cls.group_cache[group_id]) >= cache_size:
             cls.group_cache[group_id].pop(0)
 
     @classmethod
-    def check_is_call_tool(cls, result: OpenAiResult) -> bool:
-        if not base_config.get("BYM_AI_TOOL_MODEL"):
-            return False
-        choices = result.choices
-        if not choices or not choices[0].message:
-            return False
-        msg = choices[0].message
-        return bool(msg.tool_calls) if msg else False
+    async def _run_tools(
+        cls,
+        tool_calls: list,
+        tool_names: list[str],
+        session_key: str,
+        func_param: FunctionParam,
+    ) -> list:
+        if not tool_calls:
+            return []
+        resolved_tools = await tool_provider_manager.resolve_specific_tools(tool_names)
+        if not resolved_tools:
+            return []
+        context = RunContext(
+            session_id=session_key,
+            scope={
+                "bot": func_param.bot,
+                "event": func_param.event,
+                "session": func_param.session,
+                "message": func_param.message,
+            },
+            extra={
+                "arparma": func_param.arparma,
+            },
+        )
+        invoker = ToolInvoker()
+        return await invoker.execute_batch(tool_calls, resolved_tools, context=context)
 
     @classmethod
     @Retry.api(exception=(NotResultException,))
@@ -711,85 +425,58 @@ class ChatManager:
         is_bym: bool,
         func_param: FunctionParam,
     ) -> str:
-        """获取回答结果（模型智能切换优化版）"""
+        """获取回答结果（使用统一 LLM 服务的实现）"""
         user_id = session.user.id
         cls.add_cache(user_id, group_id, nickname, message)
 
-        # 构建通用上下文
+        # 构建当前轮输入（不再手动维护完整对话列表，交给 AI 会话管理）
         if is_bym:
-            content = await cls.__get_bym_content(bot, user_id, group_id, nickname)
-            conversation = await Conversation.get_conversation(None, group_id)
+            content_parts = await cls.__get_bym_content(
+                bot, user_id, group_id, nickname
+            )
         else:
-            content = await cls.__get_normal_content(
+            content_parts = await cls.__get_normal_content(
                 user_id, group_id, nickname, message
             )
-            conversation = await Conversation.get_conversation(user_id, group_id)
-        conversation.append(ChatMessage(role="user", content=content))
 
-        tools = list(AiCallTool.tools.values())
-        final_result_text = ""
+        # 使用 AI 会话客户端，按 bym:user_id[:group_id] 作为 session_id 进行历史管理
+        session_key = f"bym:{user_id}:{group_id}" if group_id else f"bym:{user_id}"
+        model_name = base_config.get("BYM_AI_CHAT_MODEL")
+        ai = AI(session_id=session_key, memory=BymMemory())
 
-        tool_model = base_config.get("BYM_AI_TOOL_MODEL")
-        chat_model = base_config.get("BYM_AI_CHAT_MODEL")
+        # 智能模式下允许 LLM 使用已注册的智能工具（来自 smart_tools）
+        tools_param = None
+        tool_names: list[str] = []
+        if base_config.get("BYM_AI_CHAT_SMART"):
+            resolved_tools = await tool_provider_manager.get_resolved_tools()
+            tool_names = list(resolved_tools.keys())
+            tools_param = tool_names or None
 
-        # 检查是否启用智能模式
-        if tool_model and chat_model and tools:
-            if tool_model == chat_model:
-                # 模型相同，采用单次请求流程
-                logger.debug(
-                    f"工具与对话模型相同 ({tool_model})，采用单次请求优化方案", "BYM_AI"
-                )
-                try:
-                    # 统一使用 tool_model 进行一次请求
-                    result = await CallApi().fetch_chat(user_id, conversation, tools)
+        llm_response = await ai.chat(
+            content_parts,
+            model=model_name,
+            tools=tools_param,
+        )
 
-                    if cls.check_is_call_tool(result):
-                        final_result_text = await cls._tool_handle(
-                            bot, session, conversation, result, tools, func_param
-                        )
-                    else:
-                        group_id_from_session, assistant_reply, _ = cls._get_base_data(
-                            session, result, False
-                        )
-                        conversation.append(
-                            ChatMessage(role="assistant", content=assistant_reply)
-                        )
-                        Conversation.set_history(
-                            session.user.id, group_id_from_session, conversation
-                        )
-                        final_result_text = assistant_reply
-                except CallApiParamException:
-                    logger.warning(
-                        f"模型 ({tool_model}) 调用工具失败，回退到普通聊天", "BYM_AI"
-                    )
-                    final_result_text = await cls._chat_handle(session, conversation)
-            else:
-                # 模型不同，采用chat和tool分模型请求方案
-                logger.debug(
-                    f"工具模型 ({tool_model}) 与对话模型 ({chat_model}) 不同，采用分离请求方案",
-                    "BYM_AI",
-                )
-                try:
-                    result = await CallApi().fetch_chat(user_id, conversation, tools)
+        final_result_text = llm_response.text or extract_text_from_content(
+            llm_response.content_parts
+        )
 
-                    if cls.check_is_call_tool(result):
-                        final_result_text = await cls._tool_handle(
-                            bot, session, conversation, result, tools, func_param
-                        )
-                    else:
-                        logger.debug(
-                            "工具模型未调用工具，切换到对话模型生成回复", "BYM_AI"
-                        )
-                        final_result_text = await cls._chat_handle(
-                            session, conversation
-                        )
-                except CallApiParamException:
-                    logger.warning(
-                        f"工具模型 ({tool_model}) 调用失败，回退到普通聊天", "BYM_AI"
-                    )
-                    final_result_text = await cls._chat_handle(session, conversation)
-        else:
-            final_result_text = await cls._chat_handle(session, conversation)
+        if base_config.get("BYM_AI_CHAT_SMART") and llm_response.tool_calls:
+            tool_messages = await cls._run_tools(
+                llm_response.tool_calls,
+                tool_names,
+                session_key,
+                func_param,
+            )
+            if tool_messages:
+                await ai.memory.add_messages(session_key, tool_messages)
+                if tool_result_text := "\n".join(
+                    extract_text_from_content(msg.content)
+                    for msg in tool_messages
+                    if msg.content
+                ).strip():
+                    final_result_text = tool_result_text
 
         if res := _filter_result(final_result_text):
             cls.add_cache(
@@ -802,100 +489,17 @@ class ChatManager:
 
     @classmethod
     def _get_base_data(
-        cls, session: Uninfo, result: OpenAiResult, is_tools: bool
-    ) -> tuple[str | None, str, Message]:
+        cls, session: Uninfo, result: LLMResponse, is_tools: bool
+    ) -> tuple[str | None, str]:
         group_id = None
         if session.group:
             group_id = (
                 session.group.parent.id if session.group.parent else session.group.id
             )
-        assistant_reply = ""
-        message = None
-        if result.choices and (message := result.choices[0].message):
-            if message.content:
-                assistant_reply = message.content.strip()
-        if not message:
-            raise ValueError("API响应结果不合法")
-        return group_id, remove_deep_seek(assistant_reply, is_tools), message
-
-    @classmethod
-    async def _chat_handle(
-        cls,
-        session: Uninfo,
-        conversation: list[ChatMessage],
-    ) -> str:
-        """响应api
-
-        参数:
-            session: Uninfo
-            conversation: 消息记录
-            result: API返回结果
-
-        返回:
-            str: 最终结果
-        """
-        result = await CallApi().fetch_chat(session.user.id, conversation, [])
-        group_id, assistant_reply, _ = cls._get_base_data(session, result, False)
-        conversation.append(ChatMessage(role="assistant", content=assistant_reply))
-        Conversation.set_history(session.user.id, group_id, conversation)
-        return assistant_reply
-
-    @classmethod
-    async def _tool_handle(
-        cls,
-        bot: Bot,
-        session: Uninfo,
-        conversation: list[ChatMessage],
-        result: OpenAiResult,
-        tools: Sequence[AICallableTag],
-        func_param: FunctionParam,
-    ) -> str:
-        """处理API响应并处理工具回调
-        参数:
-            user_id: 用户id
-            conversation: 当前对话
-            result: API响应结果
-            tools: 可用的工具列表
-            func_param: 函数参数
-        返回:
-            str: 处理后的消息内容
-        """
-        group_id, assistant_reply, message = cls._get_base_data(session, result, True)
-        if assistant_reply:
-            conversation.append(
-                ChatMessage(
-                    role="assistant",
-                    content=assistant_reply,
-                    tool_calls=message.tool_calls,
-                )
-            )
-
-        # 处理工具回调
-        if message.tool_calls:
-            # temp_conversation = conversation.copy()
-            call_result = await AiCallTool.build_conversation(
-                message.tool_calls, func_param
-            )
-            if call_result:
-                conversation.append(ChatMessage(role="assistant", content=call_result))
-                # temp_conversation.extend(
-                # await AiCallTool.build_conversation(message.tool_calls, func_param)
-                # )
-                result = await CallApi().fetch_chat(session.user.id, conversation, [])
-                group_id, assistant_reply, message = cls._get_base_data(
-                    session, result, True
-                )
-                conversation.append(
-                    ChatMessage(role="assistant", content=assistant_reply)
-                )
-            # _, assistant_reply, _ = cls._get_base_data(session, result, True)
-            # if res := await cls._tool_handle(
-            #     bot, session, conversation, result, tools, func_param
-            # ):
-            #     if _filter_result(res):
-            #         assistant_reply = res
-        Conversation.set_history(session.user.id, group_id, conversation)
-        return remove_deep_seek(assistant_reply, True)
+        assistant_reply = (result.text or "").strip()
+        if not assistant_reply and (not result.content_parts):
+            raise NotResultException()
+        return group_id, remove_deep_seek(assistant_reply, is_tools)
 
     @classmethod
     async def tts(cls, content: str) -> bytes | None:

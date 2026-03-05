@@ -1,6 +1,6 @@
 import asyncio
-import random
 from pathlib import Path
+import random
 
 from httpx import HTTPStatusError
 from nonebot import on_message
@@ -10,6 +10,7 @@ from nonebot.plugin import PluginMetadata
 from nonebot.rule import to_me
 from nonebot_plugin_alconna import Alconna, UniMsg, Voice, on_alconna
 from nonebot_plugin_uninfo import Uninfo
+
 from zhenxun.configs.config import BotConfig
 from zhenxun.configs.path_config import IMAGE_PATH
 from zhenxun.configs.utils import (
@@ -28,9 +29,10 @@ from .bym_gift import ICON_PATH
 from .bym_gift.data_source import send_gift
 from .bym_gift.gift_reg import driver as gift_driver  # noqa: F401
 from .config import Arparma, FunctionParam
-from .data_source import ChatManager, Conversation, base_config, split_text
+from .data_source import ChatManager, base_config, split_text
 from .exception import GiftRepeatSendException, NotResultException
 from .goods_register import driver as goods_driver  # noqa: F401
+from .memory_backend import Conversation
 from .models.bym_chat import BymChat
 
 __plugin_meta__ = PluginMetadata(
@@ -42,32 +44,19 @@ __plugin_meta__ = PluginMetadata(
     """.strip(),
     extra=PluginExtraData(
         author="Chtholly & HibiKier",
-        version="0.8",
+        version="0.9",
         superuser_help="重置所有会话\n重载prompt",
         ignore_prompt=True,
         configs=[
             RegisterConfig(
-                key="BYM_AI_CHAT_URL",
-                value=None,
-                help="ai聊天接口地址，可以填入url和平台名称，当你使用平台名称时"
-                "，默认使用平台官方api, 目前有[gemini, DeepSeek, 硅基流动, 阿里云百炼,"
-                " 百度智能云, 字节火山引擎], 填入对应名称即可, 如 gemini",
-            ),
-            RegisterConfig(
-                key="BYM_AI_CHAT_TOKEN",
-                value=None,
-                help="ai聊天接口密钥，使用列表",
-                type=list[str],
-            ),
-            RegisterConfig(
                 key="BYM_AI_CHAT_MODEL",
                 value=None,
-                help="ai聊天接口模型",
+                help="ai聊天接口模型，具体参考 AI 模块，例如 Gemini/gemini-2.0-flash",
             ),
             RegisterConfig(
                 key="BYM_AI_TOOL_MODEL",
                 value=None,
-                help="ai工具接口模型",
+                help="ai聊天接口模型，具体参考 AI 模块，例如 Gemini/gemini-2.0-flash",
             ),
             RegisterConfig(
                 key="BYM_AI_CHAT",
@@ -80,7 +69,7 @@ __plugin_meta__ = PluginMetadata(
                 key="BYM_AI_CHAT_RATE",
                 value=0.05,
                 help="伪人回复概率 0-1",
-                default_value=0.05,
+                default_value=0.01,
                 type=float,
             ),
             RegisterConfig(
@@ -132,25 +121,6 @@ __plugin_meta__ = PluginMetadata(
                 help="在群组中时共用缓存",
                 default_value=True,
                 type=bool,
-            ),
-            RegisterConfig(
-                key="IMAGE_UNDERSTANDING_DATA_SUBMIT_STRATEGY",
-                value=None,
-                help="图片理解数据提交策略，可选 base64 | image_url"
-                " 为空时不进行图片理解",
-                default_value=None,
-            ),
-            RegisterConfig(
-                key="IMAGE_UNDERSTANDING_DATA_STORAGE_STRATEGY",
-                value=None,
-                help="图片理解数据存储策略，只在 image_url 模式生效",
-            ),
-            RegisterConfig(
-                key="IMAGE_UNDERSTANDING_DATA_STORAGE_STRATEGY_GEMINI_PROXY",
-                value=None,
-                help="gemini 文件上传策略代理地址，只在图片理解数据存储策略为"
-                " gemini 时有效",
-                default_value="generativelanguage.googleapis.com",
             ),
         ],
         smart_tools=[
@@ -229,7 +199,7 @@ async def _():
         await MessageUtils.build_message("重载prompt失败...").send(reply_to=True)
 
 
-@_matcher.handle(parameterless=[CheckConfig(config="BYM_AI_CHAT_TOKEN")])
+@_matcher.handle(parameterless=[CheckConfig(config="BYM_AI_CHAT_MODEL")])
 async def _(
     bot: Bot,
     event: Event,
@@ -319,9 +289,7 @@ async def _(
         ).finish(reply_to=True)
     except Exception as e:
         logger.error("BYM AI 其他错误", "BYM_AI", session=session, e=e)
-        await MessageUtils.build_message("发生了一些异常，想要休息一下...").finish(
-            reply_to=True
-        )
+        await MessageUtils.build_failure_message().finish(reply_to=True)
 
 
 RESOURCE_FILES = [

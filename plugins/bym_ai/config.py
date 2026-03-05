@@ -1,5 +1,4 @@
 import os
-from typing import Any
 
 from nonebot.adapters import Bot, Event
 from nonebot_plugin_alconna import UniMsg
@@ -64,7 +63,9 @@ NO_RESULT = [
     "我！不！知！道！",
 ]
 
-NO_RESULT_IMAGE = os.listdir(IMAGE_PATH / "noresult")
+NO_RESULT_IMAGE = (
+    os.listdir(IMAGE_PATH / "noresult") if (IMAGE_PATH / "noresult").exists() else []
+) or ["noresult.png"]
 
 DEEP_SEEK_SPLIT = "<---think--->"
 
@@ -110,16 +111,6 @@ class Tool(BaseModel):
     """调用函数"""
 
 
-class Message(BaseModel):
-    role: str
-    """角色"""
-    content: str | None = None
-    """内容"""
-    refusal: Any | None = None
-    tool_calls: list[Tool] | None = None
-    """工具回调"""
-
-
 class MessageCache(BaseModel):
     user_id: str
     """用户id"""
@@ -130,43 +121,3 @@ class MessageCache(BaseModel):
 
     class Config:
         arbitrary_types_allowed = True
-
-
-class ChatMessage(BaseModel):
-    role: str
-    """角色"""
-    content: str | list | None = None
-    """消息内容"""
-    tool_call_id: str | None = None
-    """工具回调id"""
-    tool_calls: list[Tool] | None = None
-    """工具回调信息"""
-
-    class Config:
-        arbitrary_types_allowed = True
-
-
-class Choices(BaseModel):
-    index: int
-    message: Message | None
-    logprobs: Any | None = None
-    finish_reason: str | None
-
-
-class Usage(BaseModel):
-    prompt_tokens: int
-    completion_tokens: int
-    total_tokens: int
-    prompt_tokens_details: dict | None = None
-    completion_tokens_details: dict | None = None
-
-
-class OpenAiResult(BaseModel):
-    id: str | None = None
-    object: str
-    created: int
-    model: str
-    choices: list[Choices] | None
-    usage: Usage
-    service_tier: str | None = None
-    system_fingerprint: str | None = None

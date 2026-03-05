@@ -10,7 +10,4 @@ class GiftRepeatSendException(Exception):
     pass
 
 
-class CallApiParamException(Exception):
-    """调用api参数错误"""
-
-    pass
+__all__ = ["GiftRepeatSendException", "NotResultException"]

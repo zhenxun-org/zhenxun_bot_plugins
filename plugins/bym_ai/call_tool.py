@@ -81,7 +81,8 @@ class AiCallTool:
                 if not tool_result:
                     tool_result = "success"
                 logger.info(
-                    f"调用Ai智能工具:{func.name}\n 参数:{func_params}\n 结果:{tool_result}",
+                    f"调用Ai智能工具:{func.name}\n 参数:{func_params}\n"
+                    f" 结果:{tool_result}",
                     "BYM_AI",
                 )
             except Exception as e:

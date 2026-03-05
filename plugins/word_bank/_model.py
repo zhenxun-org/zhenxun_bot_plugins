@@ -1,7 +1,8 @@
 from datetime import datetime
 import random
 import re
-from typing import Any
+import time
+from typing import Any, ClassVar
 from typing_extensions import Self
 import uuid
 
@@ -23,6 +24,9 @@ path = DATA_PATH / "word_bank"
 
 
 class WordBank(Model):
+    _IMAGE_WORD_EXISTS_TTL_SECONDS: ClassVar[float] = 60.0
+    _image_word_exists_cache: ClassVar[dict[str, tuple[float, bool]]] = {}
+
     id = fields.IntField(pk=True, generated=True, auto_increment=True)
     """自增id"""
     user_id = fields.CharField(255)
@@ -92,6 +96,53 @@ class WordBank(Model):
         return await query.exists()
 
     @classmethod
+    def _image_cache_key(cls, group_id: str | None) -> str:
+        return group_id or "__private__"
+
+    @classmethod
+    def _get_cached_image_word_exists(cls, key: str) -> bool | None:
+        cache = cls._image_word_exists_cache.get(key)
+        if not cache:
+            return None
+        expire_at, value = cache
+        if expire_at <= time.monotonic():
+            cls._image_word_exists_cache.pop(key, None)
+            return None
+        return value
+
+    @classmethod
+    def _set_cached_image_word_exists(cls, key: str, value: bool) -> None:
+        cls._image_word_exists_cache[key] = (
+            time.monotonic() + cls._IMAGE_WORD_EXISTS_TTL_SECONDS,
+            value,
+        )
+
+    @classmethod
+    def invalidate_image_word_exists_cache(cls) -> None:
+        cls._image_word_exists_cache.clear()
+
+    @classmethod
+    async def has_image_word_enabled(cls, group_id: str | None) -> bool:
+        key = cls._image_cache_key(group_id)
+        if (cached := cls._get_cached_image_word_exists(key)) is not None:
+            return cached
+
+        query = cls.filter(word_type=WordType.IMAGE.value, status=True)
+        if group_id:
+            query = query.filter(
+                Q(group_id=group_id) | Q(word_scope=ScopeType.GLOBAL.value)
+            )
+        else:
+            query = query.filter(
+                Q(word_scope=ScopeType.PRIVATE.value)
+                | Q(word_scope=ScopeType.GLOBAL.value)
+            )
+
+        exists = await query.exists()
+        cls._set_cached_image_word_exists(key, exists)
+        return exists
+
+    @classmethod
     async def add_problem_answer(
         cls,
         user_id: str,
@@ -151,6 +202,8 @@ class WordBank(Model):
                 platform=platform,
                 author=author,
             )
+            if word_type == WordType.IMAGE:
+                cls.invalidate_image_word_exists_cache()
 
     @classmethod
     async def _answer2format(
@@ -459,6 +512,7 @@ class WordBank(Model):
                     await WordBank.filter(
                         word_scope=word_scope.value, problem=problem
                     ).delete()
+            cls.invalidate_image_word_exists_cache()
             return True
         return False
 
@@ -493,6 +547,7 @@ class WordBank(Model):
             tmp = query[index].problem
             query[index].problem = replace_str
             await query[index].save(update_fields=["problem"])
+            cls.invalidate_image_word_exists_cache()
             return tmp
         else:
             if group_id:
@@ -503,6 +558,7 @@ class WordBank(Model):
                 await cls.filter(word_scope=word_scope.value, problem=problem).update(
                     problem=replace_str
                 )
+            cls.invalidate_image_word_exists_cache()
             return problem
 
     @classmethod

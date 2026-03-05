@@ -1,9 +1,13 @@
+import asyncio
 import base64
 from collections import OrderedDict, deque
+from io import BytesIO
 from pathlib import Path
 import random
+import time
 from typing import Any
 
+import imagehash
 from nonebot import on_message
 from nonebot.adapters import Bot, Event
 from nonebot.adapters.onebot.v11 import Message as V11Message
@@ -13,21 +17,28 @@ from nonebot.utils import run_sync
 from nonebot_plugin_alconna import Image as alcImg
 from nonebot_plugin_alconna import UniMsg
 from nonebot_plugin_uninfo import Uninfo
+from PIL import Image
 
 from zhenxun.configs.config import BotConfig, Config
-from zhenxun.configs.path_config import DATA_PATH, TEMP_PATH
+from zhenxun.configs.path_config import DATA_PATH
 from zhenxun.configs.utils import PluginExtraData, RegisterConfig, Task
 from zhenxun.services.log import logger
 from zhenxun.utils.common_utils import CommonUtils
 from zhenxun.utils.enum import PluginType
 from zhenxun.utils.http_utils import AsyncHttpx
-from zhenxun.utils.image_utils import get_img_hash
 from zhenxun.utils.message import MessageUtils
 
 FUDU_IMAGE_PATH = DATA_PATH / "fudu"
 FUDU_IMAGE_PATH.mkdir(parents=True, exist_ok=True)
-FUDU_CACHE_PATH = TEMP_PATH / "fudu"
-FUDU_CACHE_PATH.mkdir(parents=True, exist_ok=True)
+
+_BLOCK_CACHE_TTL_SECONDS = 2.0
+_IMAGE_HASH_CACHE_TTL_SECONDS = 60.0
+_IMAGE_HASH_CACHE_MAX_ITEMS = 1024
+_IMAGE_DOWNLOAD_TIMEOUT_SECONDS = 8.0
+_task_block_cache: dict[str, tuple[float, bool]] = {}
+_image_hash_cache: OrderedDict[str, tuple[float, str]] = OrderedDict()
+_image_hash_inflight: dict[str, asyncio.Task[str]] = {}
+_image_hash_lock = asyncio.Lock()
 
 # 支持的图片扩展名
 IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".gif", ".webp"}
@@ -41,7 +52,7 @@ __plugin_meta__ = PluginMetadata(
     """.strip(),
     extra=PluginExtraData(
         author="HibiKier & webjoin111",
-        version="0.4",
+        version="0.5",
         menu_type="其他",
         plugin_type=PluginType.DEPENDANT,
         tasks=[Task(module="fudu", name="复读")],
@@ -160,6 +171,87 @@ _manager = Fudu()
 base_config = Config.get("fudu")
 
 
+def _get_cached_task_block_state(cache_key: str) -> bool | None:
+    cached = _task_block_cache.get(cache_key)
+    if not cached:
+        return None
+    expire_at, value = cached
+    if expire_at <= time.monotonic():
+        _task_block_cache.pop(cache_key, None)
+        return None
+    return value
+
+
+def _set_cached_task_block_state(cache_key: str, value: bool) -> None:
+    _task_block_cache[cache_key] = (time.monotonic() + _BLOCK_CACHE_TTL_SECONDS, value)
+
+
+def _cleanup_image_hash_cache() -> None:
+    now = time.monotonic()
+    while _image_hash_cache:
+        expire_at, _ = next(iter(_image_hash_cache.values()))
+        if expire_at > now:
+            break
+        _image_hash_cache.popitem(last=False)
+    while len(_image_hash_cache) > _IMAGE_HASH_CACHE_MAX_ITEMS:
+        _image_hash_cache.popitem(last=False)
+
+
+def _get_cached_image_hash(url: str) -> str | None:
+    cached = _image_hash_cache.get(url)
+    if not cached:
+        return None
+    expire_at, value = cached
+    if expire_at <= time.monotonic():
+        _image_hash_cache.pop(url, None)
+        return None
+    _image_hash_cache.move_to_end(url)
+    return value
+
+
+def _set_cached_image_hash(url: str, img_hash: str) -> None:
+    _image_hash_cache[url] = (
+        time.monotonic() + _IMAGE_HASH_CACHE_TTL_SECONDS,
+        img_hash,
+    )
+    _image_hash_cache.move_to_end(url)
+    _cleanup_image_hash_cache()
+
+
+def _calc_image_hash(content: bytes) -> str:
+    with Image.open(BytesIO(content)) as image:
+        return str(imagehash.average_hash(image))
+
+
+async def _get_image_hash_by_url(url: str) -> str:
+    async with _image_hash_lock:
+        if cached := _get_cached_image_hash(url):
+            return cached
+        task = _image_hash_inflight.get(url)
+        if task is None:
+
+            async def _worker() -> str:
+                content = await AsyncHttpx.get_content(
+                    url,
+                    timeout=_IMAGE_DOWNLOAD_TIMEOUT_SECONDS,
+                )
+                return await run_sync(_calc_image_hash)(content)
+
+            task = asyncio.create_task(_worker())
+            _image_hash_inflight[url] = task
+
+            def _cleanup_inflight(_: asyncio.Task[str], key: str = url) -> None:
+                _image_hash_inflight.pop(key, None)
+
+            task.add_done_callback(_cleanup_inflight)
+
+    img_hash = await task
+    if img_hash:
+        async with _image_hash_lock:
+            _set_cached_image_hash(url, img_hash)
+    return img_hash
+
+
 def get_break_images() -> list[Path]:
     """获取打断复读用的图片列表"""
     if not FUDU_IMAGE_PATH.exists():
@@ -206,7 +298,14 @@ async def rule(message: UniMsg, session: Uninfo, event: Event) -> bool:
     image_list = [m.url for m in message if isinstance(m, alcImg) and m.url]
     if not plain_text and not image_list:
         return False
-    return not await CommonUtils.task_is_block(session, "fudu")
+    group_id = session.group.id
+    cache_key = f"{session.self_id}:{group_id}:fudu"
+    cached_block = _get_cached_task_block_state(cache_key)
+    if cached_block is not None:
+        return not cached_block
+    blocked = await CommonUtils.task_is_block(session, "fudu")
+    _set_cached_task_block_state(cache_key, blocked)
+    return not blocked
 
 
 _matcher = on_message(rule=rule, priority=999)
@@ -229,22 +328,16 @@ async def _(bot: Bot, message: UniMsg, event: Event, session: Uninfo):
     # 计算图片哈希
     img_hash = ""
     if image_list:
-        temp_image_path = FUDU_CACHE_PATH / f"fudu_cache_{group_id}.jpg"
         try:
-            if await AsyncHttpx.download_file(image_list[0], temp_image_path):
-                img_hash = await run_sync(get_img_hash)(temp_image_path)
+            img_hash = await _get_image_hash_by_url(image_list[0])
         except Exception as e:
             logger.warning("下载复读图片以获取Hash时出错", "复读", e=e)
 
     add_msg = f"{plain_text}|-|{img_hash}"
 
-    # 更新复读状态
-    if _manager.size(group_id) == 0 or _manager.check(group_id, add_msg):
-        _manager.append(group_id, add_msg, raw_message, reply_info)
-    else:
+    if _manager.size(group_id) != 0 and not _manager.check(group_id, add_msg):
         _manager.clear(group_id)
-        _manager.append(group_id, add_msg, raw_message, reply_info)
-
+    _manager.append(group_id, add_msg, raw_message, reply_info)
     # 检查是否触发复读
     trigger_count = base_config.get("FUDU_TRIGGER_COUNT")
     if _manager.size(group_id) < trigger_count:
