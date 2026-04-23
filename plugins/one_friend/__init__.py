@@ -4,7 +4,7 @@ import random
 from nonebot.adapters import Bot
 from nonebot.plugin import PluginMetadata
 from nonebot_plugin_alconna import Alconna, Args, At, Match, on_alconna
-from nonebot_plugin_session import EventSession
+from nonebot_plugin_uninfo import Uninfo
 
 from zhenxun.configs.utils import Command, PluginExtraData
 from zhenxun.services.log import logger
@@ -12,6 +12,7 @@ from zhenxun.utils.http_utils import AsyncHttpx
 from zhenxun.utils.image_utils import BuildImage
 from zhenxun.utils.message import MessageUtils
 from zhenxun.utils.platform import PlatformUtils
+from zhenxun.utils.utils import get_entity_ids
 
 __plugin_meta__ = PluginMetadata(
     name="我有一个朋友",
@@ -27,8 +28,16 @@ __plugin_meta__ = PluginMetadata(
     ).to_dict(),
 )
 
+
+async def rule(session: Uninfo) -> bool:
+    return session.group is not None
+
+
 _matcher = on_alconna(
-    Alconna("one-friend", Args["text", str]["at?", At]), priority=5, block=True
+    Alconna("one-friend", Args["text", str]["at?", At]),
+    priority=5,
+    block=True,
+    rule=rule,
 )
 
 _matcher.shortcut(
@@ -40,22 +49,17 @@ _matcher.shortcut(
 
 
 @_matcher.handle()
-async def _(bot: Bot, text: str, at: Match[At], session: EventSession):
-    gid = session.id3 or session.id2
-    if not gid:
+async def _(bot: Bot, text: str, at: Match[At], session: Uninfo):
+    entity = get_entity_ids(session)
+    if not entity.group_id:
         await MessageUtils.build_message("群组id为空...").finish()
-    if not session.id1:
-        await MessageUtils.build_message("用户id为空...").finish()
-    at_user = None
-    if at.available:
-        at_user = at.result.target
+    at_user = at.result.target if at.available else None
     user = None
     if at_user:
-        user = await PlatformUtils.get_user(bot, at_user, gid)
-    else:
-        if member_list := await PlatformUtils.get_group_member_list(bot, gid):
-            text = text.replace("他", "我").replace("她", "我").replace("它", "我")
-            user = random.choice(member_list)
+        user = await PlatformUtils.get_user(bot, at_user, entity.group_id)
+    elif member_list := await PlatformUtils.get_group_member_list(bot, entity.group_id):
+        text = text.replace("他", "我").replace("她", "我").replace("它", "我")
+        user = random.choice(member_list)
     if user:
         ava_data = None
         if PlatformUtils.get_platform(bot) == "qq":

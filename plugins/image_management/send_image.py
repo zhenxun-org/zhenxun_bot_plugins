@@ -57,42 +57,53 @@ _path = IMAGE_PATH / "image_management"
 @send_img.handle()
 async def _(bot: Bot, message: UniMsg, session: EventSession):
     msg = message.extract_plain_text().split()
+    if not msg:
+        return
     gallery = msg[0]
     if gallery not in base_config.get("IMAGE_DIR_LIST"):
         return
-    img_id = None
+    img_id: int | None = None
     if len(msg) > 1:
-        img_id = msg[1]
+        if not msg[1].isdigit():
+            return
+        img_id = int(msg[1])
     path = _path / cn2py(gallery)
     if gallery in base_config.get("IMAGE_DIR_LIST"):
         if not path.exists() and (path.parent.parent / cn2py(gallery)).exists():
             path = IMAGE_PATH / cn2py(gallery)
         else:
             path.mkdir(parents=True, exist_ok=True)
-    length = len(os.listdir(path))
-    if length == 0:
+    image_ids = sorted(
+        int(file.split(".")[0])
+        for file in os.listdir(path)
+        if file.endswith(".jpg") and file.split(".")[0].isdigit()
+    )
+    if not image_ids:
         logger.warning(f"图库 {cn2py(gallery)} 为空，调用取消！")
         await MessageUtils.build_message("该图库中没有图片噢").finish()
-    index = img_id if img_id else str(random.randint(0, length - 1))
-    if int(index) > length - 1 or int(index) < 0:
-        await MessageUtils.build_message(f"超过当前上下限！({length - 1})").finish()
+    if img_id is not None and img_id not in image_ids:
+        await MessageUtils.build_message(
+            f"该 id 不存在，可用范围：{image_ids[0]} ~ {image_ids[-1]}"
+        ).finish()
+    index = img_id if img_id is not None else random.choice(image_ids)
     result_image = path / f"{index}.jpg"
-    if result_image.exists():
-        message_list = []
-        if base_config.get("SHOW_ID"):
-            message_list.append(f"id：{index}")
-        message_list.append(result_image)
-        receipt = await MessageUtils.build_message(message_list).send()
-        message_id = receipt.msg_ids[0]["message_id"]
-        logger.info(
-            f"发送{cn2py(gallery)}: {result_image}", "本地图库", session=session
-        )
-        withdraw = base_config.get("WITHDRAW_IMAGE_MESSAGE")
-        await WithdrawManager.withdraw_message(bot, message_id, withdraw, session)
-    else:
+    if not result_image.exists():
         logger.info(
             f"发送 {cn2py(gallery)} 失败: {result_image} 图片不存在",
             "本地图库",
             session=session,
         )
         await MessageUtils.build_message("不想给你看Ov|").send()
+        return
+
+    message_list = []
+    if base_config.get("SHOW_ID"):
+        message_list.append(f"id：{index}")
+    message_list.append(result_image)
+    receipt = await MessageUtils.build_message(message_list).send()
+    logger.info(f"发送{cn2py(gallery)}: {result_image}", "本地图库", session=session)
+    if receipt.msg_ids:
+        message_id = receipt.msg_ids[0].get("message_id")
+        if message_id:
+            withdraw = base_config.get("WITHDRAW_IMAGE_MESSAGE")
+            await WithdrawManager.withdraw_message(bot, message_id, withdraw, session)

@@ -16,19 +16,19 @@ from .._config import PixResult, base_config
 from .config import TagItem
 
 __plugin_meta__ = PluginMetadata(
-    name="TAG统计",
-    description="TAG统计",
+    name="TAG缁熻",
+    description="TAG缁熻",
     usage="""
-    指令：
-        pixtag ?[10] : 查看排名前10的tag，最大不能超过30
-        示例:
+    鎸囦护锛?
+        pixtag ?[10] : 鏌ョ湅鎺掑悕鍓?0鐨則ag锛屾渶澶т笉鑳借秴杩?0
+        绀轰緥:
             pixtag 20
     """.strip(),
     extra=PluginExtraData(
         author="HibiKier",
-        menu_type="PIX图库",
+        menu_type="PIX鍥惧簱",
         superuser_help="""
-        pix处理 ['a', 'f', 'i'] [id]
+        pix澶勭悊 ['a', 'f', 'i'] [id]
         """.strip(),
         version="0.1",
         commands=[Command(command="pixtag ?[10]")],
@@ -45,12 +45,14 @@ _add_matcher = on_alconna(
 
 @_add_matcher.handle(parameterless=[CheckConfig("pix", "pix_api")])
 async def _(session: Uninfo, arparma: Arparma, num: Query[int] = Query("num", 10)):
+    if num.result <= 0:
+        return await MessageUtils.build_message("查询数量必须大于 0...").finish()
     if num.result > 30:
-        return MessageUtils.build_message("查询最大不能超过30...").finish()
+        return await MessageUtils.build_message("查询最大不能超过 30...").finish()
     api = Config.get_config("pix", "pix_api")
     api = f"{api}/pix/tag_rank"
     json_data = {"num": num.result}
-    logger.debug(f"尝试调用pix api: {api}, 参数: {json_data}")
+    logger.debug(f"灏濊瘯璋冪敤pix api: {api}, 鍙傛暟: {json_data}")
     headers = None
     if token := base_config.get("token"):
         headers = {"Authorization": token}
@@ -60,22 +62,24 @@ async def _(session: Uninfo, arparma: Arparma, num: Query[int] = Query("num", 10
         )
         res.raise_for_status()
     except HTTPStatusError as e:
-        logger.error("pix图库API出错...", arparma.header_result, session=session, e=e)
+        logger.error(
+            "pix鍥惧簱API鍑洪敊...", arparma.header_result, session=session, e=e
+        )
         await MessageUtils.build_message(
-            f"pix图库API出错啦！ code: {e.response.status_code}"
+            f"pix鍥惧簱API鍑洪敊鍟︼紒 code: {e.response.status_code}"
         ).finish()
     result = PixResult(**res.json())
     if not result.suc:
         await MessageUtils.build_message(result.info).finish()
     data_list = [TagItem(**v) for v in result.data]
     if not data_list:
-        await MessageUtils.build_message("没有tag数据...").finish()
+        await MessageUtils.build_message("娌℃湁tag鏁版嵁...").finish()
     data_list.reverse()
     x_index = []
     data = []
     for v in data_list:
         x_index.append(v.tag)
         data.append(v.num)
-    barh = Barh(data=data, category_data=x_index, title="PIX tag统计")
+    barh = Barh(data=data, category_data=x_index, title="PIX tag缁熻")
     await MessageUtils.build_message(await ChartUtils.barh(barh)).send()
-    logger.info("查看PIX tag统计", arparma.header_result, session=session)
+    logger.info("鏌ョ湅PIX tag缁熻", arparma.header_result, session=session)

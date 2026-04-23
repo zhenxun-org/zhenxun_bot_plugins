@@ -86,8 +86,8 @@ class OpenCaseManager:
                 arst=Sum("red_st_count"),
                 ak=Sum("knife_count"),
                 akst=Sum("knife_st_count"),
-                am=Sum("make_money"),
-                asp=Sum("spend_money"),
+                am=Sum("spend_money"),
+                asp=Sum("make_money"),
             )
             .values(
                 "at",
@@ -106,7 +106,25 @@ class OpenCaseManager:
                 "asp",
             )
         )
-        data = data[0]
+        data = data[0] if data else {}
+        for key in (
+            "at",
+            "ato",
+            "ab",
+            "abst",
+            "ap",
+            "apst",
+            "apk",
+            "apkst",
+            "ar",
+            "arst",
+            "ak",
+            "akst",
+            "am",
+            "asp",
+        ):
+            if data.get(key) is None:
+                data[key] = 0
         data_list = [
             ["开箱总数", data["at"]],
             ["今日开箱", data["ato"]],
@@ -511,5 +529,4 @@ async def auto_update():
                 )
                 await asyncio.sleep(rand)
             except Exception as e:
-                logger.error(f"自动更新武器箱: {case_name}", e=e)
                 logger.error(f"自动更新武器箱: {case_name}", e=e)

@@ -154,6 +154,7 @@ async def _(
     user: Match[At],
     num: Query[int] = AlconnaQuery("num", 5),
     default_interval: int = GetConfig(config="DEFAULT_INTERVAL"),
+    default_timeout: int = GetConfig(config="DEFAULT_TIMEOUT"),
     user_name: str = UserName(),
 ):
     at_user = user.result.target if user.available else None
@@ -188,6 +189,7 @@ async def _(
         1 if at_user else num.result,
         user_name,
         session.user.id,
+        timeout=default_timeout,
         assigner=at_user,
         platform=platform,
     )
@@ -266,34 +268,42 @@ async def _(
         await MessageUtils.build_message("用户id为空").finish()
     if not group_id:
         await MessageUtils.build_message("群组id为空").finish()
-    if group_red_bag := RedBagManager.get_group_data(group_id):
-        if user_red_bag := group_red_bag.get_user_red_bag(user_id):
-            now = time.time()
-            if now - user_red_bag.start_time < default_interval:
-                await MessageUtils.build_message(
-                    "你的红包还没有过时, "
-                    f"在 {int(default_interval - now + user_red_bag.start_time)} "
-                    "秒后可以退回..."
-                ).finish(reply_to=True)
-            user_red_bag = group_red_bag.get_user_red_bag(user_id)
-            if user_red_bag and (
-                data := await group_red_bag.settlement(
-                    user_id, PlatformUtils.get_platform(session)
-                )
-            ):
-                if not data[0]:
-                    await MessageUtils.build_message(
-                        "金币红包的金币已经被抢完了..."
-                    ).finish(reply_to=True)
-                image_result = await user_red_bag.build_amount_rank(session, rank_num)
-                logger.info(f"退回了红包 {data[0]} 金币", "红包退回", session=session)
-                await MessageUtils.build_message(
-                    [
-                        f"已成功退还了 {data[0]} 金币\n",
-                        image_result,
-                    ]
-                ).finish(reply_to=True)
-    await MessageUtils.build_message("目前没有红包可以退回...").finish(reply_to=True)
+
+    group_red_bag = RedBagManager.get_group_data(group_id)
+    user_red_bag = group_red_bag.get_user_red_bag(user_id)
+    if not user_red_bag:
+        await MessageUtils.build_message("目前没有红包可以退回...").finish(
+            reply_to=True
+        )
+
+    now = time.time()
+    if now - user_red_bag.start_time < default_interval:
+        await MessageUtils.build_message(
+            "你的红包还没有过时 "
+            f"在{int(default_interval - now + user_red_bag.start_time)} "
+            "秒后可以退回..."
+        ).finish(reply_to=True)
+
+    return_gold, _ = await group_red_bag.settlement(
+        user_id, PlatformUtils.get_platform(session)
+    )
+    if return_gold is None:
+        await MessageUtils.build_message("目前没有红包可以退回...").finish(
+            reply_to=True
+        )
+    if return_gold == 0:
+        await MessageUtils.build_message("金币红包的金币已经被抢完了...").finish(
+            reply_to=True
+        )
+
+    image_result = await user_red_bag.build_amount_rank(session, rank_num)
+    logger.info(f"退回了红包 {return_gold} 金币", "红包退回", session=session)
+    await MessageUtils.build_message(
+        [
+            f"已成功退还了 {return_gold} 金币\n",
+            image_result,
+        ]
+    ).finish(reply_to=True)
 
 
 @_festive_matcher.handle()

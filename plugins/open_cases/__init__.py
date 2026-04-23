@@ -166,7 +166,7 @@ async def _(
 ):
     if num > 30:
         await MessageUtils.build_message("开箱次数不要超过30啊笨蛋！").finish()
-    if num < 0:
+    if num <= 0:
         await MessageUtils.build_message("再负开箱就扣你明天开箱数了！").finish()
     case_name = name.result.replace("武器箱", "").strip() if name.available else None
     result = await OpenCaseManager.open_case(
@@ -283,7 +283,7 @@ async def _(session: Uninfo, arparma: Arparma, name: Match[str]):
         except Exception as e:
             logger.error(f"{arparma.header_result}: {case_name}", session=session, e=e)
             await MessageUtils.build_message(
-                f"成功{arparma.header_result}: {case_name} 发生错误: {type(e)}: {e}"
+                f"更新{arparma.header_result}: {case_name} 发生错误: {type(e)}: {e}"
             ).send()
 
 
@@ -324,4 +324,5 @@ async def _():
         "date",
         run_date=date.replace(microsecond=0),
         id="auto_update_csgo_cases",
+        replace_existing=True,
     )

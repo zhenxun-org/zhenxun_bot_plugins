@@ -1,15 +1,17 @@
+from nonebot import on_command
 from nonebot.adapters.onebot.v11 import Bot, MessageEvent
+from nonebot.adapters.onebot.v11.message import Message
+from nonebot.params import CommandArg
 from nonebot.plugin import PluginMetadata
 from nonebot.rule import to_me
-from nonebot import on_command
-from nonebot.params import CommandArg
-from nonebot.adapters.onebot.v11.message import Message
 from nonebot_plugin_uninfo import Uninfo
+
+from zhenxun.configs.path_config import DATA_PATH
 from zhenxun.configs.utils import BaseBlock, PluginCdBlock, PluginExtraData
 from zhenxun.services.log import logger
 from zhenxun.utils.message import MessageUtils
-from zhenxun.configs.path_config import DATA_PATH
-from .data_source import JmDownload, BlacklistManager
+
+from .data_source import BlacklistManager, JmDownload
 
 __plugin_meta__ = PluginMetadata(
     name="Jm下载器",
@@ -232,8 +234,7 @@ async def _(
                 ).send(reply_to=True)
 
         elif cmd == "list":
-            blacklist = BlacklistManager.get_blacklist()
-            if blacklist:
+            if blacklist := BlacklistManager.get_blacklist():
                 blacklist_str = "\n".join(blacklist)
                 await MessageUtils.build_message(
                     f"当前小本本列表：\n{blacklist_str}"

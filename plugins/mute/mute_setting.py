@@ -98,9 +98,17 @@ async def _(
         await MessageUtils.build_message(
             f"最大次数：{group_data.count} 次\n"
             f"规定时间：{group_data.time} 秒\n"
-            f"禁言时长：{group_data.duration:.2f} 分钟\n"
+            f"禁言时长：{group_data.duration} 分钟\n"
             f"【在规定时间内发送相同消息超过最大次数则禁言\n当禁言时长为0时关闭此功能】"
         ).finish(reply_to=True)
+    if _time is not None and _time <= 0:
+        await MessageUtils.build_message("检测时长必须大于 0 秒").finish(reply_to=True)
+    if _count is not None and _count <= 0:
+        await MessageUtils.build_message("检测次数必须大于 0 次").finish(reply_to=True)
+    if _duration is not None and _duration < 0:
+        await MessageUtils.build_message("禁言时长不能小于 0 分钟").finish(
+            reply_to=True
+        )
     if _time is not None:
         group_data.time = _time
     if _count is not None:

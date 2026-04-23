@@ -1,6 +1,5 @@
 from datetime import datetime
 
-import nonebot
 from nonebot.adapters import Bot
 from nonebot.permission import SUPERUSER
 from nonebot.plugin import PluginMetadata
@@ -76,9 +75,6 @@ async def _(session: EventSession, arparma: Arparma):
         logger.error("真寻日报生成超时", arparma.header_result, session=session)
 
 
-driver = nonebot.get_driver()
-
-
 async def check(bot: Bot, group_id: str) -> bool:
     return not await CommonUtils.task_is_block(bot, "mahiro_report", group_id)
 
@@ -89,13 +85,19 @@ async def check(bot: Bot, group_id: str) -> bool:
     minute=1,
 )
 async def _():
+    success = False
     for _ in range(3):
         try:
             await Report.get_report_image()
             logger.info("自动生成日报成功...")
+            success = True
             break
         except TimeoutError:
             logger.warning("自动生成日报失败...")
+        except Exception as e:
+            logger.error("自动生成日报异常", "mahiro_report", e=e)
+    if not success:
+        logger.warning("自动生成日报最终失败...")
 
 
 @scheduler.scheduled_job(
@@ -104,7 +106,12 @@ async def _():
     minute=1,
 )
 async def _():
-    file = await Report.get_report_image()
-    message = MessageUtils.build_message(file)
-    await broadcast_group(message, log_cmd="真寻日报", check_func=check)
-    logger.info("每日真寻日报发送...")
+    try:
+        file = await Report.get_report_image()
+        message = MessageUtils.build_message(file)
+        await broadcast_group(message, log_cmd="真寻日报", check_func=check)
+        logger.info("每日真寻日报发送...")
+    except TimeoutError:
+        logger.warning("每日真寻日报发送失败，生成超时...")
+    except Exception as e:
+        logger.error("每日真寻日报发送异常", "mahiro_report", e=e)

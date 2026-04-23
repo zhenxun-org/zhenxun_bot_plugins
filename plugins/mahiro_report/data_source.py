@@ -1,7 +1,7 @@
 import asyncio
-import xml.etree.ElementTree as ET
 from datetime import datetime
 from pathlib import Path
+import xml.etree.ElementTree as ET
 
 from zhdate import ZhDate
 
@@ -31,6 +31,7 @@ class Report:
         5: "六",
         6: "日",
     }
+    _lock = asyncio.Lock()
 
     @classmethod
     async def get_report_image(cls) -> Path:
@@ -39,38 +40,53 @@ class Report:
         file = REPORT_PATH / f"{now.date()}.png"
         if file.exists():
             return file
-        for f in REPORT_PATH.iterdir():
-            f.unlink()
-        zhdata = ZhDate.from_datetime(now)
-        hitokoto, bili, six, it, anime = await asyncio.gather(
-            *[
-                cls.get_hitokoto(),
-                cls.get_bili(),
-                cls.get_six(),
-                cls.get_it(),
-                cls.get_anime(),
-            ]
-        )
-        data = {
-            "data_festival": get_festivals_dates(),
-            "data_hitokoto": hitokoto,
-            "data_bili": bili,
-            "data_six": six,
-            "data_anime": anime,
-            "data_it": it,
-            "week": cls.week[now.weekday()],
-            "date": now.date(),
-            "zh_date": zhdata.chinese().split()[0][5:],
-            "full_show": Config.get_config("mahiro_report", "full_show"),
-        }
-        template_path = Path(__file__).parent / "mahiro_report" / "main.html"
-        component = ui.template(template_path, data=data)
-        image_bytes = await ui.render(
-            component, viewport={"width": 578, "height": 1885}, wait=2
-        )
-        with open(file, "wb") as f:
-            f.write(image_bytes)
-        return file
+
+        async with cls._lock:
+            # 双检，避免并发下重复生成
+            if file.exists():
+                return file
+
+            for old_file in REPORT_PATH.iterdir():
+                if old_file.is_file():
+                    old_file.unlink()
+
+            zhdata = ZhDate.from_datetime(now)
+            hitokoto, bili, six, it, anime = await asyncio.gather(
+                *[
+                    cls.get_hitokoto(),
+                    cls.get_bili(),
+                    cls.get_six(),
+                    cls.get_it(),
+                    cls.get_anime(),
+                ]
+            )
+            full_show = Config.get_config("mahiro_report", "FULL_SHOW")
+            if full_show is None:
+                # 兼容历史小写配置键
+                full_show = Config.get_config("mahiro_report", "full_show")
+
+            data = {
+                "data_festival": get_festivals_dates(),
+                "data_hitokoto": hitokoto,
+                "data_bili": bili,
+                "data_six": six,
+                "data_anime": anime,
+                "data_it": it,
+                "week": cls.week[now.weekday()],
+                "date": now.date(),
+                "zh_date": zhdata.chinese().split()[0][5:],
+                "full_show": bool(full_show),
+            }
+            template_path = Path(__file__).parent / "mahiro_report" / "main.html"
+            component = ui.template(template_path, data=data)
+            image_bytes = await ui.render(
+                component, viewport={"width": 578, "height": 1885}, wait=2
+            )
+            temp_file = REPORT_PATH / f".{now.date()}.png.tmp"
+            with open(temp_file, "wb") as f:
+                f.write(image_bytes)
+            temp_file.replace(file)
+            return file
 
     @classmethod
     async def get_hitokoto(cls) -> str:
@@ -146,11 +162,19 @@ class Report:
         try:
             res = await AsyncHttpx.get(cls.anime_url)
             data_list = []
-            week = datetime.now().weekday()
-            try:
-                anime = Anime(**res.json()[week])
-            except IndexError:
-                anime = Anime(**res.json()[-1])
+            payload = res.json()
+            target_weekday_id = datetime.now().weekday() + 1
+            anime_raw = next(
+                (
+                    item
+                    for item in payload
+                    if item.get("weekday", {}).get("id") == target_weekday_id
+                ),
+                payload[-1] if payload else None,
+            )
+            if not anime_raw:
+                return [("获取今日新番失败 QAQ", "")]
+            anime = Anime(**anime_raw)
             data_list.extend(
                 (data.name_cn or data.name, data.image) for data in anime.items
             )

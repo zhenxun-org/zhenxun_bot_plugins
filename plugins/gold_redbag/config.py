@@ -3,7 +3,7 @@ import random
 import time
 
 from nonebot_plugin_uninfo import Uninfo
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from zhenxun.models.group_member_info import GroupInfoUser
 from zhenxun.models.user_console import UserConsole
@@ -63,7 +63,7 @@ class RedBag(BaseModel):
     """指定人id"""
     start_time: float
     """红包发起时间"""
-    open_user: dict[str, int] = {}
+    open_user: dict[str, int] = Field(default_factory=dict)
     """开启用户"""
     red_bag_list: list[int]
     """红包金额列表"""

@@ -10,11 +10,11 @@ lunar_festivals = {
     "中秋节": (8, 15),  # 中秋节 (农历八月十五)
 }
 
-# 固定日期的节日
-fixed_festivals_dates = {
-    "劳动节": date(2026, 5, 1),  # 劳动节
-    "国庆节": date(2026, 10, 1),  # 国庆节
-    "元旦": date(2026, 1, 1),  # 元旦
+# 固定日期的节日（月、日）
+fixed_festivals = {
+    "劳动节": (5, 1),  # 劳动节
+    "国庆节": (10, 1),  # 国庆节
+    "元旦": (1, 1),  # 元旦
 }
 
 
@@ -68,9 +68,17 @@ def get_lunar_festivals_dates(today: date):
     }
 
 
+def get_fixed_festivals_dates(today: date):
+    year = today.year
+    return {
+        name: date(year, month, day) for name, (month, day) in fixed_festivals.items()
+    }
+
+
 def get_festivals_dates() -> list[tuple[int, str]]:
     today = date.today()
     lunar_festivals_dates = get_lunar_festivals_dates(today)
+    fixed_festivals_dates = get_fixed_festivals_dates(today)
     # 添加清明节到节日字典中
     lunar_festivals_dates["清明节"] = find_tomb_sweeping_day(today.year)
 

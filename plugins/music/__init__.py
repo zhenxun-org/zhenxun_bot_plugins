@@ -1,9 +1,11 @@
 from pathlib import Path
+
 from nonebot.adapters.onebot.v11 import MessageSegment
 from nonebot.plugin import PluginMetadata
 from nonebot_plugin_alconna import Alconna, Args, Arparma, Match, on_alconna
 from nonebot_plugin_htmlrender import template_to_pic
 from nonebot_plugin_uninfo import Uninfo
+
 from zhenxun.configs.config import BotConfig, Config
 from zhenxun.configs.utils import (
     AICallableParam,
@@ -31,12 +33,29 @@ async def handle_first_receive(name: Match[str]):
 
 @_matcher.got_path("name", prompt="歌名是？")
 async def call_music(session: Uninfo, arparma: Arparma, name: str):
-    meta_data = await MusicHelper163.meta_data(name)
+    name = name.strip()
+    if not name:
+        await MessageUtils.build_message("歌名不能为空哦~").finish(reply_to=True)
+    try:
+        meta_data = await MusicHelper163.meta_data(name)
+    except Exception as e:
+        logger.error("点歌查询失败", arparma.header_result, session=session, e=e)
+        await MessageUtils.build_message("点歌查询失败，请稍后再试").finish(
+            reply_to=True
+        )
     if not meta_data:
         await MessageUtils.build_message("没有找到这首歌！").finish(reply_to=True)
 
-    if Config.get_config("music", "type") == "zhenxun":
-        await build_zhenxun(meta_data)
+    music_type = str(Config.get_config("music", "type") or "zhenxun").lower()
+    if music_type not in {"zhenxun", "normal"}:
+        music_type = "zhenxun"
+
+    if music_type == "zhenxun":
+        try:
+            await build_zhenxun(meta_data)
+        except Exception as e:
+            logger.warning(f"点歌卡片渲染失败，回退普通模式: {e}", "点歌")
+            await build_normal(meta_data)
     else:
         await build_normal(meta_data)
     logger.info(f"点歌 :{name}", arparma.header_result, session=session)
@@ -65,6 +84,9 @@ async def build_zhenxun(meta_data: MusicMetaData):
 
 
 async def build_normal(meta_data: MusicMetaData):
+    if not meta_data.id.isdigit():
+        await MessageUtils.build_message(meta_data.url).send()
+        return
     await _matcher.send(MessageSegment.music(meta_data.type_, int(meta_data.id)))
 
 

@@ -6,7 +6,6 @@ from nonebot_plugin_uninfo import Uninfo
 
 from zhenxun.configs.config import BotConfig
 from zhenxun.configs.utils import PluginExtraData
-from zhenxun.models.ban_console import BanConsole
 from zhenxun.services.log import logger
 from zhenxun.utils.enum import PluginType
 from zhenxun.utils.image_utils import get_download_image_hash
@@ -33,11 +32,7 @@ async def rule(session: Uninfo) -> bool:
     entity_ids = get_entity_ids(session)
     if not session.group:
         return False
-    if mute_manager.get_group_data(entity_ids.group_id or "0").duration == 0:
-        return False
-    if await BanConsole.is_ban_cached(entity_ids.user_id, entity_ids.group_id):
-        return False
-    return True
+    return mute_manager.get_group_data(entity_ids.group_id or "0").duration != 0
 
 
 _matcher = on_message(rule=rule, priority=1, block=False)
@@ -48,12 +43,14 @@ _flmt = FreqLimiter(30)
 @_matcher.handle()
 async def _(bot: Bot, session: Uninfo, message: UniMsg):
     entity_ids = get_entity_ids(session)
-    plain_text = message.extract_plain_text()
+    plain_text = message.extract_plain_text().strip()
     image_list = [m.url for m in message if isinstance(m, Image) and m.url]
     img_hash = ""
     for url in image_list:
         img_hash += await get_download_image_hash(url, "_mute_")
     _message = plain_text + img_hash
+    if not _message:
+        return
     if duration := mute_manager.add_message(
         entity_ids.user_id, entity_ids.group_id or "0", _message
     ):

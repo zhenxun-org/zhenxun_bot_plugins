@@ -1,21 +1,21 @@
 import asyncio
 from dataclasses import dataclass
 from pathlib import Path
-from typing import ClassVar
-import yaml
 import time
+from typing import ClassVar
+
 import jmcomic
 from jmcomic import JmAlbumDetail
 from nonebot.adapters.onebot.v11 import Bot
 from pikepdf import Encryption, Pdf
 import pyminizip
+import yaml
 
 from zhenxun.configs.path_config import DATA_PATH, TEMP_PATH
 from zhenxun.services.log import logger
-from zhenxun.utils.platform import PlatformUtils
-from zhenxun.utils.message import MessageUtils
 from zhenxun.utils.http_utils import AsyncHttpx
-
+from zhenxun.utils.message import MessageUtils
+from zhenxun.utils.platform import PlatformUtils
 
 IMAGE_OUTPUT_PATH = TEMP_PATH / "jmcomic"
 IMAGE_OUTPUT_PATH.mkdir(parents=True, exist_ok=True)
@@ -118,21 +118,14 @@ class BlacklistManager:
     def _load_config(cls):
         # 加载配置文件
         if cls._config is None:
-            if cls._config_path.exists():
-                with open(cls._config_path, "r", encoding="utf-8") as f:
-                    cls._config = yaml.safe_load(f) or {
-                        "super_users": [],
-                        "blacklist": [],
-                    }
-            else:
+            if not cls._config_path.exists():
                 # 初始化配置文件并同步NoneBot超级用户
                 cls._sync_nonebot_superusers()
-                # 重新加载配置
-                with open(cls._config_path, "r", encoding="utf-8") as f:
-                    cls._config = yaml.safe_load(f) or {
-                        "super_users": [],
-                        "blacklist": [],
-                    }
+            with open(cls._config_path, encoding="utf-8") as f:
+                cls._config = yaml.safe_load(f) or {
+                    "super_users": [],
+                    "blacklist": [],
+                }
         return cls._config
 
     @classmethod
@@ -142,11 +135,10 @@ class BlacklistManager:
             from nonebot import get_driver
 
             driver = get_driver()
-            nonebot_superusers = getattr(driver.config, "superusers", set())
-            if nonebot_superusers:
+            if nonebot_superusers := getattr(driver.config, "superusers", set()):
                 # 加载现有配置
                 if cls._config_path.exists():
-                    with open(cls._config_path, "r", encoding="utf-8") as f:
+                    with open(cls._config_path, encoding="utf-8") as f:
                         existing_config = yaml.safe_load(f) or {
                             "super_users": [],
                             "blacklist": [],
@@ -199,26 +191,26 @@ class BlacklistManager:
 
             driver = get_driver()
             nonebot_superusers = getattr(driver.config, "superusers", set())
-            if str(user_id) in [str(uid) for uid in nonebot_superusers]:
+            if user_id in [str(uid) for uid in nonebot_superusers]:
                 return True
         except Exception as e:
             logger.error(f"检查NoneBot超级用户失败: {e}", "jmcomic")
         # 检查用户是否在插件配置文件中
-        return str(user_id) in [str(uid) for uid in config.get("super_users", [])]
+        return user_id in [str(uid) for uid in config.get("super_users", [])]
 
     @classmethod
     def is_blacklisted(cls, album_id: str) -> bool:
         # 检查album_id是否在黑名单中
         config = cls._load_config()
-        return str(album_id) in [str(aid) for aid in config.get("blacklist", [])]
+        return album_id in [str(aid) for aid in config.get("blacklist", [])]
 
     @classmethod
     def add_to_blacklist(cls, album_id: str):
         # 添加到黑名单
         config = cls._load_config()
         blacklist = config.get("blacklist", [])
-        if str(album_id) not in [str(aid) for aid in blacklist]:
-            blacklist.append(str(album_id))
+        if album_id not in [str(aid) for aid in blacklist]:
+            blacklist.append(album_id)
             config["blacklist"] = blacklist
             cls._save_config()
             # 添加后清除缓存，确保下次访问获取最新数据
@@ -229,8 +221,8 @@ class BlacklistManager:
         # 从黑名单中移除
         config = cls._load_config()
         blacklist = config.get("blacklist", [])
-        if str(album_id) in [str(aid) for aid in blacklist]:
-            blacklist = [aid for aid in blacklist if str(aid) != str(album_id)]
+        if album_id in [str(aid) for aid in blacklist]:
+            blacklist = [aid for aid in blacklist if str(aid) != album_id]
             config["blacklist"] = blacklist
             cls._save_config()
             # 移除后清除缓存，确保下次访问获取最新数据
@@ -382,7 +374,7 @@ class JmDownload:
             return album_detail is not None
         except Exception as e:
             # 捕获jmcomic库抛出的异常（通常是404或请求失败）
-            logger.warning(f"检查本子 {album_id} 存在性失败: {str(e)}", "jmcomic")
+            logger.warning(f"检查本子 {album_id} 存在性失败: {e!s}", "jmcomic")
 
             # 尝试使用 requests 直接请求网页
             try:
@@ -393,17 +385,14 @@ class JmDownload:
                         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
                     },
                 )
-                if (
+                return (
                     r.status_code == 200
                     and "404" not in r.text
                     and "不存在" not in r.text
-                ):
-                    return True
-                else:
-                    return False
+                )
             except Exception as req_e:
                 logger.warning(
-                    f"使用AsyncHttpx检查本子 {album_id} 存在性也失败: {str(req_e)}",
+                    f"使用AsyncHttpx检查本子 {album_id} 存在性也失败: {req_e!s}",
                     "jmcomic",
                 )
                 return False

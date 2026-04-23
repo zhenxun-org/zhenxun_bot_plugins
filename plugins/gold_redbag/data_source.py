@@ -48,7 +48,7 @@ class RedBagManager:
         if target := PlatformUtils.get_target(group_id=group_id):
             rank_num = Config.get_config("gold_redbag", "RANK_NUM") or 10
             group_red_bag = cls.get_group_data(group_id)
-            red_bag = group_red_bag.get_festive_red_bag()
+            red_bag = group_red_bag.festive_red_bag_expire()
             if not red_bag:
                 return
             rank_image = await red_bag.build_amount_rank(session, rank_num)
@@ -133,7 +133,7 @@ class RedBagManager:
         if num <= 0:
             return "数量不能小于0哦！"
         if amount < num:
-            return "数量不能小于金额！小气鬼！"
+            return "金额不能小于数量！小气鬼！"
         return "没有金币的话请不要发红包..." if user.gold < amount else None
 
     @classmethod
@@ -155,7 +155,7 @@ class RedBagManager:
         """
         background_list = os.listdir(f"{IMAGE_PATH}/prts/redbag_2")
         if not background_list:
-            raise ValueError("prts/redbag_1 背景图列表为空...")
+            raise ValueError("prts/redbag_2 背景图列表为空...")
         random_redbag = random.choice(background_list)
         redbag = BuildImage(
             0,

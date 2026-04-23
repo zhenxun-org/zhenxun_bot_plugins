@@ -14,7 +14,7 @@ Config.add_plugin_config(
     "IMAGE_DIR_LIST",
     ["美图", "萝莉", "壁纸"],
     help="公开图库列表，可自定义添加 [如果含有send_setu插件，请不要添加色图库]",
-    default_value=[],
+    default_value=["美图", "萝莉", "壁纸"],
     type=list[str],
 )
 
@@ -22,7 +22,8 @@ Config.add_plugin_config(
     "image_management",
     "WITHDRAW_IMAGE_MESSAGE",
     (0, 1),
-    help="自动撤回，参1：延迟撤回发送图库图片的时间(秒)，0 为关闭 | 参2：监控聊天类型，0(私聊) 1(群聊) 2(群聊+私聊)",
+    help="自动撤回，参1：延迟撤回发送图库图片的时间(秒)，0 为关闭 | 参2："
+    "监控聊天类型，0(私聊) 1(群聊) 2(群聊+私聊)",
     default_value=(0, 1),
     type=tuple[int, int],
 )

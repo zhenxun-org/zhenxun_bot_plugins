@@ -10,8 +10,6 @@ from nonebot_plugin_uninfo import Uninfo
 from zhenxun.configs.config import BotConfig, Config
 from zhenxun.configs.path_config import DATA_PATH
 from zhenxun.configs.utils import PluginExtraData, RegisterConfig
-from zhenxun.models.friend_user import FriendUser
-from zhenxun.models.group_member_info import GroupInfoUser
 from zhenxun.services.log import logger
 from zhenxun.utils.depends import UserName
 from zhenxun.utils.message import MessageUtils
@@ -71,16 +69,7 @@ async def _(message: UniMsg, session: Uninfo, uname: str = UserName()):
         "在",
     ]:
         await hello().finish(reply_to=True)
-    if not session.user.id:
-        await MessageUtils.build_message("用户id不存在...").finish(reply_to=True)
-    group = session.group
-    if group:
-        nickname = await GroupInfoUser.get_user_nickname(session.user.id, group.id)
-    else:
-        nickname = await FriendUser.get_user_nickname(session.user.id)
-    if not nickname:
-        nickname = uname
-    result = await get_chat_result(text, session.user.id, nickname)
+    result = await get_chat_result(text, session.user.id, uname)
     logger.info(f"问题：{text} ---- 回答：{result}", "ai", session=session)
     if result:
         result = str(result)

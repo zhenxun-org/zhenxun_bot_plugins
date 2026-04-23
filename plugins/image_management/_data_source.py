@@ -1,6 +1,5 @@
-import os
-import random
 from pathlib import Path
+import random
 
 import aiofiles
 
@@ -15,6 +14,19 @@ BASE_PATH = IMAGE_PATH / "image_management"
 
 
 class ImageManagementManage:
+    @staticmethod
+    def _get_sorted_image_ids(path: Path) -> list[int]:
+        """获取目录下按升序排列的 jpg 数字文件名 id 列表。"""
+        if not path.exists():
+            return []
+        image_ids = [
+            int(file.stem)
+            for file in path.iterdir()
+            if file.is_file() and file.suffix.lower() == ".jpg" and file.stem.isdigit()
+        ]
+        image_ids.sort()
+        return image_ids
+
     @classmethod
     async def random_image(cls, name: str, file_id: int | None = None) -> Path | None:
         """随机图片
@@ -26,15 +38,14 @@ class ImageManagementManage:
         返回:
             Path | None: 图片路径
         """
-        path = BASE_PATH / name
-        file_name = f"{file_id}.jpg"
-        if file_id is None:
-            if file_list := os.listdir(path):
-                file_name = random.choice(file_list)
-        _file = path / file_name
-        if not _file.exists():
+        path = BASE_PATH / cn2py(name)
+        image_ids = cls._get_sorted_image_ids(path)
+        if not image_ids:
             return None
-        return _file
+        target_id = file_id if file_id is not None else random.choice(image_ids)
+        if target_id not in image_ids:
+            return None
+        return path / f"{target_id}.jpg"
 
     @classmethod
     async def upload_image(
@@ -57,11 +68,8 @@ class ImageManagementManage:
         """
         path = BASE_PATH / cn2py(name)
         path.mkdir(exist_ok=True, parents=True)
-        _file_name = 0
-        if file_list := os.listdir(path):
-            file_list = [int(i.split(".")[0]) for i in file_list if i.endswith(".jpg")]
-            file_list.sort()
-            _file_name = file_list[-1] + 1
+        image_ids = cls._get_sorted_image_ids(path)
+        _file_name = image_ids[-1] + 1 if image_ids else 0
         _file_path = path / f"{_file_name}.jpg"
         try:
             await ImageManagementLog.create(
@@ -117,9 +125,11 @@ class ImageManagementManage:
             logger.info(
                 f"图库: {name}, 删除图片路径: {_file_path}", "删除图片", session=user_id
             )
-            if file_list := os.listdir(path):
-                file_list.sort()
-                _file_name = file_list[-1].split(".")[0]
+            image_ids = cls._get_sorted_image_ids(path)
+            if image_ids:
+                _file_name = image_ids[-1]
+                if _file_name == file_id:
+                    return True
                 _move_file = path / f"{_file_name}.jpg"
                 _move_file.rename(_file_path)
                 logger.info(
@@ -161,10 +171,8 @@ class ImageManagementManage:
         source_file = source_path / f"{file_id}.jpg"
         if not source_file.exists():
             return None
-        _destination_name = 0
-        if file_list := os.listdir(destination_path):
-            file_list.sort()
-            _destination_name = int(file_list[-1].split(".")[0]) + 1
+        destination_ids = cls._get_sorted_image_ids(destination_path)
+        _destination_name = destination_ids[-1] + 1 if destination_ids else 0
         destination_file = destination_path / f"{_destination_name}.jpg"
         try:
             await ImageManagementLog.create(
@@ -180,9 +188,11 @@ class ImageManagementManage:
                 "移动图片",
                 session=user_id,
             )
-            if file_list := os.listdir(source_path):
-                file_list.sort()
-                _file_name = file_list[-1].split(".")[0]
+            source_ids = cls._get_sorted_image_ids(source_path)
+            if source_ids:
+                _file_name = source_ids[-1]
+                if _file_name == file_id:
+                    return f"{source_file} -> {destination_file}"
                 _move_file = source_path / f"{_file_name}.jpg"
                 _move_file.rename(source_file)
                 logger.info(

@@ -187,17 +187,6 @@
         "is_dir": true
     },
     {
-        "name": "敏感词警察",
-        "module": "black_word",
-        "module_path": "plugins.black_word",
-        "description": "请注意你的发言！",
-        "usage": "惩罚机制: 检测内容提示\n    设置惩罚 [uid] [id] [level]: 设置惩罚内容, 此id需要通过`记录名单 -u:uid`来获取\n    记录名单: 查看检测记录名单\n    记录名单:\n        -u [uid] 指定用户记录名单\n        -g [gid] 指定群组记录名单\n        -d [date] 指定日期\n        -dt ['=', '>', '<'] 大于小于等于指定日期\n\n    示例:\n        设置惩罚 123123123 0 1\n        记录名单 -u 123123123\n        记录名单 -g 333333\n        记录名单 -d 2022-11-11\n        记录名单 -d 2022-11-11 -dt >",
-        "author": "HibiKier",
-        "version": "0.2",
-        "plugin_type": "SUPERUSER",
-        "is_dir": true
-    },
-    {
         "name": "coser",
         "module": "coser",
         "module_path": "plugins.coser",
@@ -247,28 +236,6 @@
         "module_path": "plugins.dinggong",
         "description": "请狠狠的骂我一次！",
         "usage": "多骂我一点，球球了\n    指令：\n        骂老子",
-        "author": "HibiKier",
-        "version": "0.1",
-        "plugin_type": "NORMAL",
-        "is_dir": true
-    },
-    {
-        "name": "游戏抽卡",
-        "module": "draw_card",
-        "module_path": "plugins.draw_card",
-        "description": "就算是模拟抽卡也不能改变自己是个非酋",
-        "usage": "usage：\n        模拟赛马娘，原神，明日方舟，坎公骑冠剑，公主连结(国/台)，碧蓝航线，FGO，阴阳师，碧蓝档案进行抽卡\n        指令：\n            原神[1-180]抽: 原神常驻池\n            原神角色[1-180]抽: 原神角色UP池子\n            原神角色2池[1-180]抽: 原神角色UP池子\n            原神武器[1-180]抽: 原神武器UP池子\n            重置原神抽卡: 清空当前卡池的抽卡次数[即从0开始计算UP概率]\n            方舟[1-300]抽: 方舟卡池，当有当期UP时指向UP池\n            赛马娘[1-200]抽: 赛马娘卡池，当有当期UP时指向UP池\n            坎公骑冠剑[1-300]抽: 坎公骑冠剑卡池，当有当期UP时指向UP池\n            pcr/公主连接[1-300]抽: 公主连接卡池\n            碧蓝航线/碧蓝[重型/轻型/特型/活动][1-300]抽: 碧蓝航线重型/轻型/特型/活动卡池\n            fgo[1-300]抽: fgo卡池 (已失效)\n            阴阳师[1-300]抽: 阴阳师卡池\n            ba/碧蓝档案[1-200]抽：碧蓝档案卡池\n        * 以上指令可以通过 XX一井 来指定最大抽取数量 *\n        * 示例：原神一井 *",
-        "author": "HibiKier",
-        "version": "0.1",
-        "plugin_type": "NORMAL",
-        "is_dir": true
-    },
-    {
-        "name": "磁力搜索",
-        "module": "bt",
-        "module_path": "plugins.bt",
-        "description": "bt(磁力搜索)[仅支持私聊，懂的都懂]",
-        "usage": "* 拒绝反冲斗士！ *\n    指令:\n        bt [关键词] ?[页数]\n        示例: bt 钢铁侠\n        示例: bt 钢铁侠 3",
         "author": "HibiKier",
         "version": "0.1",
         "plugin_type": "NORMAL",
@@ -491,17 +458,6 @@
         "usage": "你问小真寻的愿望？小真寻说她想成为人类！",
         "author": "Chtholly & HibiKier",
         "version": "0.9",
-        "plugin_type": "NORMAL",
-        "is_dir": true
-    },
-    {
-        "name": "三千API",
-        "module": "qian_api",
-        "module_path": "plugins.qian_api",
-        "description": "包含超分/上色/漫画上色/抠图功能",
-        "usage": "超分/上色/漫画上色/抠图",
-        "author": "HibiKier",
-        "version": "0.2",
         "plugin_type": "NORMAL",
         "is_dir": true
     },

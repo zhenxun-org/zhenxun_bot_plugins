@@ -21,6 +21,6 @@ class ImageManagementLog(Model):
     platform = fields.CharField(255, null=True, description="平台")
     """平台"""
 
-    class Meta:
+    class Meta:  # pyright: ignore[reportIncompatibleVariableOverride]
         table = "image_management_log"
         table_description = "画廊操作记录"

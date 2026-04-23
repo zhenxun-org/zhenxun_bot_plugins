@@ -1,25 +1,31 @@
 import json
+from typing import Any
 
+from zhenxun.services.log import logger
 from zhenxun.utils.http_utils import AsyncHttpx
 
 from .model import MusicMetaData, MusicHelper
 
+DOMAIN = "https://music.163.com"
+REAL_IP = "58.100.87.193"
 
-@staticmethod
-async def request(uri: str, data) -> dict:
-    domain = "https://music.163.com"
-    url = domain + uri
-    realIp = "58.100.87.193"
+
+async def request(uri: str, data: dict[str, Any]) -> dict[str, Any]:
+    url = DOMAIN + uri
     response = await AsyncHttpx.post(
         url=url,
         data=data,
         headers={
-            "X-Real-IP": realIp,
-            "X-Forwarded-For": realIp,
+            "X-Real-IP": REAL_IP,
+            "X-Forwarded-For": REAL_IP,
         },
     )
-    data = json.loads(response.text)
-    return data
+    if response.status_code != 200:
+        raise RuntimeError(f"请求网易云接口失败: {response.status_code}")
+    try:
+        return response.json()
+    except Exception:
+        return json.loads(response.text or "{}")
 
 
 async def search(keywords: str, limit: int = 1, type: int = 1, offset: int = 0) -> dict:
@@ -48,7 +54,7 @@ async def comment_info(id: str, resourceType: int = 4) -> dict:
     return await request(uri="/api/resource/commentInfo/list", data=data)
 
 
-def get_artist_names(artists):
+def get_artist_names(artists: list[dict[str, Any]]) -> str:
     # 获取歌手名称
     names = []
     for artist in artists:
@@ -61,29 +67,42 @@ def get_artist_names(artists):
 class MusicHelper163(MusicHelper):
     @staticmethod
     async def meta_data(keywords: str) -> MusicMetaData | None:
-        ret0 = await search(keywords)
-        songs = list(ret0["result"].get("songs", []))
-        if len(songs) < 1:
+        try:
+            ret0 = await search(keywords)
+            songs = list(ret0.get("result", {}).get("songs", []))
+            if not songs:
+                return None
+            song_id = str(songs[0].get("id", "")).strip()
+            if not song_id:
+                return None
+
+            ret1 = await song_detail(song_id)
+            ret2 = await comment_info(song_id)
+
+            song_list = ret1.get("songs", [])
+            if not song_list:
+                return None
+            song: dict[str, Any] = song_list[0]
+
+            comment_list = ret2.get("data", [])
+            comment = comment_list[0] if comment_list else {}
+
+            alias_list = list(song.get("tns", [])) + list(song.get("alia", []))
+            alias = " / ".join(dict.fromkeys([item for item in alias_list if item]))
+
+            return MusicMetaData(
+                type_="163",
+                id=song_id,
+                name=song.get("name", ""),
+                alias=alias,
+                duration=int(song.get("dt", 0)),
+                album_name=song.get("al", {}).get("name", ""),
+                artist_names=get_artist_names(song.get("ar", [])),
+                comment_count=int(comment.get("commentCount", 0)),
+                share_count=int(comment.get("shareCount", 0)),
+                url=f"https://music.163.com/#/song?id={song_id}",
+                picUrl=song.get("al", {}).get("picUrl", ""),
+            )
+        except Exception as e:
+            logger.warning(f"网易云点歌数据获取失败: {e}", "music")
             return None
-        id: str = str(songs[0]["id"])
-
-        ret1 = await song_detail(id)
-        ret2 = await comment_info(id)
-
-        song: dict = {**ret1["songs"][0], **ret2["data"][0]}
-
-        data = MusicMetaData(
-            type_="163",
-            id=id,
-            name=song["name"],
-            alias=" / ".join(list(song.get("tns", [])) + list(song.get("alia", []))),
-            duration=song["dt"],
-            album_name=song.get("al", {}).get("name", ""),
-            artist_names=get_artist_names(song["ar"]),
-            comment_count=song["commentCount"],
-            share_count=song["shareCount"],
-            url=f"https://music.163.com/#/song?id={id}",
-            picUrl=song.get("al", {}).get("picUrl", ""),
-        )
-
-        return data

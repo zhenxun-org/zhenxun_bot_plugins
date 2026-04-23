@@ -1,57 +1,115 @@
-# bilibili_sub
+# B站订阅插件（bilibili_sub）
 
-用来推送bilibili用户动态、番剧、直播等信息
+把 B 站内容自动推送到群聊/私聊，支持：
 
-### 使用
+- UP 主动态
+- UP 主视频更新
+- 直播开播提醒
+- 番剧更新提醒
 
-- 添加订阅 ['主播'/'UP'/'番剧'] [id/链接/番名]
-- 删除订阅 ['主播'/'UP'/'id'] [id]
-- 查看订阅
-- 示例：添加订阅主播 2345344 <-(直播房间id)
--  示例：添加订阅UP 2355543 <-(个人主页id)
-- 示例：添加订阅番剧 125344 <-(番剧id)
-- 示例：删除订阅id 2324344 <-(任意id，通过查看订阅获取)
+## 使用权限
 
-## 超级用户
+- `bilisub add / del / list / config / clear`：群管理及以上可用
+- `bilisub login / status / logout / checkall / forcepush`：仅超级用户可用
 
-因b站风控等原因，需要登录来防止接口访问失败
+## 快速上手
 
-### 使用
+1. 添加订阅
 
-- bil_check/检测b站
-- bil_login/登录b站
-- bil_logout/退出b站 uid
--  示例：登录b站 
-- 示例： 检测b站
-- 示例： bil_logout 12345<-(退出登录的b站uid，通过检测b站获取)
+```bash
+# 订阅 UP 主（UID）
+bilisub add 732482333
 
-## 更新
+# 订阅直播间（房间号，必须加 --live）
+bilisub add --live 21452505
 
-**2025/12/22**[v1.2]
+# 订阅番剧（支持番名 / ss号 / ep号）
+bilisub add 葬送的芙莉莲
+bilisub add ss12345
+bilisub add ep987654
+```
 
-1. 支持发送动态内容中的图片
-2. 整理 import
-3. 更新版本号
-4. 更新帮助
+2. 查看订阅列表（会显示每条订阅的 ID）
 
-**2024/10/25**[v0.4]
+```bash
+bilisub list
+```
 
-1. 适配最新版真寻
-2. 更新推送文本，使“@全体成员”在消息最前
-3. 修复推送的视频动态不是最新时间的bug
-4. 添加依赖文件
+3. 调整推送内容（按订阅 ID 设置）
 
-**2024/9/2**[v0.3]
+```bash
+# 给 ID 3 和 4 开直播、关动态，并在直播推送时 @全体
+bilisub config 3 4 +live -dynamic +at:live
+```
 
-1. 修复推送时出现“长度和宽度不能为空”错误
-2. 修复uid 过长时，无法订阅 UP 主
-3. 修复在订阅多个主播和 UP 主的情况下，查询主播的频率远高于 UP 主
+4. 删除订阅
 
-**2024/9/2**[v0.2]
+```bash
+bilisub del 3
+```
 
-1. 修复bug，适配最新版真寻
+5. 清空当前会话的所有订阅（会二次确认）
 
-**2024/8/30**[v0.1]
+```bash
+bilisub clear
+```
 
-1. 适配最新版真寻
+## `config` 常用参数
 
+- `+dynamic` / `-dynamic`：开/关动态推送
+- `+video` / `-video`：开/关视频（番剧也走这个）
+- `+live` / `-live`：开/关直播推送
+- `+all` / `-all`：全部开/关
+- `+at:dynamic` / `-at:dynamic`：动态时 @全体
+- `+at:video` / `-at:video`：视频/番剧时 @全体
+- `+at:live` / `-at:live`：直播时 @全体
+- `+at:all` / `-at:all`：所有推送都 @全体
+
+## 超级用户命令
+
+```bash
+# 扫码登录 B 站（建议先登录，减少接口风控失败）
+bilisub login
+
+# 查看当前登录状态
+bilisub status
+
+# 退出登录
+bilisub logout
+
+# 立即检查全部订阅
+bilisub checkall
+
+# 强制推送指定订阅 ID 的最新内容
+bilisub forcepush 3 4
+```
+
+## 跨群管理（仅超级用户）
+
+```bash
+# 查看指定群的订阅
+bilisub list -g 123456789
+
+# 给指定群添加订阅
+bilisub add 732482333 -g 123456789
+
+# 删除指定群的订阅关系
+bilisub del 3 -g 123456789
+
+# 清空指定群
+bilisub clear -g 123456789
+
+# 清空所有群/私聊目标（高危操作）
+bilisub clear --all
+```
+
+## 常见问题
+
+- 问：番剧搜索出来多个结果怎么办？
+  答：按提示回复序号选择即可，60 秒内有效。
+
+- 问：为什么没有收到推送？
+  答：先检查 `bilisub status` 是否登录有效，再确认订阅是否开启对应推送类型（`bilisub config`）。
+
+- 问：`@全体` 没生效？
+  答：需要机器人在群里是管理员/群主，且总开关 `ENABLE_AT_ALL` 已开启。
