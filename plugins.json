@@ -261,7 +261,7 @@
         "author": "HibiKier",
         "version": "0.2",
         "plugin_type": "NORMAL",
-        "is_dir": true
+        "is_dir": false
     },
     {
         "name": "微博热搜",
