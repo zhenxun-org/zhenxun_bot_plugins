@@ -461,22 +461,6 @@ class JmDownload:
                 )
                 return False
 
-        # 元数据提取和发送函数
-        try:
-            keywords_str = (
-                ", ".join([f"'{k}'" for k in album.tags]) if album.tags else ""
-            )
-            msg = (
-                f"本子获取成功: {album.id}\n"
-                f"作者: {album.author} 章节数: {len(album.episode_list)}\n"
-                f"标题: {album.title}\n关键词: {keywords_str}"
-            )
-            await PlatformUtils.send_message(
-                bot=bot, user_id=user_id, group_id=group_id, message=msg
-            )
-        except Exception as e:
-            logger.warning(f"发送本子 {album.id} 的元数据失败: {e}", "jmcomic")
-
     @classmethod
     async def download_album(
         cls, bot: Bot, user_id: str, group_id: str | None, album_id: str
