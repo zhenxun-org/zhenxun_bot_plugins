@@ -47,6 +47,7 @@ pip install pikepdf pyyaml
   - `super_users`: 插件超级用户列表
   - `blacklist`: 黑名单本子 ID 列表
 - `data/jmcomic/option.yml`
+  - encrypt_pdf: PDF 加密开关，默认为 false 开启时会对 PDF 进行密码加密后再打包进 ZIP；设置为 false 则不对 PDF 单独加密，仅对生成的 ZIP 压缩包设置密码。
   - JM 下载配置（线程、目录规则、插件等）
 
 输出目录：
