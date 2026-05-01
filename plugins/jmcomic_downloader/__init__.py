@@ -30,7 +30,7 @@ __plugin_meta__ = PluginMetadata(
     """.strip(),
     extra=PluginExtraData(
         author="HibiKier、inventling",
-        version="0.6",
+        version="0.7",
         menu_type="一些工具",
         limits=[
             BaseBlock(result="当前有本子正在下载喵，请稍等..."),
