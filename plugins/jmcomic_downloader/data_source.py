@@ -39,9 +39,8 @@ if not OPTION_FILE.exists():
 # 设置为 false 则直接打包未加密的 PDF
 encrypt_pdf: false
 
-# ==========================================
-# jmcomic 官方配置
-# ==========================================
+# jmcomic 模块官方配置
+
 log: true
 
 # 下载配置
@@ -273,6 +272,180 @@ class JmDownload:
     @classmethod
     async def upload_file(cls, data: DetailInfo, zip_path: Path | None = None):
         if not zip_path:
+            # 压缩加密属于 CPU 密集型操作，放入线程池避免主线程卡顿
+            zip_path = await asyncio.to_thread(CreateZip(data).create)
+        try:
+            if not zip_path.exists():
+                await PlatformUtils.send_message(
+                    bot=data.bot,
+                    user_id=data.user_id,
+                    group_id=data.group_id,
+                    message="ZIP文件生成失败或已不存在...",
+                )
+            elif data.group_id:
+                await data.bot.call_api(
+                    "upload_group_file",
+                    group_id=data.group_id,
+                    file=f"file:///{zip_path.absolute()}",
+                    name=f"{data.album_id}.zip",
+                )
+            else:
+                await data.bot.call_api(
+                    "upload_private_file",
+                    user_id=data.user_id,
+                    file=f"file:///{zip_path.absolute()}",
+                    name=f"{data.album_id}.zip",
+                )
+        except Exception as e:
+            logger.error(
+                "上传文件失败",
+                "jmcomic",
+                session=data.user_id,
+                group_id=data.group_id,
+                e=e,
+            )
+            await PlatformUtils.send_message(
+                bot=data.bot,
+                user_id=data.user_id,
+                group_id=data.group_id,
+                message="上传文件失败...",
+            )
+
+    @classmethod
+    async def send_album_metadata(cls, bot: Bot, user_id: str, group_id: str | None, album: JmAlbumDetail):
+        """
+        统一的元数据提取和发送函数
+        """
+        try:
+            keywords_str = ", ".join([f"'{k}'" for k in album.tags]) if album.tags else ""
+            msg = (
+                f"本子获取成功: {album.id}\n"
+                f"作者: {album.author} 章节数: {len(album.episode_list)}\n"
+                f"标题: {album.title}\n关键词: {keywords_str}"
+            )
+            await PlatformUtils.send_message(
+                bot=bot, user_id=user_id, group_id=group_id, message=msg
+            )
+        except Exception as e:
+            logger.warning(f"发送本子 {album.id} 的元数据失败: {e}", "jmcomic")
+
+    @classmethod
+    def call_send(cls, album: JmAlbumDetail, dler):
+        data_list = cls._data.get(album.id)
+        if not data_list:
+            return
+        try:
+            loop = asyncio.get_running_loop()
+        except Exception:
+            loop = None
+
+        # 异步发送任务：先传文件，后发文字
+        async def upload_and_send_msg(data):
+            try:
+                # 直接调用发送函数
+                await cls.upload_file(data)
+                await cls.send_album_metadata(data.bot, data.user_id, data.group_id, album)
+            except Exception as e:
+                logger.error(f"发送文件或文字消息失败: {e}", "jmcomic")
+
+        # 使用 gather 等待任务跑完
+        async def run_all_tasks():
+            tasks = [upload_and_send_msg(data) for data in data_list]
+            await asyncio.gather(*tasks)
+            # 最后删除上下文
+            if album.id in cls._data:
+                del cls._data[album.id]
+
+        # 提交给已有的事件循环
+        if loop:
+            loop.create_task(run_all_tasks())
+        else:
+            asyncio.run(run_all_tasks())
+
+    @classmethod
+    async def download_album(cls, bot: Bot, user_id: str, group_id: str | None, album_id: str):
+        zip_path = ZIP_OUTPUT_PATH / f"{album_id}.zip"
+
+        if zip_path.exists():
+            try:
+                # 获取本子元数据
+                client = option.build_jm_client()
+                album = await asyncio.to_thread(client.get_album_detail, album_id)
+                
+                if album:
+                    keywords_str = ", ".join([f"'{k}'" for k in album.tags]) if album.tags else ""
+                    msg = (
+                        f"本子获取成功: {album.id}\n"
+                        f"作者: {album.author} 章节数: {len(album.episode_list)}\n"
+                        f"标题: {album.title}\n关键词: {keywords_str}"
+                    )
+                    # 发送元数据消息
+                    await PlatformUtils.send_message(
+                        bot=bot, user_id=user_id, group_id=group_id, message=msg
+                    )
+                    # 防止文件发送冲突
+                    await asyncio.sleep(1)
+            except Exception as e:
+                logger.warning(f"获取缓存本子 {album_id} 的元数据失败: {e}", "jmcomic")
+
+            # 发送已有的 ZIP 文件
+            await cls.upload_file(
+                DetailInfo(bot=bot, user_id=user_id, group_id=group_id, album_id=album_id),
+                zip_path=zip_path
+            )
+        else:
+            # ZIP 不存在时去下载
+            exists = await cls.check_album_exists(album_id)
+            if not exists:
+                await MessageUtils.build_message(f"本子 {album_id} 飞到天堂去了喵~").send(reply_to=True)
+                return
+
+            if album_id not in cls._data:
+                cls._data[album_id] = []
+            cls._data[album_id].append(
+                DetailInfo(bot=bot, user_id=user_id, group_id=group_id, album_id=album_id)
+            )
+            await asyncio.to_thread(
+                jmcomic.download_album, album_id, option, callback=cls.call_send
+            )
+
+    @classmethod
+    async def check_album_exists(cls, album_id: str) -> bool:
+        try:
+            # 使用 jmcomic.JmClient 直接请求
+            client = option.build_jm_client()
+            # 尝试获取本子详情页面
+            album_detail = await asyncio.to_thread(client.get_album_detail, album_id)
+            return album_detail is not None
+        except Exception as e:
+            # 捕获jmcomic库抛出的异常（通常是404或请求失败）
+            logger.warning(f"检查本子 {album_id} 存在性失败: {e!s}", "jmcomic")
+
+            # 尝试使用 requests 直接请求网页
+            try:
+                url = f"https://18comic.vip/album/{album_id}/"
+                r = await AsyncHttpx.get(
+                    url,
+                    headers={
+                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+                    },
+                )
+                return (
+                    r.status_code == 200
+                    and "404" not in r.text
+                    and "不存在" not in r.text
+                )
+            except Exception as req_e:
+                logger.warning(
+                    f"使用AsyncHttpx检查本子 {album_id} 存在性也失败: {req_e!s}",
+                    "jmcomic",
+                )
+                return False
+    _data: ClassVar[dict[str, list[DetailInfo]]] = {}
+
+    @classmethod
+    async def upload_file(cls, data: DetailInfo, zip_path: Path | None = None):
+        if not zip_path:
             zip_path = CreateZip(data).create()
         try:
             if not zip_path.exists():
@@ -341,7 +514,6 @@ class JmDownload:
         async def upload_and_send_msg(data):
             try:
                 await cls.upload_file(data)
-                await asyncio.sleep(0.5)
                 # 调用元数据发送函数
                 await cls.send_album_metadata(data.bot, data.user_id, data.group_id, album)
             except Exception as e:
@@ -370,7 +542,6 @@ class JmDownload:
                 if album:
                     # 调用合并后的统一发送函数
                     await cls.send_album_metadata(bot, user_id, group_id, album)
-                    await asyncio.sleep(1)
             except Exception as e:
                 logger.warning(f"获取缓存本子 {album_id} 的元数据失败: {e}", "jmcomic")
 
