@@ -101,14 +101,17 @@ except Exception as e:
 try:
     with open(OPTION_FILE, "r", encoding="utf-8") as f:
         clean_config = yaml.safe_load(f) or {}
-    
+
     clean_config.pop("encrypt_pdf", None)
-    
+
     from jmcomic.jm_option import JmOption
+
     option = JmOption.construct(clean_config)
-    
+
 except Exception as e:
-    logger.warning(f"使用 JmOption.construct 加载配置失败，尝试回退官方读取: {e}", "jmcomic")
+    logger.warning(
+        f"使用 JmOption.construct 加载配置失败，尝试回退官方读取: {e}", "jmcomic"
+    )
     option = jmcomic.create_option_by_file(str(OPTION_FILE.absolute()))
 
 
@@ -260,7 +263,7 @@ class CreateZip:
                 if self.encrypted_pdf_path.exists():
                     self.encrypted_pdf_path.unlink()
             else:
-                logger.info(f"PDF 加密已关闭，直接压缩原始 PDF 文件", "jmcomic")
+                logger.info("PDF 加密已关闭，直接压缩原始 PDF 文件", "jmcomic")
                 self.create_password_protected_zip(self.pdf_path)
 
         return self.zip_path
@@ -312,12 +315,16 @@ class JmDownload:
             )
 
     @classmethod
-    async def send_album_metadata(cls, bot: Bot, user_id: str, group_id: str | None, album: JmAlbumDetail):
+    async def send_album_metadata(
+        cls, bot: Bot, user_id: str, group_id: str | None, album: JmAlbumDetail
+    ):
         """
         统一的元数据提取和发送函数
         """
         try:
-            keywords_str = ", ".join([f"'{k}'" for k in album.tags]) if album.tags else ""
+            keywords_str = (
+                ", ".join([f"'{k}'" for k in album.tags]) if album.tags else ""
+            )
             msg = (
                 f"本子获取成功: {album.id}\n"
                 f"作者: {album.author} 章节数: {len(album.episode_list)}\n"
@@ -344,7 +351,9 @@ class JmDownload:
             try:
                 # 直接调用发送函数
                 await cls.upload_file(data)
-                await cls.send_album_metadata(data.bot, data.user_id, data.group_id, album)
+                await cls.send_album_metadata(
+                    data.bot, data.user_id, data.group_id, album
+                )
             except Exception as e:
                 logger.error(f"发送文件或文字消息失败: {e}", "jmcomic")
 
@@ -363,7 +372,9 @@ class JmDownload:
             asyncio.run(run_all_tasks())
 
     @classmethod
-    async def download_album(cls, bot: Bot, user_id: str, group_id: str | None, album_id: str):
+    async def download_album(
+        cls, bot: Bot, user_id: str, group_id: str | None, album_id: str
+    ):
         zip_path = ZIP_OUTPUT_PATH / f"{album_id}.zip"
 
         if zip_path.exists():
@@ -371,9 +382,11 @@ class JmDownload:
                 # 获取本子元数据
                 client = option.build_jm_client()
                 album = await asyncio.to_thread(client.get_album_detail, album_id)
-                
+
                 if album:
-                    keywords_str = ", ".join([f"'{k}'" for k in album.tags]) if album.tags else ""
+                    keywords_str = (
+                        ", ".join([f"'{k}'" for k in album.tags]) if album.tags else ""
+                    )
                     msg = (
                         f"本子获取成功: {album.id}\n"
                         f"作者: {album.author} 章节数: {len(album.episode_list)}\n"
@@ -390,20 +403,26 @@ class JmDownload:
 
             # 发送已有的 ZIP 文件
             await cls.upload_file(
-                DetailInfo(bot=bot, user_id=user_id, group_id=group_id, album_id=album_id),
-                zip_path=zip_path
+                DetailInfo(
+                    bot=bot, user_id=user_id, group_id=group_id, album_id=album_id
+                ),
+                zip_path=zip_path,
             )
         else:
             # ZIP 不存在时去下载
             exists = await cls.check_album_exists(album_id)
             if not exists:
-                await MessageUtils.build_message(f"本子 {album_id} 飞到天堂去了喵~").send(reply_to=True)
+                await MessageUtils.build_message(
+                    f"本子 {album_id} 飞到天堂去了喵~"
+                ).send(reply_to=True)
                 return
 
             if album_id not in cls._data:
                 cls._data[album_id] = []
             cls._data[album_id].append(
-                DetailInfo(bot=bot, user_id=user_id, group_id=group_id, album_id=album_id)
+                DetailInfo(
+                    bot=bot, user_id=user_id, group_id=group_id, album_id=album_id
+                )
             )
             await asyncio.to_thread(
                 jmcomic.download_album, album_id, option, callback=cls.call_send
@@ -441,6 +460,7 @@ class JmDownload:
                     "jmcomic",
                 )
                 return False
+
     _data: ClassVar[dict[str, list[DetailInfo]]] = {}
 
     @classmethod
@@ -485,15 +505,19 @@ class JmDownload:
             )
 
     @classmethod
-    async def send_album_metadata(cls, bot: Bot, user_id: str, group_id: str | None, album: JmAlbumDetail):
+    async def send_album_metadata(
+        cls, bot: Bot, user_id: str, group_id: str | None, album: JmAlbumDetail
+    ):
         # 元数据提取和发送函数
         try:
-            keywords_str = ", ".join([f"'{k}'" for k in album.tags]) if album.tags else ""
+            keywords_str = (
+                ", ".join([f"'{k}'" for k in album.tags]) if album.tags else ""
+            )
             msg = (
-            f"本子获取成功: {album.id}\n"
-            f"作者: {album.author} 章节数: {len(album.episode_list)}\n"
-            f"标题: {album.title}\n关键词: {keywords_str}"
-        )
+                f"本子获取成功: {album.id}\n"
+                f"作者: {album.author} 章节数: {len(album.episode_list)}\n"
+                f"标题: {album.title}\n关键词: {keywords_str}"
+            )
             await PlatformUtils.send_message(
                 bot=bot, user_id=user_id, group_id=group_id, message=msg
             )
@@ -515,7 +539,9 @@ class JmDownload:
             try:
                 await cls.upload_file(data)
                 # 调用元数据发送函数
-                await cls.send_album_metadata(data.bot, data.user_id, data.group_id, album)
+                await cls.send_album_metadata(
+                    data.bot, data.user_id, data.group_id, album
+                )
             except Exception as e:
                 logger.error(f"发送文件或元数据失败: {e}", "jmcomic")
 
@@ -530,7 +556,9 @@ class JmDownload:
             del cls._data[album.id]
 
     @classmethod
-    async def download_album(cls, bot: Bot, user_id: str, group_id: str | None, album_id: str):
+    async def download_album(
+        cls, bot: Bot, user_id: str, group_id: str | None, album_id: str
+    ):
         zip_path = ZIP_OUTPUT_PATH / f"{album_id}.zip"
 
         if zip_path.exists():
@@ -538,7 +566,7 @@ class JmDownload:
             try:
                 client = option.build_jm_client()
                 album = await asyncio.to_thread(client.get_album_detail, album_id)
-                
+
                 if album:
                     # 调用合并后的统一发送函数
                     await cls.send_album_metadata(bot, user_id, group_id, album)
@@ -547,20 +575,26 @@ class JmDownload:
 
             # 发送已有的 ZIP 文件
             await cls.upload_file(
-                DetailInfo(bot=bot, user_id=user_id, group_id=group_id, album_id=album_id),
-                zip_path=zip_path
+                DetailInfo(
+                    bot=bot, user_id=user_id, group_id=group_id, album_id=album_id
+                ),
+                zip_path=zip_path,
             )
         else:
             # 无缓存文件，开始下载
             exists = await cls.check_album_exists(album_id)
             if not exists:
-                await MessageUtils.build_message(f"本子 {album_id} 飞到天堂去了喵~").send(reply_to=True)
+                await MessageUtils.build_message(
+                    f"本子 {album_id} 飞到天堂去了喵~"
+                ).send(reply_to=True)
                 return
 
             if album_id not in cls._data:
                 cls._data[album_id] = []
             cls._data[album_id].append(
-                DetailInfo(bot=bot, user_id=user_id, group_id=group_id, album_id=album_id)
+                DetailInfo(
+                    bot=bot, user_id=user_id, group_id=group_id, album_id=album_id
+                )
             )
             await asyncio.to_thread(
                 jmcomic.download_album, album_id, option, callback=cls.call_send
