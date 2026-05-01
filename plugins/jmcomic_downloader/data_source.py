@@ -31,9 +31,18 @@ CONFIG_FILE = DATA_PATH / "jmcomic" / "blacklist_config.yml"
 # 确保配置文件所在目录存在
 OPTION_FILE.parent.mkdir(parents=True, exist_ok=True)
 
-# 检查并创建option.yml配置文件，使用原始配置内容
+# 检查并创建option.yml配置文件，使用原始配置内容，新增 encrypt_pdf 开关
 if not OPTION_FILE.exists():
     original_option_content = """# 开启jmcomic的日志输出，默认为true
+# PDF 加密开关，默认为 false
+# 设置为 true 会对生成的 PDF 进行密码加密（密码为本子 id）后再打包
+# 设置为 false 则直接打包未加密的 PDF
+encrypt_pdf: false
+
+# ==========================================
+# jmcomic 官方配置
+# ==========================================
+# 开启jmcomic的日志输出，默认为true
 # 对日志有需求的可进一步参考文档 → https://jmcomic.readthedocs.io/en/latest/tutorial/11_log_custom/
 log: true
 
@@ -95,9 +104,49 @@ plugins:
 """
     with open(OPTION_FILE, "w", encoding="utf-8") as f:
         f.write(original_option_content)
+else:
+    # 已存在 option.yml 时，检查并追加 encrypt_pdf 开关
+    try:
+        with open(OPTION_FILE, "r", encoding="utf-8") as f:
+            content = f.read()
+        if "encrypt_pdf:" not in content:
+            # 在文件最开头插入默认开关
+            updated_content = "# PDF 加密开关\nencrypt_pdf: flase\n\n" + content
+            with open(OPTION_FILE, "w", encoding="utf-8") as f:
+                f.write(updated_content)
+            logger.info("已在现有的 option.yml 中追加 encrypt_pdf 开关配置", "jmcomic")
+    except Exception as e:
+        logger.error(f"更新 option.yml 配置失败: {e}", "jmcomic")
 
 # 在配置文件存在后再加载选项
-option = jmcomic.create_option_by_file(str(OPTION_FILE.absolute()))
+
+# 读取 option.yml 获取自定义参数
+try:
+    with open(OPTION_FILE, "r", encoding="utf-8") as f:
+        custom_config = yaml.safe_load(f) or {}
+    ENCRYPT_PDF_ENABLED = custom_config.get("encrypt_pdf", True)
+except Exception as e:
+    logger.warning(f"读取 encrypt_pdf 配置失败，默认关闭加密: {e}", "jmcomic")
+    ENCRYPT_PDF_ENABLED = Flase
+
+#删除自定义参数传递给 jmcomic
+
+try:
+    # 1. 重新读取文件为字典
+    with open(OPTION_FILE, "r", encoding="utf-8") as f:
+        clean_config = yaml.safe_load(f) or {}
+    
+    # 2. 剔除 jmcomic 无法识别的自定义参数
+    clean_config.pop("encrypt_pdf", None)
+    
+    # 3. 将干净的配置传给 jmcomic 解析
+    from jmcomic.jm_option import JmOption
+    option = JmOption.construct(clean_config)
+    
+except Exception as e:
+    logger.warning(f"使用 JmOption.construct 加载配置失败，尝试回退官方读取: {e}", "jmcomic")
+    # 如果上面的方式失败，回退到原生的读取方法
+    option = jmcomic.create_option_by_file(str(OPTION_FILE.absolute()))
 
 
 @dataclass
@@ -253,10 +302,10 @@ class CreateZip:
             )
             logger.info(f"PDF 已加密并保存到: {self.encrypted_pdf_path}", "jmcomic")
 
-    def create_password_protected_zip(self):
+    def create_password_protected_zip(self, file_to_compress: Path):
         # 创建带密码的ZIP文件
         pyminizip.compress(
-            str(self.encrypted_pdf_path.absolute()),
+            str(file_to_compress.absolute()),
             None,
             str(self.zip_path.absolute()),
             self.password,
@@ -266,8 +315,16 @@ class CreateZip:
 
     def create(self) -> Path:
         if self.pdf_path.exists():
-            self.encrypt_pdf()
-            self.create_password_protected_zip()
+            if ENCRYPT_PDF_ENABLED:
+                self.encrypt_pdf()
+                self.create_password_protected_zip(self.encrypted_pdf_path)
+                # 打包完后删除临时加密文件
+                if self.encrypted_pdf_path.exists():
+                    self.encrypted_pdf_path.unlink()
+            else:
+                logger.info(f"PDF 加密已关闭，直接压缩原始 PDF 文件", "jmcomic")
+                self.create_password_protected_zip(self.pdf_path)
+
         return self.zip_path
 
 
