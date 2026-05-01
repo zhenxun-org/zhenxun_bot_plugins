@@ -461,53 +461,6 @@ class JmDownload:
                 )
                 return False
 
-    _data: ClassVar[dict[str, list[DetailInfo]]] = {}
-
-    @classmethod
-    async def upload_file(cls, data: DetailInfo, zip_path: Path | None = None):
-        if not zip_path:
-            zip_path = CreateZip(data).create()
-        try:
-            if not zip_path.exists():
-                await PlatformUtils.send_message(
-                    bot=data.bot,
-                    user_id=data.user_id,
-                    group_id=data.group_id,
-                    message="ZIP文件生成失败或已不存在...",
-                )
-            elif data.group_id:
-                await data.bot.call_api(
-                    "upload_group_file",
-                    group_id=data.group_id,
-                    file=f"file:///{zip_path.absolute()}",
-                    name=f"{data.album_id}.zip",
-                )
-            else:
-                await data.bot.call_api(
-                    "upload_private_file",
-                    user_id=data.user_id,
-                    file=f"file:///{zip_path.absolute()}",
-                    name=f"{data.album_id}.zip",
-                )
-        except Exception as e:
-            logger.error(
-                "上传文件失败",
-                "jmcomic",
-                session=data.user_id,
-                group_id=data.group_id,
-                e=e,
-            )
-            await PlatformUtils.send_message(
-                bot=data.bot,
-                user_id=data.user_id,
-                group_id=data.group_id,
-                message="上传文件失败...",
-            )
-
-    @classmethod
-    async def send_album_metadata(
-        cls, bot: Bot, user_id: str, group_id: str | None, album: JmAlbumDetail
-    ):
         # 元数据提取和发送函数
         try:
             keywords_str = (
@@ -523,37 +476,6 @@ class JmDownload:
             )
         except Exception as e:
             logger.warning(f"发送本子 {album.id} 的元数据失败: {e}", "jmcomic")
-
-    @classmethod
-    def call_send(cls, album: JmAlbumDetail, dler):
-        data_list = cls._data.get(album.id)
-        if not data_list:
-            return
-        try:
-            loop = asyncio.get_running_loop()
-        except Exception:
-            loop = None
-
-        # 异步任务：新下载时先传文件，留出 0.5s 后调用函数发送元数据
-        async def upload_and_send_msg(data):
-            try:
-                await cls.upload_file(data)
-                # 调用元数据发送函数
-                await cls.send_album_metadata(
-                    data.bot, data.user_id, data.group_id, album
-                )
-            except Exception as e:
-                logger.error(f"发送文件或元数据失败: {e}", "jmcomic")
-
-        for data in data_list:
-            if loop:
-                loop.create_task(upload_and_send_msg(data))
-            else:
-                asyncio.run(upload_and_send_msg(data))
-
-        # 移除缓存上下文
-        if album.id in cls._data:
-            del cls._data[album.id]
 
     @classmethod
     async def download_album(
