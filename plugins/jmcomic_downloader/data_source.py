@@ -416,7 +416,6 @@ class JmDownload:
                 jmcomic.download_album, album_id, option, callback=cls.call_send
             )
 
-
     @classmethod
     async def check_album_exists(cls, album_id: str) -> bool:
         try:
