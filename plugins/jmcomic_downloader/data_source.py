@@ -378,96 +378,6 @@ class JmDownload:
         zip_path = ZIP_OUTPUT_PATH / f"{album_id}.zip"
 
         if zip_path.exists():
-            try:
-                # 获取本子元数据
-                client = option.build_jm_client()
-                album = await asyncio.to_thread(client.get_album_detail, album_id)
-
-                if album:
-                    keywords_str = (
-                        ", ".join([f"'{k}'" for k in album.tags]) if album.tags else ""
-                    )
-                    msg = (
-                        f"本子获取成功: {album.id}\n"
-                        f"作者: {album.author} 章节数: {len(album.episode_list)}\n"
-                        f"标题: {album.title}\n关键词: {keywords_str}"
-                    )
-                    # 发送元数据消息
-                    await PlatformUtils.send_message(
-                        bot=bot, user_id=user_id, group_id=group_id, message=msg
-                    )
-                    # 防止文件发送冲突
-                    await asyncio.sleep(1)
-            except Exception as e:
-                logger.warning(f"获取缓存本子 {album_id} 的元数据失败: {e}", "jmcomic")
-
-            # 发送已有的 ZIP 文件
-            await cls.upload_file(
-                DetailInfo(
-                    bot=bot, user_id=user_id, group_id=group_id, album_id=album_id
-                ),
-                zip_path=zip_path,
-            )
-        else:
-            # ZIP 不存在时去下载
-            exists = await cls.check_album_exists(album_id)
-            if not exists:
-                await MessageUtils.build_message(
-                    f"本子 {album_id} 飞到天堂去了喵~"
-                ).send(reply_to=True)
-                return
-
-            if album_id not in cls._data:
-                cls._data[album_id] = []
-            cls._data[album_id].append(
-                DetailInfo(
-                    bot=bot, user_id=user_id, group_id=group_id, album_id=album_id
-                )
-            )
-            await asyncio.to_thread(
-                jmcomic.download_album, album_id, option, callback=cls.call_send
-            )
-
-    @classmethod
-    async def check_album_exists(cls, album_id: str) -> bool:
-        try:
-            # 使用 jmcomic.JmClient 直接请求
-            client = option.build_jm_client()
-            # 尝试获取本子详情页面
-            album_detail = await asyncio.to_thread(client.get_album_detail, album_id)
-            return album_detail is not None
-        except Exception as e:
-            # 捕获jmcomic库抛出的异常（通常是404或请求失败）
-            logger.warning(f"检查本子 {album_id} 存在性失败: {e!s}", "jmcomic")
-
-            # 尝试使用 requests 直接请求网页
-            try:
-                url = f"https://18comic.vip/album/{album_id}/"
-                r = await AsyncHttpx.get(
-                    url,
-                    headers={
-                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
-                    },
-                )
-                return (
-                    r.status_code == 200
-                    and "404" not in r.text
-                    and "不存在" not in r.text
-                )
-            except Exception as req_e:
-                logger.warning(
-                    f"使用AsyncHttpx检查本子 {album_id} 存在性也失败: {req_e!s}",
-                    "jmcomic",
-                )
-                return False
-
-    @classmethod
-    async def download_album(
-        cls, bot: Bot, user_id: str, group_id: str | None, album_id: str
-    ):
-        zip_path = ZIP_OUTPUT_PATH / f"{album_id}.zip"
-
-        if zip_path.exists():
             # 命中缓存文件：先发元数据，再发已有文件
             try:
                 client = option.build_jm_client()
@@ -509,11 +419,16 @@ class JmDownload:
     @classmethod
     async def check_album_exists(cls, album_id: str) -> bool:
         try:
+            # 使用 jmcomic.JmClient 直接请求
             client = option.build_jm_client()
-            album_detail = client.get_album_detail(album_id)
+            # 尝试获取本子详情页面
+            album_detail = await asyncio.to_thread(client.get_album_detail, album_id)
             return album_detail is not None
         except Exception as e:
+            # 捕获jmcomic库抛出的异常（通常是404或请求失败）
             logger.warning(f"检查本子 {album_id} 存在性失败: {e!s}", "jmcomic")
+
+            # 尝试使用 requests 直接请求网页
             try:
                 url = f"https://18comic.vip/album/{album_id}/"
                 r = await AsyncHttpx.get(
