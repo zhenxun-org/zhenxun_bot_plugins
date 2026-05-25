@@ -2,7 +2,7 @@ from datetime import datetime
 import random
 import re
 import time
-from typing import Any, ClassVar
+from typing import Any, ClassVar, NamedTuple
 from typing_extensions import Self
 import uuid
 
@@ -19,14 +19,21 @@ from zhenxun.utils.message import MessageUtils
 
 from ._config import ScopeType, WordType, int2type
 from .exception import ImageDownloadError
+from .word_index import WordBankEntry, WordBankIndex
 
 path = DATA_PATH / "word_bank"
+_NEGATIVE_CACHE_TTL_SECONDS = 45.0
+_NEGATIVE_CACHE_MAX_SIZE = 4096
+DEFAULT_PROBLEM_PAGE_SIZE = 50
+
+
+class WordBankProblemRow(NamedTuple):
+    problem: Any | str
+    word_type: str
+    author: str
 
 
 class WordBank(Model):
-    _IMAGE_WORD_EXISTS_TTL_SECONDS: ClassVar[float] = 60.0
-    _image_word_exists_cache: ClassVar[dict[str, tuple[float, bool]]] = {}
-
     id = fields.IntField(pk=True, generated=True, auto_increment=True)
     """自增id"""
     user_id = fields.CharField(255)
@@ -62,6 +69,106 @@ class WordBank(Model):
         table = "word_bank2"
         table_description = "词条数据库"
 
+    _negative_match_cache: ClassVar[dict[tuple[str, str], float]] = {}
+    _index_ready: ClassVar[bool] = False
+
+    @classmethod
+    def _match_cache_key(cls, group_id: str | None, problem: str) -> tuple[str, str]:
+        return str(group_id or ""), str(problem or "")
+
+    @classmethod
+    def _negative_cache_hit(cls, group_id: str | None, problem: str) -> bool:
+        key = cls._match_cache_key(group_id, problem)
+        expire_at = cls._negative_match_cache.get(key)
+        if expire_at is None:
+            return False
+        if expire_at <= time.monotonic():
+            cls._negative_match_cache.pop(key, None)
+            return False
+        return True
+
+    @classmethod
+    def _remember_negative_match(cls, group_id: str | None, problem: str) -> None:
+        if len(cls._negative_match_cache) >= _NEGATIVE_CACHE_MAX_SIZE:
+            now = time.monotonic()
+            expired = [
+                key
+                for key, expire_at in cls._negative_match_cache.items()
+                if expire_at <= now
+            ]
+            for key in expired:
+                cls._negative_match_cache.pop(key, None)
+            if len(cls._negative_match_cache) >= _NEGATIVE_CACHE_MAX_SIZE:
+                cls._negative_match_cache.pop(next(iter(cls._negative_match_cache)))
+        cls._negative_match_cache[cls._match_cache_key(group_id, problem)] = (
+            time.monotonic() + _NEGATIVE_CACHE_TTL_SECONDS
+        )
+
+    @classmethod
+    def clear_match_cache(cls, problem: str | None = None) -> None:
+        if problem is None:
+            cls._negative_match_cache.clear()
+            return
+        problem = str(problem or "")
+        for key in list(cls._negative_match_cache):
+            if key[1] == problem:
+                cls._negative_match_cache.pop(key, None)
+
+    @classmethod
+    def invalidate_match_index(
+        cls,
+        word_scope: ScopeType | None = None,
+        group_id: str | None = None,
+        problem: str | None = None,
+    ) -> None:
+        cls.clear_match_cache(problem)
+        WordBankIndex.invalidate_scope(word_scope, group_id)
+
+    @classmethod
+    async def ensure_query_indexes(cls) -> None:
+        if cls._index_ready:
+            return
+        db_type = BotConfig.get_sql_type()
+        db = Tortoise.get_connection("default")
+        if "mysql" in db_type:
+            scripts = [
+                (
+                    "CREATE INDEX idx_word_bank_scope_type_problem "
+                    "ON word_bank2(word_scope, word_type, problem(191));"
+                ),
+                (
+                    "CREATE INDEX idx_word_bank_group_type_problem "
+                    "ON word_bank2(group_id, word_type, problem(191));"
+                ),
+                (
+                    "CREATE INDEX idx_word_bank_group_scope_type_problem "
+                    "ON word_bank2(group_id, word_scope, word_type, problem(191));"
+                ),
+            ]
+        else:
+            scripts = [
+                (
+                    "CREATE INDEX IF NOT EXISTS idx_word_bank_scope_type_problem "
+                    "ON word_bank2(word_scope, word_type, problem);"
+                ),
+                (
+                    "CREATE INDEX IF NOT EXISTS idx_word_bank_group_type_problem "
+                    "ON word_bank2(group_id, word_type, problem);"
+                ),
+                (
+                    "CREATE INDEX IF NOT EXISTS "
+                    "idx_word_bank_group_scope_type_problem "
+                    "ON word_bank2(group_id, word_scope, word_type, problem);"
+                ),
+            ]
+        for sql in scripts:
+            try:
+                await db.execute_script(sql)
+            except Exception:
+                if "mysql" not in db_type:
+                    raise
+        cls._index_ready = True
+
     @classmethod
     async def exists(  # type: ignore
         cls,
@@ -94,53 +201,6 @@ class WordBank(Model):
         if word_scope is not None:
             query = query.filter(word_scope=word_scope.value)
         return await query.exists()
-
-    @classmethod
-    def _image_cache_key(cls, group_id: str | None) -> str:
-        return group_id or "__private__"
-
-    @classmethod
-    def _get_cached_image_word_exists(cls, key: str) -> bool | None:
-        cache = cls._image_word_exists_cache.get(key)
-        if not cache:
-            return None
-        expire_at, value = cache
-        if expire_at <= time.monotonic():
-            cls._image_word_exists_cache.pop(key, None)
-            return None
-        return value
-
-    @classmethod
-    def _set_cached_image_word_exists(cls, key: str, value: bool) -> None:
-        cls._image_word_exists_cache[key] = (
-            time.monotonic() + cls._IMAGE_WORD_EXISTS_TTL_SECONDS,
-            value,
-        )
-
-    @classmethod
-    def invalidate_image_word_exists_cache(cls) -> None:
-        cls._image_word_exists_cache.clear()
-
-    @classmethod
-    async def has_image_word_enabled(cls, group_id: str | None) -> bool:
-        key = cls._image_cache_key(group_id)
-        if (cached := cls._get_cached_image_word_exists(key)) is not None:
-            return cached
-
-        query = cls.filter(word_type=WordType.IMAGE.value, status=True)
-        if group_id:
-            query = query.filter(
-                Q(group_id=group_id) | Q(word_scope=ScopeType.GLOBAL.value)
-            )
-        else:
-            query = query.filter(
-                Q(word_scope=ScopeType.PRIVATE.value)
-                | Q(word_scope=ScopeType.GLOBAL.value)
-            )
-
-        exists = await query.exists()
-        cls._set_cached_image_word_exists(key, exists)
-        return exists
 
     @classmethod
     async def add_problem_answer(
@@ -202,8 +262,7 @@ class WordBank(Model):
                 platform=platform,
                 author=author,
             )
-            if word_type == WordType.IMAGE:
-                cls.invalidate_image_word_exists_cache()
+            cls.invalidate_match_index(word_scope, group_id, str(problem).strip())
 
     @classmethod
     async def _answer2format(
@@ -259,9 +318,9 @@ class WordBank(Model):
         cls,
         problem: str,
         answer: str,
-        user_id: int,
-        group_id: int,
-        query: Self | None = None,
+        user_id: str | int,
+        group_id: str | int | None,
+        query: Any | None = None,
     ) -> UniMessage:
         """将占位符转换为实际内容
 
@@ -310,13 +369,13 @@ class WordBank(Model):
     ) -> Any:
         """检测是否包含该问题并获取所有回答"""
 
-        query = cls
+        query = cls.filter(Q(status=True) | Q(status__isnull=True))
         if group_id:
             if word_scope:
                 query = query.filter(word_scope=word_scope.value)
             else:
                 query = query.filter(
-                    Q(group_id=group_id) | Q(word_scope=WordType.EXACT.value)
+                    Q(group_id=group_id) | Q(word_scope=ScopeType.GLOBAL.value)
                 )
         else:
             query = query.filter(
@@ -324,7 +383,7 @@ class WordBank(Model):
                 | Q(word_scope=ScopeType.GLOBAL.value)
             )
             if word_type:
-                query = query.filter(word_scope=word_type.value)
+                query = query.filter(word_type=word_type.value)
 
         # 完全匹配
         if data_list := await query.filter(
@@ -385,6 +444,64 @@ class WordBank(Model):
         return [cls(**data) for data in data_list] if data_list else None
 
     @classmethod
+    async def match_entry(
+        cls,
+        group_id: str | None,
+        problem: str,
+        word_scope: ScopeType | None = None,
+        word_type: WordType | None = None,
+    ) -> Self | WordBankEntry | None:
+        """获取一条已匹配词条；未命中会短 TTL 缓存，避免闲聊反复查库。"""
+        if not problem:
+            return None
+        if cls._negative_cache_hit(group_id, problem):
+            return None
+        try:
+            data_list = await WordBankIndex.match(
+                cls,
+                group_id,
+                problem,
+                word_scope,
+                word_type,
+            )
+        except Exception:
+            data_list = await cls.check_problem(
+                group_id,
+                problem,
+                word_scope,
+                word_type,
+            )
+        if not data_list:
+            cls._remember_negative_match(group_id, problem)
+            return None
+        return random.choice(data_list)
+
+    @classmethod
+    async def format_entry_answer(
+        cls,
+        entry: Self | WordBankEntry,
+        problem: str,
+    ) -> UniMessage:
+        answer = entry.answer
+        if entry.word_type == WordType.REGEX.value:
+            r = re.search(entry.problem, problem)
+            has_placeholder = re.search(r"\$(\d)", answer)
+            if r and r.groups() and has_placeholder:
+                pats = re.sub(r"\$(\d)", r"\\\1", answer)
+                answer = re.sub(entry.problem, pats, problem)
+        return (
+            await cls._format2answer(
+                entry.problem,
+                answer,
+                entry.user_id,
+                entry.group_id,
+                entry,
+            )
+            if entry.placeholder
+            else MessageUtils.build_message(answer)
+        )
+
+    @classmethod
     async def get_answer(
         cls,
         group_id: str | None,
@@ -401,26 +518,8 @@ class WordBank(Model):
             word_scope: 词条范围
             word_type: 词条类型
         """
-        data_list = await cls.check_problem(group_id, problem, word_scope, word_type)
-        if data_list:
-            random_answer = random.choice(data_list)
-            if random_answer.word_type == WordType.REGEX:
-                r = re.search(random_answer.problem, problem)
-                has_placeholder = re.search(r"\$(\d)", random_answer.answer)
-                if r and r.groups() and has_placeholder:
-                    pats = re.sub(r"\$(\d)", r"\\\1", random_answer.answer)
-                    random_answer.answer = re.sub(random_answer.problem, pats, problem)
-            return (
-                await cls._format2answer(
-                    random_answer.problem,
-                    random_answer.answer,
-                    random_answer.user_id,
-                    random_answer.group_id,
-                    random_answer,
-                )
-                if random_answer.placeholder
-                else MessageUtils.build_message(random_answer.answer)
-            )
+        if entry := await cls.match_entry(group_id, problem, word_scope, word_type):
+            return await cls.format_entry_answer(entry, problem)
 
     @classmethod
     async def get_problem_all_answer(
@@ -442,30 +541,14 @@ class WordBank(Model):
             tuple[str, list[UniMessage]]: 问题和所有回答
         """
         if index is not None:
-            # TODO: group_by和order_by不能同时使用
-            if group_id and word_scope != ScopeType.GLOBAL:
-                _problem = (
-                    await cls.filter(group_id=group_id)
-                    .order_by("create_time")
-                    # .group_by("problem")
-                    .values_list("problem", flat=True)
-                )
-            else:
-                _problem = (
-                    await cls.filter(word_scope=(word_scope or ScopeType.GLOBAL).value)
-                    .order_by("create_time")
-                    # .group_by("problem")
-                    .values_list("problem", flat=True)
-                )
-            # if index is None and problem not in _problem:
-            #     return "词条不存在...", []
-            sort_problem = []
-            for p in _problem:
-                if p not in sort_problem:
-                    sort_problem.append(p)
-            if index > len(sort_problem) - 1:
+            indexed_problem = await cls.get_problem_by_index(
+                index,
+                group_id,
+                word_scope or ScopeType.GLOBAL,
+            )
+            if indexed_problem is None:
                 return "下标错误，必须小于问题数量...", []
-            problem = sort_problem[index]  # type: ignore
+            problem = indexed_problem
         f = cls.filter(
             problem=problem, word_scope=(word_scope or ScopeType.GLOBAL).value
         )
@@ -512,7 +595,8 @@ class WordBank(Model):
                     await WordBank.filter(
                         word_scope=word_scope.value, problem=problem
                     ).delete()
-            cls.invalidate_image_word_exists_cache()
+            cls.clear_match_cache(problem)
+            cls.invalidate_match_index(word_scope, group_id, problem)
             return True
         return False
 
@@ -547,7 +631,8 @@ class WordBank(Model):
             tmp = query[index].problem
             query[index].problem = replace_str
             await query[index].save(update_fields=["problem"])
-            cls.invalidate_image_word_exists_cache()
+            cls.invalidate_match_index(word_scope, group_id, tmp)
+            cls.clear_match_cache(replace_str)
             return tmp
         else:
             if group_id:
@@ -558,41 +643,155 @@ class WordBank(Model):
                 await cls.filter(word_scope=word_scope.value, problem=problem).update(
                     problem=replace_str
                 )
-            cls.invalidate_image_word_exists_cache()
+            cls.invalidate_match_index(word_scope, group_id, problem)
+            cls.clear_match_cache(replace_str)
             return problem
 
     @classmethod
-    async def get_group_all_problem(cls, group_id: str) -> list[tuple[Any | str]]:
+    async def get_group_all_problem(
+        cls,
+        group_id: str,
+        page: int = 1,
+        page_size: int = DEFAULT_PROBLEM_PAGE_SIZE,
+    ) -> list[WordBankProblemRow]:
         """获取群聊所有词条
 
         参数:
             group_id: 群号
         """
-        return cls._handle_problem(
-            await cls.filter(group_id=group_id).order_by("create_time").all()  # type: ignore
+        return await cls.get_problem_page(
+            group_id=group_id,
+            word_scope=ScopeType.GROUP,
+            page=page,
+            page_size=page_size,
         )
 
     @classmethod
-    async def get_problem_by_scope(cls, word_scope: ScopeType):
+    async def get_problem_by_scope(
+        cls,
+        word_scope: ScopeType,
+        page: int = 1,
+        page_size: int = DEFAULT_PROBLEM_PAGE_SIZE,
+    ) -> list[WordBankProblemRow]:
         """通过词条范围获取词条
 
         参数:
             word_scope: 词条范围
         """
-        return cls._handle_problem(
-            await cls.filter(word_scope=word_scope.value).order_by("create_time").all()  # type: ignore
+        return await cls.get_problem_page(
+            word_scope=word_scope,
+            page=page,
+            page_size=page_size,
         )
 
     @classmethod
-    async def get_problem_by_type(cls, word_type: int):
+    async def get_problem_by_type(
+        cls,
+        word_type: int,
+        page: int = 1,
+        page_size: int = DEFAULT_PROBLEM_PAGE_SIZE,
+    ) -> list[WordBankProblemRow]:
         """通过词条类型获取词条
 
         参数:
             word_type: 词条类型
         """
-        return cls._handle_problem(
-            await cls.filter(word_type=word_type).order_by("create_time").all()  # type: ignore
+        return cls._handle_problem_rows(
+            await cls.filter(word_type=word_type)
+            .distinct()
+            .order_by("problem", "word_type", "image_path")
+            .offset(cls._page_offset(page, page_size))
+            .limit(page_size)
+            .values_list("problem", "word_type", "image_path")
         )
+
+    @classmethod
+    async def get_problem_page(
+        cls,
+        group_id: str | None = None,
+        word_scope: ScopeType = ScopeType.GLOBAL,
+        page: int = 1,
+        page_size: int = DEFAULT_PROBLEM_PAGE_SIZE,
+    ) -> list[WordBankProblemRow]:
+        query = cls._problem_list_query(group_id, word_scope)
+        return cls._handle_problem_rows(
+            await query.distinct()
+            .order_by("problem", "word_type", "image_path")
+            .offset(cls._page_offset(page, page_size))
+            .limit(page_size)
+            .values_list("problem", "word_type", "image_path")
+        )
+
+    @classmethod
+    async def count_problem_page(
+        cls,
+        group_id: str | None = None,
+        word_scope: ScopeType = ScopeType.GLOBAL,
+    ) -> int:
+        db_type = BotConfig.get_sql_type()
+        db = Tortoise.get_connection("default")
+        params: list[Any] = []
+
+        def placeholder() -> str:
+            params.append(None)
+            if "postgres" in db_type:
+                return f"${len(params)}"
+            if "mysql" in db_type:
+                return "%s"
+            return "?"
+
+        if group_id and word_scope != ScopeType.GLOBAL:
+            group_placeholder = placeholder()
+            scope_placeholder = placeholder()
+            params[-2:] = [group_id, word_scope.value]
+            where_sql = (
+                f"group_id = {group_placeholder} "
+                f"AND word_scope = {scope_placeholder}"
+            )
+        else:
+            scope_placeholder = placeholder()
+            params[-1] = word_scope.value
+            where_sql = f"word_scope = {scope_placeholder}"
+
+        sql = (
+            "SELECT COUNT(*) AS count FROM ("
+            "SELECT DISTINCT problem, word_type, image_path "
+            f"FROM word_bank2 WHERE {where_sql}"
+            ") AS word_bank_count"
+        )
+        rows = await db.execute_query_dict(sql, params)
+        return int(next(iter(rows[0].values()))) if rows else 0
+
+    @classmethod
+    async def get_problem_by_index(
+        cls,
+        index: int,
+        group_id: str | None = None,
+        word_scope: ScopeType = ScopeType.GLOBAL,
+    ) -> str | None:
+        rows: list[tuple[Any, ...]] = (
+            await cls._problem_list_query(group_id, word_scope)
+            .distinct()
+            .order_by("problem", "word_type", "image_path")
+            .offset(index)
+            .limit(1)
+            .values_list("problem", "word_type", "image_path")
+        )
+        return str(rows[0][0]) if rows else None
+
+    @classmethod
+    def _problem_list_query(
+        cls,
+        group_id: str | None = None,
+        word_scope: ScopeType = ScopeType.GLOBAL,
+    ):
+        if group_id and word_scope != ScopeType.GLOBAL:
+            return cls.filter(group_id=group_id, word_scope=word_scope.value)
+        return cls.filter(word_scope=word_scope.value)
+
+    @classmethod
+    def _page_offset(cls, page: int, page_size: int) -> int:
+        return max(page - 1, 0) * page_size
 
     @classmethod
     def __type2int(cls, value: int) -> str:
@@ -602,26 +801,25 @@ class WordBank(Model):
         return ""
 
     @classmethod
-    def _handle_problem(cls, problem_list: list["WordBank"]):
+    def _handle_problem_rows(
+        cls,
+        problem_list: list[tuple[str, int, str | None]],
+    ) -> list[WordBankProblemRow]:
         """格式化处理问题
 
         参数:
             msg_list: 消息列表
         """
-        _tmp = []
         result_list = []
-        for q in problem_list:
-            if q.problem not in _tmp:
-                word_type = cls.__type2int(q.word_type)
-                # TODO: 获取收录人名称
-                problem = (
-                    (path / q.image_path, 30, 30) if q.image_path else q.problem,
+        for problem, word_type_value, image_path in problem_list:
+            word_type = cls.__type2int(word_type_value)
+            result_list.append(
+                WordBankProblemRow(
+                    (path / image_path, 30, 30) if image_path else problem,
                     int2type[word_type],
-                    # q.author,
                     "-",
                 )
-                result_list.append(problem)
-                _tmp.append(q.problem)
+            )
         return result_list
 
     @classmethod
@@ -661,6 +859,7 @@ class WordBank(Model):
                 create_time=datetime.now().replace(microsecond=0),
                 update_time=datetime.now().replace(microsecond=0),
             )
+            cls.invalidate_match_index(word_scope, group_id, problem)
 
     @classmethod
     async def _run_script(cls):
