@@ -63,9 +63,7 @@ class WordBankShard:
                 word_type=int(row.get("word_type") or WordType.EXACT.value),
                 word_scope=int(row.get("word_scope") or ScopeType.GLOBAL.value),
                 group_id=(
-                    str(row["group_id"])
-                    if row.get("group_id") is not None
-                    else None
+                    str(row["group_id"]) if row.get("group_id") is not None else None
                 ),
                 user_id=str(row.get("user_id") or ""),
                 image_path=row.get("image_path"),
@@ -187,9 +185,7 @@ class WordBankIndex:
             else:
                 cls._group_shards.clear()
                 cls._locks = {
-                    key: lock
-                    for key, lock in cls._locks.items()
-                    if key[0] != "group"
+                    key: lock for key, lock in cls._locks.items() if key[0] != "group"
                 }
 
     @classmethod

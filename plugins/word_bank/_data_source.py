@@ -93,6 +93,7 @@ def get_answer(message: UniMsg) -> UniMessage:
 
 class WordBankManage:
     DEFAULT_PAGE_SIZE = DEFAULT_PROBLEM_PAGE_SIZE
+
     @classmethod
     async def update_word(
         cls,

@@ -745,8 +745,7 @@ class WordBank(Model):
             scope_placeholder = placeholder()
             params[-2:] = [group_id, word_scope.value]
             where_sql = (
-                f"group_id = {group_placeholder} "
-                f"AND word_scope = {scope_placeholder}"
+                f"group_id = {group_placeholder} AND word_scope = {scope_placeholder}"
             )
         else:
             scope_placeholder = placeholder()
