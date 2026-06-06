@@ -92,7 +92,7 @@ else:
 try:
     with open(OPTION_FILE, "r", encoding="utf-8") as f:
         custom_config = yaml.safe_load(f) or {}
-    ENCRYPT_PDF_ENABLED = custom_config.get("encrypt_pdf", True)
+    ENCRYPT_PDF_ENABLED = custom_config.get("encrypt_pdf", False)
 except Exception as e:
     logger.warning(f"读取 encrypt_pdf 配置失败，默认关闭加密: {e}", "jmcomic")
     ENCRYPT_PDF_ENABLED = False
@@ -237,34 +237,58 @@ class CreateZip:
         self.zip_path = ZIP_OUTPUT_PATH / f"{data.album_id}.zip"
         self.encrypted_pdf_path = PDF_OUTPUT_PATH / f"encrypted_{data.album_id}.pdf"
 
-    def encrypt_pdf(self):
-        with Pdf.open(self.pdf_path) as pdf:
-            pdf.save(
-                self.encrypted_pdf_path,
-                encryption=Encryption(user=self.password, owner=self.password, R=6),
-            )
-            logger.info(f"PDF 已加密并保存到: {self.encrypted_pdf_path}", "jmcomic")
+    async def encrypt_pdf(self):
+        # 将PDF加密操作放到线程池中执行
+        def _encrypt():
+            try:
+                with Pdf.open(self.pdf_path) as pdf:
+                    pdf.save(
+                        self.encrypted_pdf_path,
+                        encryption=Encryption(user=self.password, owner=self.password, R=6),
+                    )
+                    logger.info(f"PDF 已加密并保存到: {self.encrypted_pdf_path}", "jmcomic")
+            except Exception as e:
+                logger.error(f"PDF加密失败: {e}", "jmcomic")
+                raise
+        
+        await asyncio.to_thread(_encrypt)
 
-    def create_password_protected_zip(self, file_to_compress: Path):
-        pyminizip.compress(
-            str(file_to_compress.absolute()),
-            None,
-            str(self.zip_path.absolute()),
-            self.password,
-            5,
-        )
-        logger.info(f"ZIP 文件已创建并加密: {self.zip_path}", "jmcomic")
+    async def create_password_protected_zip(self, file_to_compress: Path):
+        # 将ZIP压缩操作放到线程池中执行
+        def _compress():
+            try:
+                pyminizip.compress(
+                    str(file_to_compress.absolute()),
+                    None,
+                    str(self.zip_path.absolute()),
+                    self.password,
+                    5,
+                )
+                logger.info(f"ZIP 文件已创建并加密: {self.zip_path}", "jmcomic")
+            except Exception as e:
+                logger.error(f"ZIP压缩失败: {e}", "jmcomic")
+                raise
+        
+        await asyncio.to_thread(_compress)
 
-    def create(self) -> Path:
-        if self.pdf_path.exists():
+    async def create(self) -> Path:
+        if not self.pdf_path.exists():
+            logger.warning(f"PDF文件不存在: {self.pdf_path}", "jmcomic")
+            return self.zip_path  # 返回路径，即使文件不存在
+            
+        try:
             if ENCRYPT_PDF_ENABLED:
-                self.encrypt_pdf()
-                self.create_password_protected_zip(self.encrypted_pdf_path)
+                await self.encrypt_pdf()
+                await self.create_password_protected_zip(self.encrypted_pdf_path)
                 if self.encrypted_pdf_path.exists():
-                    self.encrypted_pdf_path.unlink()
+                    # 删除临时加密文件
+                    await asyncio.to_thread(self.encrypted_pdf_path.unlink)
             else:
                 logger.info("PDF 加密已关闭，直接压缩原始 PDF 文件", "jmcomic")
-                self.create_password_protected_zip(self.pdf_path)
+                await self.create_password_protected_zip(self.pdf_path)
+        except Exception as e:
+            logger.error(f"创建ZIP文件失败: {e}", "jmcomic")
+            raise
 
         return self.zip_path
 
@@ -275,8 +299,20 @@ class JmDownload:
     @classmethod
     async def upload_file(cls, data: DetailInfo, zip_path: Path | None = None):
         if not zip_path:
-            # 压缩加密属于 CPU 密集型操作，放入线程池避免主线程卡顿
-            zip_path = await asyncio.to_thread(CreateZip(data).create)
+            try:
+                # 压缩加密属于 CPU 密集型操作，现在使用异步方法
+                create_zip_instance = CreateZip(data)
+                zip_path = await create_zip_instance.create()
+            except Exception as e:
+                logger.error(f"创建ZIP文件失败: {e}", "jmcomic")
+                await PlatformUtils.send_message(
+                    bot=data.bot,
+                    user_id=data.user_id,
+                    group_id=data.group_id,
+                    message="ZIP文件创建失败...",
+                )
+                return
+
         try:
             if not zip_path.exists():
                 await PlatformUtils.send_message(
@@ -285,7 +321,9 @@ class JmDownload:
                     group_id=data.group_id,
                     message="ZIP文件生成失败或已不存在...",
                 )
-            elif data.group_id:
+                return
+                
+            if data.group_id:
                 await data.bot.call_api(
                     "upload_group_file",
                     group_id=data.group_id,
@@ -336,40 +374,62 @@ class JmDownload:
         except Exception as e:
             logger.warning(f"发送本子 {album.id} 的元数据失败: {e}", "jmcomic")
 
+
     @classmethod
     def call_send(cls, album: JmAlbumDetail, dler):
-        data_list = cls._data.get(album.id)
+        data_list = cls._data.pop(album.id, None)
         if not data_list:
             return
-        try:
-            loop = asyncio.get_running_loop()
-        except Exception:
-            loop = None
 
-        # 异步发送任务：先传文件，后发文字
+        # 创建一个新的异步任务来处理发送
+        async def process_data_list():
+            async def upload_and_send_msg(data):
+                try:
+                    # 并行发送文件和元数据
+                    await asyncio.gather(
+                        cls.upload_file(data),
+                        cls.send_album_metadata(data.bot, data.user_id, data.group_id, album),
+                        return_exceptions=True
+                    )
+                except Exception as e:
+                    logger.error(f"发送文件或文字消息失败: {e}", "jmcomic")
+
+            tasks = [upload_and_send_msg(data) for data in data_list]
+            await asyncio.gather(*tasks, return_exceptions=True)
+        
+         # 在适当的事件循环中运行异步任务
+        try:
+            import nonebot
+            loop = nonebot.get_current_loop() # 获取 NoneBot 的主事件循环
+            asyncio.run_coroutine_threadsafe(process_data_list(), loop)
+        except Exception:
+            # 兜底方案
+            try:
+                loop = asyncio.get_running_loop()
+                asyncio.run_coroutine_threadsafe(process_data_list(), loop)
+            except RuntimeError:
+                asyncio.run(process_data_list())
+
+    @classmethod
+    async def _run_all_tasks(cls, album: JmAlbumDetail, data_list: list[DetailInfo]):
+        """私有辅助方法，用于运行所有任务"""
         async def upload_and_send_msg(data):
             try:
-                # 直接调用发送函数
-                await cls.upload_file(data)
-                await cls.send_album_metadata(
-                    data.bot, data.user_id, data.group_id, album
+                # 并行发送文件和元数据
+                await asyncio.gather(
+                    cls.upload_file(data),
+                    cls.send_album_metadata(data.bot, data.user_id, data.group_id, album),
+                    return_exceptions=True
                 )
             except Exception as e:
                 logger.error(f"发送文件或文字消息失败: {e}", "jmcomic")
 
-        # 使用 gather 等待任务跑完
-        async def run_all_tasks():
-            tasks = [upload_and_send_msg(data) for data in data_list]
-            await asyncio.gather(*tasks)
-            # 最后删除上下文
-            if album.id in cls._data:
-                del cls._data[album.id]
+        tasks = [upload_and_send_msg(data) for data in data_list]
+        await asyncio.gather(*tasks, return_exceptions=True)
+        # 最后删除上下文
+        if album.id in cls._data:
+            del cls._data[album.id]
 
-        # 提交给已有的事件循环
-        if loop:
-            loop.create_task(run_all_tasks())
-        else:
-            asyncio.run(run_all_tasks())
 
     @classmethod
     async def download_album(
