@@ -244,13 +244,17 @@ class CreateZip:
                 with Pdf.open(self.pdf_path) as pdf:
                     pdf.save(
                         self.encrypted_pdf_path,
-                        encryption=Encryption(user=self.password, owner=self.password, R=6),
+                        encryption=Encryption(
+                            user=self.password, owner=self.password, R=6
+                        ),
                     )
-                    logger.info(f"PDF 已加密并保存到: {self.encrypted_pdf_path}", "jmcomic")
+                    logger.info(
+                        f"PDF 已加密并保存到: {self.encrypted_pdf_path}", "jmcomic"
+                    )
             except Exception as e:
                 logger.error(f"PDF加密失败: {e}", "jmcomic")
                 raise
-        
+
         await asyncio.to_thread(_encrypt)
 
     async def create_password_protected_zip(self, file_to_compress: Path):
@@ -268,14 +272,14 @@ class CreateZip:
             except Exception as e:
                 logger.error(f"ZIP压缩失败: {e}", "jmcomic")
                 raise
-        
+
         await asyncio.to_thread(_compress)
 
     async def create(self) -> Path:
         if not self.pdf_path.exists():
             logger.warning(f"PDF文件不存在: {self.pdf_path}", "jmcomic")
             return self.zip_path  # 返回路径，即使文件不存在
-            
+
         try:
             if ENCRYPT_PDF_ENABLED:
                 await self.encrypt_pdf()
@@ -322,7 +326,7 @@ class JmDownload:
                     message="ZIP文件生成失败或已不存在...",
                 )
                 return
-                
+
             if data.group_id:
                 await data.bot.call_api(
                     "upload_group_file",
@@ -374,7 +378,6 @@ class JmDownload:
         except Exception as e:
             logger.warning(f"发送本子 {album.id} 的元数据失败: {e}", "jmcomic")
 
-
     @classmethod
     def call_send(cls, album: JmAlbumDetail, dler):
         data_list = cls._data.pop(album.id, None)
@@ -388,19 +391,22 @@ class JmDownload:
                     # 并行发送文件和元数据
                     await asyncio.gather(
                         cls.upload_file(data),
-                        cls.send_album_metadata(data.bot, data.user_id, data.group_id, album),
-                        return_exceptions=True
+                        cls.send_album_metadata(
+                            data.bot, data.user_id, data.group_id, album
+                        ),
+                        return_exceptions=True,
                     )
                 except Exception as e:
                     logger.error(f"发送文件或文字消息失败: {e}", "jmcomic")
 
             tasks = [upload_and_send_msg(data) for data in data_list]
             await asyncio.gather(*tasks, return_exceptions=True)
-        
-         # 在适当的事件循环中运行异步任务
+
+        # 在适当的事件循环中运行异步任务
         try:
             import nonebot
-            loop = nonebot.get_current_loop() # 获取 NoneBot 的主事件循环
+
+            loop = nonebot.get_current_loop()  # 获取 NoneBot 的主事件循环
             asyncio.run_coroutine_threadsafe(process_data_list(), loop)
         except Exception:
             # 兜底方案
@@ -413,13 +419,16 @@ class JmDownload:
     @classmethod
     async def _run_all_tasks(cls, album: JmAlbumDetail, data_list: list[DetailInfo]):
         """私有辅助方法，用于运行所有任务"""
+
         async def upload_and_send_msg(data):
             try:
                 # 并行发送文件和元数据
                 await asyncio.gather(
                     cls.upload_file(data),
-                    cls.send_album_metadata(data.bot, data.user_id, data.group_id, album),
-                    return_exceptions=True
+                    cls.send_album_metadata(
+                        data.bot, data.user_id, data.group_id, album
+                    ),
+                    return_exceptions=True,
                 )
             except Exception as e:
                 logger.error(f"发送文件或文字消息失败: {e}", "jmcomic")
@@ -429,7 +438,6 @@ class JmDownload:
         # 最后删除上下文
         if album.id in cls._data:
             del cls._data[album.id]
-
 
     @classmethod
     async def download_album(
