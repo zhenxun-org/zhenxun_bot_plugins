@@ -1,5 +1,6 @@
 import asyncio
 from datetime import datetime
+import hashlib
 from pathlib import Path
 import xml.etree.ElementTree as ET
 
@@ -21,6 +22,7 @@ class Report:
     bili_url = "https://s.search.bilibili.com/main/hotword"
     it_url = "https://www.ithome.com/rss/"
     anime_url = "https://api.bgm.tv/calendar"
+    cover_path = REPORT_PATH / "covers"
 
     week = {  # noqa: RUF012
         0: "一",
@@ -32,6 +34,39 @@ class Report:
         6: "日",
     }
     _lock = asyncio.Lock()
+
+    @classmethod
+    def _get_cover_cache_file(cls, url: str) -> Path:
+        suffix = Path(url.split("?", 1)[0]).suffix.lower()
+        if suffix not in {".jpg", ".jpeg", ".png", ".webp", ".gif"}:
+            suffix = ".jpg"
+        digest = hashlib.sha1(url.encode("utf-8")).hexdigest()
+        return cls.cover_path / f"{digest}{suffix}"
+
+    @classmethod
+    async def _cache_anime_cover(cls, title: str, url: str) -> str:
+        if not url:
+            return ""
+        local_file = cls._get_cover_cache_file(url)
+        if local_file.exists() and local_file.stat().st_size > 0:
+            return local_file.resolve().as_uri()
+        try:
+            cls.cover_path.mkdir(parents=True, exist_ok=True)
+            image_bytes = await AsyncHttpx.get_content(
+                url,
+                headers={
+                    "Referer": "https://bgm.tv/",
+                    "User-Agent": "Mozilla/5.0",
+                },
+                timeout=20,
+            )
+            if not image_bytes:
+                return ""
+            local_file.write_bytes(image_bytes)
+            return local_file.resolve().as_uri()
+        except Exception as e:
+            logger.warning(f"缓存新番封面失败: {title} -> {url}: {e}")
+            return ""
 
     @classmethod
     async def get_report_image(cls) -> Path:
@@ -46,7 +81,7 @@ class Report:
             if file.exists():
                 return file
 
-            for old_file in REPORT_PATH.iterdir():
+            for old_file in REPORT_PATH.glob("*.png"):
                 if old_file.is_file():
                     old_file.unlink()
 
@@ -83,8 +118,7 @@ class Report:
                 component, viewport={"width": 578, "height": 1885}, wait=2
             )
             temp_file = REPORT_PATH / f".{now.date()}.png.tmp"
-            with open(temp_file, "wb") as f:
-                f.write(image_bytes)
+            temp_file.write_bytes(image_bytes)
             temp_file.replace(file)
             return file
 
@@ -175,10 +209,16 @@ class Report:
             if not anime_raw:
                 return [("获取今日新番失败 QAQ", "")]
             anime = Anime(**anime_raw)
-            data_list.extend(
-                (data.name_cn or data.name, data.image) for data in anime.items
+            anime_items = anime.items[:8]
+            titles = [data.name_cn or data.name for data in anime_items]
+            images = await asyncio.gather(
+                *[
+                    cls._cache_anime_cover(title, data.image)
+                    for title, data in zip(titles, anime_items, strict=True)
+                ]
             )
-            return data_list[:8] if len(data_list) > 8 else data_list
+            data_list.extend(zip(titles, images, strict=True))
+            return data_list
         except Exception as e:
             logger.error(f"获取今日新番失败: {e}")
             return [("获取今日新番失败 QAQ", "")]

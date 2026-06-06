@@ -1,6 +1,3 @@
-from collections import OrderedDict
-from pathlib import Path
-
 from nonebot_plugin_alconna import At, Image, UniMessage, UniMsg
 from nonebot_plugin_alconna import At as alcAt
 from nonebot_plugin_alconna import Image as alcImage
@@ -14,7 +11,7 @@ from zhenxun.utils.message import MessageUtils
 from zhenxun.utils.platform import PlatformUtils
 
 from ._config import ScopeType
-from ._model import WordBank
+from ._model import DEFAULT_PROBLEM_PAGE_SIZE, WordBank
 
 
 def get_img_and_at_list(message: UniMsg) -> tuple[list[str], list[str]]:
@@ -95,6 +92,8 @@ def get_answer(message: UniMsg) -> UniMessage:
 
 
 class WordBankManage:
+    DEFAULT_PAGE_SIZE = DEFAULT_PROBLEM_PAGE_SIZE
+
     @classmethod
     async def update_word(
         cls,
@@ -176,10 +175,7 @@ class WordBankManage:
             )
             if code != 200:
                 return problem, ""
-            if isinstance(result_problem, Path):
-                problem = result_problem
-            else:
-                problem = result_problem
+            problem = str(result_problem)
         if handle_type == "delete":
             if index:
                 problem, _problem_list = await WordBank.get_problem_all_answer(
@@ -207,7 +203,7 @@ class WordBankManage:
         idx: int,
         group_id: str | None = None,
         word_scope: ScopeType = ScopeType.GROUP,
-    ) -> tuple[str | Path, int]:
+    ) -> tuple[str, int]:
         """通过id获取问题字符串
 
         参数:
@@ -215,22 +211,12 @@ class WordBankManage:
             group_id: 群号
             word_scope: 获取类型
         """
-        if word_scope in [ScopeType.GLOBAL, ScopeType.PRIVATE]:
-            all_problem = (
-                await WordBank.filter(word_scope=word_scope.value)
-                .order_by("create_time")
-                .all()
-            )
-        elif group_id:
-            all_problem = (
-                await WordBank.filter(group_id=group_id).order_by("create_time").all()
-            )
-        else:
+        if word_scope == ScopeType.GROUP and not group_id:
             raise Exception("词条类型与群组id不能为空...")
-        filter_list = list(OrderedDict.fromkeys([wb.problem for wb in all_problem]))
-        if idx < 0 or idx >= len(all_problem):
+        problem = await WordBank.get_problem_by_index(idx, group_id, word_scope)
+        if problem is None:
             return "问题下标id必须在范围内", 999
-        return filter_list[idx], 200
+        return problem, 200
 
     @classmethod
     async def show_word(
@@ -239,6 +225,8 @@ class WordBankManage:
         index: int | None = None,
         group_id: str | None = None,
         word_scope: ScopeType | None = ScopeType.GROUP,
+        page: int = 1,
+        page_size: int = DEFAULT_PAGE_SIZE,
     ) -> UniMessage:
         """获取群词条
 
@@ -287,29 +275,67 @@ class WordBankManage:
             return MessageUtils.build_message(template_image)
         else:
             result = []
-            if group_id:
-                _problem_list = await WordBank.get_group_all_problem(group_id)
-            elif word_scope is not None:
-                _problem_list = await WordBank.get_problem_by_scope(word_scope)
+            word_scope = word_scope or ScopeType.GROUP
+            page = max(page, 1)
+            page_size = max(min(page_size, cls.DEFAULT_PAGE_SIZE), 1)
+            if group_id and word_scope != ScopeType.GLOBAL:
+                _problem_list = await WordBank.get_group_all_problem(
+                    group_id,
+                    page,
+                    page_size,
+                )
+                current_total = await WordBank.count_problem_page(
+                    group_id,
+                    ScopeType.GROUP,
+                )
             else:
-                raise Exception("群组id和词条范围不能都为空")
-            global_problem_list = await WordBank.get_problem_by_scope(ScopeType.GLOBAL)
+                _problem_list = await WordBank.get_problem_by_scope(
+                    word_scope,
+                    page,
+                    page_size,
+                )
+                current_total = await WordBank.count_problem_page(
+                    word_scope=word_scope,
+                )
+            global_problem_list = []
+            global_total = 0
+            if word_scope != ScopeType.GLOBAL:
+                global_problem_list = await WordBank.get_problem_by_scope(
+                    ScopeType.GLOBAL,
+                    page,
+                    page_size,
+                )
+                global_total = await WordBank.count_problem_page(
+                    word_scope=ScopeType.GLOBAL,
+                )
             if not _problem_list and not global_problem_list:
                 return MessageUtils.build_message("未收录任何词条...")
             column_name = ["序号", "关键词", "匹配类型", "收录用户"]
             data_list = [list(s) for s in _problem_list]
+            start_index = (page - 1) * page_size
             for i in range(len(data_list)):
-                data_list[i].insert(0, i)
+                data_list[i].insert(0, start_index + i)
+            tip = f"第 {page} 页，每页 {page_size} 条，共 {current_total} 条"
+            title = "全局词条"
+            if word_scope != ScopeType.GLOBAL:
+                title = "群组内词条" if group_id else "私聊词条"
             group_image = await ImageTemplate.table_page(
-                "群组内词条" if group_id else "私聊词条", None, column_name, data_list
+                title,
+                tip,
+                column_name,
+                data_list,
             )
             result.append(group_image)
             if global_problem_list:
                 data_list = [list(s) for s in global_problem_list]
                 for i in range(len(data_list)):
-                    data_list[i].insert(0, i)
+                    data_list[i].insert(0, start_index + i)
+                global_tip = f"第 {page} 页，每页 {page_size} 条，共 {global_total} 条"
                 global_image = await ImageTemplate.table_page(
-                    "全局词条", None, column_name, data_list
+                    "全局词条",
+                    global_tip,
+                    column_name,
+                    data_list,
                 )
                 result.append(global_image)
             return MessageUtils.build_message(result)
@@ -380,4 +406,10 @@ class ImportHelper:
         for problem, answer_list in data.items():
             create_list += cls.to_create_list(session, problem, answer_list, is_all)
         await WordBank.bulk_create(create_list, 100)
+        if is_all:
+            WordBank.invalidate_match_index(ScopeType.GLOBAL)
+        elif session.group:
+            WordBank.invalidate_match_index(ScopeType.GROUP, session.group.id)
+        else:
+            WordBank.invalidate_match_index(ScopeType.PRIVATE)
         return f"成功导入 {len(create_list)} 条词条！"

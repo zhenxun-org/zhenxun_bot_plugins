@@ -14,11 +14,9 @@ from nonebot_plugin_session import EventSession
 
 from zhenxun.configs.utils import PluginExtraData
 from zhenxun.services.log import logger
-from zhenxun.utils.message import MessageUtils
 
 from ._config import ScopeType
 from ._data_source import WordBankManage
-from ._model import WordBank
 
 __plugin_meta__ = PluginMetadata(
     name="查看词条",
@@ -45,6 +43,7 @@ _show_matcher = on_alconna(
         Args["problem?", str],
         Option("-g|--group", Args["gid", str], help_text="群组id"),
         Option("--id", Args["index", int], help_text="词条id"),
+        Option("-p|--page", Args["page", int], help_text="页码"),
         Option("--all", action=store_true, help_text="全局词条"),
     ),
     aliases={"查看词条"},
@@ -58,6 +57,7 @@ async def _(
     session: EventSession,
     problem: Match[str],
     index: Match[int],
+    page: Match[int],
     gid: Match[str],
     arparma: Arparma,
     all: Query[bool] = AlconnaQuery("all.value", False),
@@ -69,11 +69,6 @@ async def _(
     if gid.available:
         group_id = gid.result
     if problem.available:
-        if index.available and (
-            index.result < 0
-            or index.result > len(await WordBank.get_problem_by_scope(word_scope))
-        ):
-            await MessageUtils.build_message("id必须在范围内...").finish(reply_to=True)
         result = await WordBankManage.show_word(
             problem.result,
             index.result if index.available else None,
@@ -82,7 +77,11 @@ async def _(
         )
     else:
         result = await WordBankManage.show_word(
-            None, index.result if index.available else None, group_id, word_scope
+            None,
+            index.result if index.available else None,
+            group_id,
+            word_scope,
+            page.result if page.available else 1,
         )
     await result.send()
     logger.info(

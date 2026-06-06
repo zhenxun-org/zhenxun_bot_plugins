@@ -15,8 +15,6 @@ from zhenxun.utils.http_utils import AsyncHttpx
 from ._data_source import get_img_and_at_list
 from ._model import WordBank
 
-_IMAGE_DOWNLOAD_TIMEOUT_SECONDS = 8.0
-
 
 async def check(
     bot: Bot,
@@ -25,20 +23,13 @@ async def check(
     session: EventSession,
     state: T_State,
 ) -> bool:
-    group_id = session.id3 or session.id2
     text = message.extract_plain_text().strip()
     img_list, at_list = get_img_and_at_list(message)
     problem = text
-    if not text and len(img_list) == 1 and not at_list:
-        if not await WordBank.has_image_word_enabled(group_id):
-            return False
+    if not text and len(img_list) == 1:
         try:
-            content = await AsyncHttpx.get_content(
-                img_list[0],
-                timeout=_IMAGE_DOWNLOAD_TIMEOUT_SECONDS,
-            )
-            with Image.open(BytesIO(content)) as image:
-                problem = str(imagehash.average_hash(image))
+            r = await AsyncHttpx.get(img_list[0])
+            problem = str(imagehash.average_hash(Image.open(BytesIO(r.content))))
         except Exception as e:
             logger.warning("获取图片失败", "词条检测", session=session, e=e)
     if at_list:
@@ -56,7 +47,11 @@ async def check(
         elif problem and bot.config.nickname:
             nickname = [nk for nk in bot.config.nickname if str(message).startswith(nk)]
             problem = nickname[0] + problem if nickname else problem
-    if problem and (await WordBank.check_problem(group_id, problem) is not None):
+    if not problem:
+        return False
+    match_entry = await WordBank.match_entry(session.id3 or session.id2, problem)
+    if match_entry is not None:
         state["problem"] = problem  # type: ignore
+        state["word_bank_match"] = match_entry  # type: ignore
         return True
     return False
