@@ -1,48 +1,48 @@
+import asyncio
 import re
-from .data_source import Notification
-from typing import Any, Dict, List, Tuple, cast
 import time
-from bilibili_api import login_v2
-from bilibili_api import bangumi
-from nonebot.adapters import Message
-from nonebot.matcher import Matcher
+from typing import Any, cast
+
+from bilibili_api import bangumi, login_v2
+import nonebot
+from nonebot.adapters import Bot, Event, Message
 from nonebot.log import logger
+from nonebot.matcher import Matcher
 from nonebot.permission import SUPERUSER
 from nonebot_plugin_alconna import (
     Alconna,
     Args,
+    Arparma,
+    MultiVar,
     Option,
+    Query,
     Subcommand,
     on_alconna,
-    Query,
-    MultiVar,
-    Arparma,
 )
 from nonebot_plugin_session import EventSession
-from zhenxun import ui
 from nonebot_plugin_waiter import prompt_until
-from zhenxun.ui.models import LayoutData, NotebookData
-from zhenxun.ui.models import UserInfoBlock
-from zhenxun.utils.message import MessageUtils
 
-from .config import get_credential, save_credential_to_file, clear_credential
+from zhenxun import ui
+from zhenxun.models.group_console import GroupConsole
+from zhenxun.ui.models import LayoutData, NotebookData, UserInfoBlock
+from zhenxun.utils.message import MessageUtils
+from zhenxun.utils.platform import PlatformUtils
+from zhenxun.utils.rules import admin_check
+
+from .config import clear_credential, get_credential, save_credential_to_file
 from .data_source import (
-    add_bangumi_sub,
-    get_season_id_from_ep,
-    search_bangumi,
-    get_sub_status,
-    _get_bangumi_status,
     BiliSub,
     BiliSubTarget,
+    Notification,
+    _get_bangumi_status,
+    add_bangumi_sub,
     add_live_sub,
     add_up_sub,
+    get_season_id_from_ep,
+    get_sub_status,
+    search_bangumi,
 )
-from .utils import get_cached_avatar, get_user_card, get_cached_bangumi_cover
-
-import nonebot
-from nonebot.adapters import Bot, Event
-import asyncio
-from zhenxun.utils.rules import admin_check
+from .utils import get_cached_avatar, get_cached_bangumi_cover, get_user_card
 
 
 async def get_target_ids(session: EventSession, gids: Query[list[int]]) -> list[str]:
@@ -54,57 +54,201 @@ async def get_target_ids(session: EventSession, gids: Query[list[int]]) -> list[
     return [target_id] if target_id else []
 
 
-bilisub_admin_cmd = Alconna(
+def has_group_option(gids: Query[list[int]]) -> bool:
+    return gids.available and bool(gids.result)
+
+
+async def ensure_superuser(bot: Bot, event: Event, action: str = "该操作"):
+    if not await SUPERUSER(bot, event):
+        await MessageUtils.build_message(f"❌ 只有超级用户才能使用{action}。").finish()
+
+
+def describe_target(target_id: str) -> str:
+    if target_id.startswith("group_"):
+        return f"群 {target_id.replace('group_', '')}"
+    if target_id.startswith("private_"):
+        return f"私聊 {target_id.replace('private_', '')}"
+    return target_id
+
+
+def normalize_config_setting(setting: str) -> str:
+    setting = setting.strip().lower()
+    if not setting:
+        return ""
+    if setting[0] in "+-":
+        return setting
+
+    compact = (
+        setting.replace(" ", "")
+        .replace("：", ":")
+        .replace("＠", "@")
+        .replace("艾特", "@")
+        .replace("全体成员", "全体")
+    )
+
+    enable_words = ("开", "开启", "启用", "打开")
+    disable_words = ("关", "关闭", "禁用", "取消", "停止")
+    type_aliases = {
+        "动态": "dynamic",
+        "dynamic": "dynamic",
+        "视频": "video",
+        "投稿": "video",
+        "剧集": "video",
+        "番剧": "video",
+        "video": "video",
+        "直播": "live",
+        "live": "live",
+        "全部": "all",
+        "全": "all",
+        "all": "all",
+    }
+
+    def pick_type(text: str) -> str:
+        for alias, key in type_aliases.items():
+            if alias in text:
+                return key
+        return ""
+
+    at_mode = "@" in compact
+    key = pick_type(compact)
+    if not key:
+        return setting
+
+    value = None
+    if compact in ("全开", "全部开", "全部开启", "开启全部", "打开全部"):
+        value = True
+    elif compact in ("全关", "全部关", "全部关闭", "关闭全部", "取消全部"):
+        value = False
+    else:
+        for word in disable_words:
+            if compact.startswith(word) or compact.endswith(word):
+                value = False
+                break
+        if value is None:
+            for word in enable_words:
+                if compact.startswith(word) or compact.endswith(word):
+                    value = True
+                    break
+        if value is None and at_mode and not compact.startswith(("不", "取消", "关")):
+            value = True
+
+    if value is None:
+        return setting
+
+    prefix = "+" if value else "-"
+    return f"{prefix}at:{key}" if at_mode else f"{prefix}{key}"
+
+
+async def get_subs_by_targets(target_ids: list[str]) -> list[BiliSub]:
+    targets = await BiliSubTarget.filter(target_id__in=target_ids).prefetch_related(
+        "subscription"
+    )
+    subs: dict[int, BiliSub] = {}
+    for target in targets:
+        subs[target.subscription.id] = target.subscription
+    return sorted(subs.values(), key=lambda sub: sub.id)
+
+
+async def send_notification_to_targets(
+    notification: Notification,
+    bot: Bot,
+    target_ids: list[str],
+) -> int:
+    success_count = 0
+    for target_id in target_ids:
+        try:
+            if target_id.startswith("group_"):
+                await PlatformUtils.send_message(
+                    bot,
+                    user_id=None,
+                    group_id=target_id.replace("group_", ""),
+                    message=MessageUtils.build_message(notification.content),
+                )
+                success_count += 1
+            elif target_id.startswith("private_"):
+                await PlatformUtils.send_message(
+                    bot,
+                    user_id=target_id.replace("private_", ""),
+                    group_id=None,
+                    message=MessageUtils.build_message(notification.content),
+                )
+                success_count += 1
+        except Exception as e:
+            logger.error(f"B站订阅定向推送失败: target={target_id}, 错误={e}")
+    return success_count
+
+
+bilisub_cmd = Alconna(
     "bilisub",
     Subcommand(
         "add",
-        Option("--live"),
+        Option("--live|--直播"),
         Args["ids", MultiVar(str)],
-        Option("-g|--group", Args["gids", MultiVar(int)]),
+        Option("-g|--group|--群", Args["gids", MultiVar(int)]),
+        alias=["添加", "订阅", "新增"],
     ),
     Subcommand(
         "del",
         Args["db_ids", MultiVar(int)],
-        Option("-g|--group", Args["gids", MultiVar(int)]),
+        Option("-g|--group|--群", Args["gids", MultiVar(int)]),
+        alias=["删除", "取消", "退订"],
     ),
-    Subcommand("config", Args["params", MultiVar(str)]),
-    Subcommand("list", Option("-g|--group", Args["gids", MultiVar(int)])),
     Subcommand(
-        "clear", Option("--all"), Option("-g|--group", Args["gids", MultiVar(int)])
+        "config",
+        Args["params", MultiVar(str)],
+        Option("-g|--group|--群", Args["gids", MultiVar(int)]),
+        alias=["设置", "配置", "开关"],
+    ),
+    Subcommand(
+        "list",
+        Option("-g|--group|--群", Args["gids", MultiVar(int)]),
+        alias=["列表", "查看"],
+    ),
+    Subcommand("targets", alias=["群列表"]),
+    Subcommand(
+        "clear",
+        Option("--all|--全部"),
+        Option("-g|--group|--群", Args["gids", MultiVar(int)]),
+        alias=["清空"],
+    ),
+    Subcommand("login", alias=["登录"]),
+    Subcommand("status", alias=["状态", "登录状态"]),
+    Subcommand("logout", alias=["退出", "退出登录"]),
+    Subcommand(
+        "checkall",
+        Option("-g|--group|--群", Args["gids", MultiVar(int)]),
+        alias=["检查", "检查全部"],
+    ),
+    Subcommand(
+        "forcepush",
+        Args["db_ids", MultiVar(int)],
+        Option("-g|--group|--群", Args["gids", MultiVar(int)]),
+        alias=["补发", "强推", "强制推送"],
     ),
 )
 
-bilisub_su_cmd = Alconna(
-    "bilisub",
-    Subcommand("login"),
-    Subcommand("status"),
-    Subcommand("logout"),
-    Subcommand("checkall"),
-    Subcommand("forcepush", Args["db_ids", MultiVar(int)]),
-)
 
-
-bilisub_admin_matcher = on_alconna(
-    bilisub_admin_cmd,
+bilisub_matcher = on_alconna(
+    bilisub_cmd,
+    aliases={"B站订阅", "b站订阅", "哔站订阅", "B订阅"},
     priority=5,
     block=True,
     rule=admin_check("bilibili_sub", "GROUP_BILIBILI_SUB_LEVEL"),
 )
 
-bilisub_su_matcher = on_alconna(
-    bilisub_su_cmd,
-    priority=5,
-    block=True,
-    permission=SUPERUSER,
-)
-
-login_sessions: Dict[str, Tuple[login_v2.QrCodeLogin, float]] = {}
+login_sessions: dict[str, tuple[login_v2.QrCodeLogin, float]] = {}
 
 
-@bilisub_admin_matcher.assign("list")
+@bilisub_matcher.assign("list")
 async def handle_list(
-    session: EventSession, gids: Query[list[int]] = Query("list.group.gids", [])
+    bot: Bot,
+    event: Event,
+    session: EventSession,
+    gids: Query[list[int]] = Query("list.group.gids", []),
 ):
+    if has_group_option(gids):
+        await ensure_superuser(bot, event, "-g 参数")
+
     target_ids = await get_target_ids(session, gids)
     if not target_ids:
         await MessageUtils.build_message("未能确定操作目标，请检查指令。").finish()
@@ -190,14 +334,59 @@ async def handle_list(
     await MessageUtils.build_message(img_bytes).finish()
 
 
-@bilisub_admin_matcher.assign("add")
+@bilisub_matcher.assign("targets")
+async def handle_targets(bot: Bot, event: Event):
+    await ensure_superuser(bot, event)
+
+    target_ids = cast(
+        list[str],
+        await BiliSubTarget.all().distinct().values_list("target_id", flat=True),
+    )
+    if not target_ids:
+        await MessageUtils.build_message("目前没有任何群或私聊添加过B站订阅。").finish()
+
+    group_ids = [
+        target_id.replace("group_", "")
+        for target_id in target_ids
+        if target_id.startswith("group_")
+    ]
+    group_map = {}
+    if group_ids:
+        groups = await GroupConsole.filter(group_id__in=group_ids).all()
+        group_map = {str(group.group_id): group.group_name for group in groups}
+
+    lines = ["已添加B站订阅的目标："]
+    total_sub_count = 0
+    for target_id in sorted(target_ids):
+        sub_count = await BiliSubTarget.filter(target_id=target_id).count()
+        total_sub_count += sub_count
+        if target_id.startswith("group_"):
+            group_id = target_id.replace("group_", "")
+            group_name = group_map.get(group_id) or "未知群名"
+            lines.append(f"- 群 {group_id}（{group_name}）：{sub_count} 个订阅")
+        elif target_id.startswith("private_"):
+            user_id = target_id.replace("private_", "")
+            lines.append(f"- 私聊 {user_id}：{sub_count} 个订阅")
+        else:
+            lines.append(f"- {target_id}：{sub_count} 个订阅")
+
+    lines.append(f"\n合计：{len(target_ids)} 个目标，{total_sub_count} 个订阅关系。")
+    await MessageUtils.build_message("\n".join(lines)).finish()
+
+
+@bilisub_matcher.assign("add")
 async def handle_add(
+    bot: Bot,
+    event: Event,
     session: EventSession,
     live: Query[Any] = Query("add.live"),
     ids: Query[list[str]] = Query("add.ids", []),
     gids: Query[list[int]] = Query("add.group.gids", []),
     matcher: Matcher = Matcher(),
 ):
+    if has_group_option(gids):
+        await ensure_superuser(bot, event, "-g 参数")
+
     target_ids = await get_target_ids(session, gids)
     if not target_ids:
         await MessageUtils.build_message("未能确定操作目标，请检查指令。").finish()
@@ -209,7 +398,7 @@ async def handle_add(
 
     results = []
     for target_id in target_ids:
-        group_str = f" [目标: {target_id.replace('group_', '')}]"
+        group_str = f" [目标: {describe_target(target_id)}]"
         for bilibili_id_str in ids.result:
             bilibili_id_str = bilibili_id_str.strip()
 
@@ -290,12 +479,17 @@ async def handle_add(
     await MessageUtils.build_message("\n---\n".join(results)).finish()
 
 
-@bilisub_admin_matcher.assign("del")
+@bilisub_matcher.assign("del")
 async def handle_del(
+    bot: Bot,
+    event: Event,
     session: EventSession,
     db_ids: Query[list[int]] = Query("del.db_ids"),
     gids: Query[list[int]] = Query("del.group.gids", []),
 ):
+    if has_group_option(gids):
+        await ensure_superuser(bot, event, "-g 参数")
+
     target_ids = await get_target_ids(session, gids)
     if not target_ids:
         await MessageUtils.build_message("未能确定操作目标，请检查指令。").finish()
@@ -325,30 +519,39 @@ async def handle_del(
     await MessageUtils.build_message(msg).finish()
 
 
-@bilisub_admin_matcher.assign("config")
+@bilisub_matcher.assign("config")
 async def handle_config(
-    session: EventSession, params: Query[list[str]] = Query("config.params")
+    bot: Bot,
+    event: Event,
+    session: EventSession,
+    params: Query[list[str]] = Query("config.params"),
+    gids: Query[list[int]] = Query("config.group.gids", []),
 ):
-    target_id = f"group_{session.id2}" if session.id2 else f"private_{session.id1}"
+    if has_group_option(gids):
+        await ensure_superuser(bot, event, "-g 参数")
+
+    target_ids = await get_target_ids(session, gids)
+    if not target_ids:
+        await MessageUtils.build_message("未能确定操作目标，请检查指令。").finish()
 
     if not params.available:
         await MessageUtils.build_message(
-            "用法错误: `bilisub config <ID...> [+|-][类型...]`"
+            "用法错误: `bilisub config <ID...> [+|-][类型...] [-g 群号...]`"
         ).finish()
 
     param_list = params.result
     db_ids = [int(p) for p in param_list if p.isdigit()]
-    settings = [p for p in param_list if not p.isdigit()]
+    settings = [normalize_config_setting(p) for p in param_list if not p.isdigit()]
 
     if not db_ids or not settings:
         await MessageUtils.build_message(
-            "用法错误: `bilisub config <ID...> [+|-][类型...]`"
+            "用法错误: `bilisub config <ID...> [+|-][类型...] [-g 群号...]`"
         ).finish()
 
-    owned_subs: List[int] = cast(
-        List[int],
+    owned_subs: list[int] = cast(
+        list[int],
         await BiliSubTarget.filter(
-            target_id=target_id, subscription_id__in=db_ids
+            target_id__in=target_ids, subscription_id__in=db_ids
         ).values_list("subscription_id", flat=True),
     )
     valid_ids = set(owned_subs)
@@ -402,14 +605,17 @@ async def handle_config(
 
     await BiliSub.filter(id__in=list(valid_ids)).update(**updates)
 
-    msg = f"已为订阅ID {', '.join(map(str, valid_ids))} 更新了推送设置。"
+    msg = (
+        f"已为订阅ID {', '.join(map(str, valid_ids))} 更新了推送设置。\n"
+        f"目标: {', '.join(describe_target(t) for t in target_ids)}"
+    )
     if invalid_ids:
         msg += f"\n无法配置ID: {', '.join(map(str, invalid_ids))} (权限不足或ID错误)。"
 
     await MessageUtils.build_message(msg).finish()
 
 
-@bilisub_admin_matcher.assign("clear")
+@bilisub_matcher.assign("clear")
 async def handle_clear(
     bot: Bot,
     event: Event,
@@ -478,8 +684,10 @@ async def handle_clear(
         await MessageUtils.build_message("⌛ 操作超时，已自动取消。").finish()
 
 
-@bilisub_su_matcher.assign("login")
-async def handle_login(matcher: Matcher, session: EventSession):
+@bilisub_matcher.assign("login")
+async def handle_login(bot: Bot, event: Event, matcher: Matcher, session: EventSession):
+    await ensure_superuser(bot, event)
+
     user_id = session.id1
     if not user_id:
         await MessageUtils.build_message("无法获取用户ID，无法开始登录。").finish()
@@ -517,8 +725,7 @@ async def handle_login(matcher: Matcher, session: EventSession):
 
         asyncio.create_task(check_login_status(matcher, user_id))
     except Exception as e:
-        if user_id in login_sessions:
-            del login_sessions[user_id]
+        login_sessions.pop(user_id, None)
         await MessageUtils.build_message(f"生成登录二维码失败: {e}").finish()
 
 
@@ -556,12 +763,13 @@ async def check_login_status(matcher: Matcher, user_id: str):
             await matcher.send("检查登录状态时发生错误，流程已终止。")
             break
 
-    if user_id in login_sessions:
-        del login_sessions[user_id]
+    login_sessions.pop(user_id, None)
 
 
-@bilisub_su_matcher.assign("status")
-async def handle_status(session: EventSession):
+@bilisub_matcher.assign("status")
+async def handle_status(bot: Bot, event: Event, session: EventSession):
+    await ensure_superuser(bot, event)
+
     user_id = session.id1
     if not user_id:
         await MessageUtils.build_message("无法获取用户ID，无法检查状态。").send()
@@ -593,8 +801,7 @@ async def handle_status(session: EventSession):
                 await MessageUtils.build_message("等待扫码中...").send()
                 return
         except Exception as e:
-            if user_id in login_sessions:
-                del login_sessions[user_id]
+            login_sessions.pop(user_id, None)
             await MessageUtils.build_message(f"检查登录状态失败: {e}").send()
             return
         return
@@ -624,8 +831,10 @@ async def handle_status(session: EventSession):
     await MessageUtils.build_message("\n".join(status_lines)).send()
 
 
-@bilisub_su_matcher.assign("logout")
-async def handle_logout():
+@bilisub_matcher.assign("logout")
+async def handle_logout(bot: Bot, event: Event):
+    await ensure_superuser(bot, event)
+
     try:
         credential = get_credential()
         if not credential:
@@ -640,11 +849,25 @@ async def handle_logout():
         await MessageUtils.build_message(f"退出登录失败: {e}").finish()
 
 
-@bilisub_su_matcher.assign("checkall")
-async def handle_check_all(matcher: Matcher):
+@bilisub_matcher.assign("checkall")
+async def handle_check_all(
+    bot: Bot,
+    event: Event,
+    matcher: Matcher,
+    gids: Query[list[int]] = Query("checkall.group.gids", []),
+):
+    await ensure_superuser(bot, event)
+
     from . import send_sub_msg
 
-    await matcher.send("开始主动检查所有B站订阅，请稍候...")
+    target_ids: list[str] = []
+    if has_group_option(gids):
+        target_ids = [f"group_{gid}" for gid in gids.result]
+        await matcher.send(
+            f"开始主动检查 {len(target_ids)} 个指定群的B站订阅，请稍候..."
+        )
+    else:
+        await matcher.send("开始主动检查所有B站订阅，请稍候...")
 
     bots = nonebot.get_bots()
     if not bots:
@@ -654,9 +877,13 @@ async def handle_check_all(matcher: Matcher):
 
     bot_instance: Bot = next(iter(bots.values()))
 
-    all_subs = await BiliSub.all()
+    if target_ids:
+        all_subs = await get_subs_by_targets(target_ids)
+    else:
+        all_subs = await BiliSub.all()
+
     if not all_subs:
-        await MessageUtils.build_message("数据库中没有任何订阅。").finish()
+        await MessageUtils.build_message("没有找到需要检查的订阅。").finish()
 
     async def _check_sub_and_send(sub: BiliSub) -> int:
         """检查单个订阅并发送更新，确保不强制推送。"""
@@ -674,7 +901,18 @@ async def handle_check_all(matcher: Matcher):
                 )
             if notifications:
                 for notification in notifications:
-                    await send_sub_msg(notification, sub, bot_instance)
+                    if target_ids:
+                        sub_target_ids = cast(
+                            list[str],
+                            await BiliSubTarget.filter(
+                                subscription_id=sub.id, target_id__in=target_ids
+                            ).values_list("target_id", flat=True),
+                        )
+                        await send_notification_to_targets(
+                            notification, bot_instance, sub_target_ids
+                        )
+                    else:
+                        await send_sub_msg(notification, sub, bot_instance)
                 return len(notifications)
         except Exception as e:
             logger.error(f"checkall 检查 UID={sub.uid} 时出错: {e}")
@@ -689,12 +927,16 @@ async def handle_check_all(matcher: Matcher):
     ).finish()
 
 
-@bilisub_su_matcher.assign("forcepush")
+@bilisub_matcher.assign("forcepush")
 async def handle_force_push(
-    session: EventSession,
+    bot: Bot,
+    event: Event,
     matcher: Matcher,
     db_ids: Query[list[int]] = Query("forcepush.db_ids", []),
+    gids: Query[list[int]] = Query("forcepush.group.gids", []),
 ):
+    await ensure_superuser(bot, event)
+
     if not db_ids.available or not db_ids.result:
         await MessageUtils.build_message(
             "请提供至少一个要推送的订阅ID (通过 `bilisub list` 查看)。"
@@ -706,7 +948,10 @@ async def handle_force_push(
             "没有任何机器人实例在线，无法执行推送。"
         ).finish()
 
-    bot_instance: Bot = next(iter(bots.values()))  # noqa: F841
+    bot_instance: Bot = next(iter(bots.values()))
+    target_ids = (
+        [f"group_{gid}" for gid in gids.result] if has_group_option(gids) else []
+    )
 
     results = []
     for db_id in db_ids.result:
@@ -728,9 +973,34 @@ async def handle_force_push(
                     get_sub_status(sub, force_push=True), timeout=45
                 )
             if notifications:
+                total_sent = 0
                 for notification in notifications:
-                    await MessageUtils.build_message(notification.content).send()
-                results.append(f"✅ 已成功推送 [{db_id}] {sub.uname} 的最新内容。")
+                    if target_ids:
+                        sub_target_ids = cast(
+                            list[str],
+                            await BiliSubTarget.filter(
+                                subscription_id=sub.id, target_id__in=target_ids
+                            ).values_list("target_id", flat=True),
+                        )
+                        if not sub_target_ids:
+                            continue
+                        total_sent += await send_notification_to_targets(
+                            notification, bot_instance, sub_target_ids
+                        )
+                    else:
+                        await MessageUtils.build_message(notification.content).send()
+                        total_sent += 1
+                if target_ids:
+                    if total_sent:
+                        results.append(
+                            f"✅ 已向 {total_sent} 个指定目标推送 [{db_id}] {sub.uname} 的最新内容。"
+                        )
+                    else:
+                        results.append(
+                            f"ℹ️ [{db_id}] {sub.uname} 不属于指定群，未推送。"
+                        )
+                else:
+                    results.append(f"✅ 已成功推送 [{db_id}] {sub.uname} 的最新内容。")
             else:
                 results.append(
                     f"ℹ️ 未能为 [{db_id}] {sub.uname} 获取到可推送的最新内容。"

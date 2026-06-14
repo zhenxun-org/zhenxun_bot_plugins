@@ -1,3 +1,4 @@
+import asyncio
 import datetime
 import traceback
 from pathlib import Path
@@ -87,7 +88,167 @@ async def get_user_dynamics(
     """获取指定用户历史动态"""
     credential = auth or get_credential()
     user_instance = bilibili_user_module.User(uid=uid, credential=credential)
-    return await user_instance.get_dynamics(offset=offset, need_top=need_top, **kwargs)
+    offset_str = "" if not offset else str(offset)
+    dynamics = await user_instance.get_dynamics_new(offset=offset_str, **kwargs)
+    if not dynamics.get("items"):
+        await asyncio.sleep(0.5)
+        dynamics = await user_instance.get_dynamics_new(offset=offset_str, **kwargs)
+    return _convert_new_dynamics_to_old_cards(dynamics, need_top=need_top)
+
+
+def _convert_new_dynamics_to_old_cards(dynamics: dict, need_top: bool = False) -> dict:
+    """将新版动态接口 items 转为插件既有的 cards 结构。"""
+    if not isinstance(dynamics, dict):
+        return {"cards": []}
+
+    cards = []
+    for item in dynamics.get("items", []) or []:
+        if not need_top and _is_top_dynamic(item):
+            continue
+        card = _convert_new_dynamic_item(item)
+        if card:
+            cards.append(card)
+
+    return {
+        "cards": cards,
+        "has_more": dynamics.get("has_more", False),
+        "next_offset": dynamics.get("offset", ""),
+        "offset": dynamics.get("offset", ""),
+    }
+
+
+def _convert_new_dynamic_item(item: dict) -> dict | None:
+    if not isinstance(item, dict):
+        return None
+
+    modules = item.get("modules") or {}
+    author = modules.get("module_author") or {}
+    dynamic = modules.get("module_dynamic") or {}
+    major = dynamic.get("major") or {}
+    additional = dynamic.get("additional") or {}
+
+    dynamic_id = item.get("id_str") or item.get("id")
+    timestamp = author.get("pub_ts") or 0
+    try:
+        timestamp = int(timestamp)
+    except (TypeError, ValueError):
+        timestamp = 0
+
+    text_parts = []
+    desc = dynamic.get("desc") or {}
+    if isinstance(desc, dict) and desc.get("text"):
+        text_parts.append(desc["text"])
+
+    title, summary_text = _extract_major_text(major)
+    if title:
+        text_parts.append(title)
+    if summary_text:
+        text_parts.append(summary_text)
+
+    images = _extract_major_images(major)
+    item_data = {
+        "description": "\n".join(part for part in text_parts if part),
+        "content": "\n".join(part for part in text_parts if part),
+        "pictures": [{"img_src": url} for url in images],
+    }
+    if images:
+        item_data["pic"] = images[0]
+
+    card_data = {
+        "item": item_data,
+        "user": {"description": item_data["description"]},
+        "_new_dynamic": item,
+    }
+    if additional:
+        card_data["additional"] = additional
+        additional_type = additional.get("type") if isinstance(additional, dict) else ""
+        if additional_type and "goods" in str(additional_type).lower():
+            card_data["goods"] = additional
+
+    return {
+        "desc": {
+            "timestamp": timestamp,
+            "dynamic_id": dynamic_id,
+            "type": _map_new_dynamic_type(item.get("type"), major, additional),
+        },
+        "card": card_data,
+        "extend_json": {},
+    }
+
+
+def _is_top_dynamic(item: dict) -> bool:
+    modules = item.get("modules") or {}
+    author = modules.get("module_author") or {}
+    tag = modules.get("module_tag") or {}
+    return bool(author.get("is_top") or tag.get("text") == "置顶")
+
+
+def _extract_major_text(major: dict) -> tuple[str, str]:
+    if not isinstance(major, dict):
+        return "", ""
+
+    for key in ("opus", "draw", "article", "archive", "common"):
+        data = major.get(key)
+        if not isinstance(data, dict):
+            continue
+
+        title = data.get("title") or ""
+        summary = data.get("summary") or {}
+        if isinstance(summary, dict):
+            summary_text = summary.get("text") or ""
+        else:
+            summary_text = str(summary) if summary else ""
+
+        desc = data.get("desc") or ""
+        text = summary_text or desc
+        if title or text:
+            return str(title), str(text)
+
+    return "", ""
+
+
+def _extract_major_images(major: dict) -> list[str]:
+    if not isinstance(major, dict):
+        return []
+
+    images = []
+    for key in ("opus", "draw"):
+        data = major.get(key)
+        if not isinstance(data, dict):
+            continue
+
+        pics = data.get("pics") or data.get("items") or []
+        if isinstance(pics, dict):
+            pics = [pics]
+        for pic in pics:
+            if not isinstance(pic, dict):
+                continue
+            url = pic.get("url") or pic.get("src") or pic.get("img_src")
+            if url:
+                images.append(url)
+
+    return images
+
+
+def _map_new_dynamic_type(
+    dynamic_type: str | None, major: dict, additional: dict | None = None
+) -> int:
+    if additional and isinstance(additional, dict):
+        additional_type = str(additional.get("type") or "").lower()
+        if "goods" in additional_type:
+            return 19
+
+    major_type = str((major or {}).get("type") or "").upper()
+    if "ARTICLE" in major_type:
+        return 64
+
+    type_map = {
+        "DYNAMIC_TYPE_DRAW": 2,
+        "DYNAMIC_TYPE_AV": 8,
+        "DYNAMIC_TYPE_FORWARD": 1,
+        "DYNAMIC_TYPE_ARTICLE": 64,
+    }
+    return type_map.get(str(dynamic_type or ""), 0)
 
 
 async def get_room_info_by_id(

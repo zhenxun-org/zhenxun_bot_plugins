@@ -1,21 +1,21 @@
 import asyncio
 import base64
-import json
-import time
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import Enum, auto
+import json
+import time
 
-import httpx
-import nonebot
 from bilibili_api import bangumi, search
 from bilibili_api import user as bilibili_user_module
 from bilibili_api.exceptions import ResponseCodeException
+import httpx
+import nonebot
 
 from zhenxun import ui
+from zhenxun.services.log import logger
 from zhenxun.ui.models import NotebookData
 from zhenxun.utils.platform import PlatformUtils
-from zhenxun.services.log import logger
 from zhenxun.utils.utils import ResourceDirManager
 
 from .config import DYNAMIC_PATH, base_config, get_credential
@@ -627,6 +627,7 @@ async def _get_up_status(sub: BiliSub, force_push: bool = False) -> list[Notific
 
     dynamic_img = None
     dynamic_upload_time = 0
+    dynamic_url = ""
     dynamic_images = None
 
     if sub.push_dynamic:
@@ -634,7 +635,7 @@ async def _get_up_status(sub: BiliSub, force_push: bool = False) -> list[Notific
             (
                 dynamic_img,
                 dynamic_upload_time,
-                _,
+                dynamic_url,
                 dynamic_images,
             ) = await get_user_dynamic(sub)
         except ResponseCodeException as msg:
@@ -661,9 +662,7 @@ async def _get_up_status(sub: BiliSub, force_push: bool = False) -> list[Notific
                     f"[广告过滤] 启用广告过滤检查: UID={sub.uid}, 用户名={sub.uname}"
                 )
 
-                dynamic_id = (await get_user_dynamics(sub.uid))["cards"][0]["desc"][
-                    "dynamic_id"
-                ]
+                dynamic_id = dynamic_url.rstrip("/").split("/")[-1]
                 logger.debug(
                     f"[广告过滤] 提取动态ID: UID={sub.uid}, 动态ID={dynamic_id}"
                 )
@@ -798,10 +797,7 @@ async def _get_up_status(sub: BiliSub, force_push: bool = False) -> list[Notific
             )
             msg_list_content.append(f"\n视频链接: {video_url_for_msg}")
         elif notification_type == NotificationType.DYNAMIC and dynamic_upload_time > 0:
-            dynamic_id = (await get_user_dynamics(sub.uid))["cards"][0]["desc"][
-                "dynamic_id"
-            ]
-            msg_list_content.append(f"\n查看详情: https://t.bilibili.com/{dynamic_id}")
+            msg_list_content.append(f"\n查看详情: {dynamic_url}")
 
         if notification_type:
             notifications.append(
