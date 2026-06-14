@@ -18,6 +18,7 @@ from zhenxun.services.log import logger
 from zhenxun.utils.message import MessageUtils
 from zhenxun.utils.platform import PlatformUtils
 
+from . import commands as commands
 from .config import (
     AVATAR_CACHE_DIR,
     BANGUMI_COVER_CACHE_DIR,
@@ -207,9 +208,6 @@ driver: Driver = nonebot.get_driver()
 
 _current_sub_index = 0
 _subs_lock = asyncio.Lock()
-
-
-from . import commands as commands
 
 
 @driver.on_startup
