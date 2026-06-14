@@ -1,8 +1,8 @@
 import asyncio
-import time
 from datetime import datetime
 from pathlib import Path
-from typing import List, cast
+import time
+from typing import cast
 
 import nonebot
 from nonebot.drivers import Driver
@@ -43,51 +43,36 @@ __plugin_meta__ = PluginMetadata(
 
 ### 📖 通用指令 (需要群管或更高权限)
 
-*   **`bilisub list`**
+*   **`B站订阅 列表`**
     查看当前会话（群聊或私聊）的所有订阅。
 
-*   **`bilisub add [--live] <内容...>`**
+*   **`B站订阅 添加 [--直播] <内容...>`**
     为当前会话添加一个或多个订阅。
     - `<内容>`: **UP主UID**、**直播间ID**、**番剧名称** 或 **番剧ID (ss/ep)**。
-    - `--live`: 添加直播间ID时必须使用此参数。
+    - `--直播`: 添加直播间ID时使用此参数。
     - **示例**:
-        - `bilisub add 732482333` (订阅UP主)
-        - `bilisub add --live 21452505` (订阅直播间)
-        - `bilisub add 葬送的芙莉莲` (通过名称订阅番剧)
+        - `B站订阅 添加 732482333` (订阅UP主)
+        - `B站订阅 添加 --直播 21452505` (订阅直播间)
+        - `B站订阅 添加 葬送的芙莉莲` (通过名称订阅番剧)
 
-*   **`bilisub del <ID...>`**
-    从当前会话删除一个或多个订阅。ID通过 `bilisub list` 查看。
+*   **`B站订阅 删除 <ID...>`**
+    从当前会话删除一个或多个订阅。ID通过 `B站订阅 列表` 查看。
 
-*   **`bilisub config <ID...> <设置...>`**
+*   **`B站订阅 设置 <ID...> <设置...>`**
     为当前会话中的指定订阅ID批量配置推送选项。
     - **推送类型**:
-        - `+dynamic` / `-dynamic`: 开启/关闭 **动态** 推送
-        - `+video` / `-video`: 开启/关闭 **视频/剧集** 推送
-        - `+live` / `-live`: 开启/关闭 **直播** 推送
-        - `+all` / `-all`: 开启/关闭 **全部** 推送
+        - `开动态` / `关动态`: 开启/关闭 **动态** 推送
+        - `开视频` / `关视频`: 开启/关闭 **视频/剧集** 推送
+        - `开直播` / `关直播`: 开启/关闭 **直播** 推送
+        - `全开` / `全关`: 开启/关闭 **全部** 推送
     - **艾特全体**:
-        - `+at:dynamic` / `-at:dynamic`: 动态推送时@全体
-        - `+at:video` / `-at:video`: 视频/剧集推送时@全体
-        - `+at:live` / `-at:live`: 直播推送时@全体
-        - `+at:all` / `-at:all`: 所有推送都@全体
-    - **示例**: `bilisub config 3 4 +live -dynamic +at:live`
+        - `动态@全体` / `取消动态@全体`
+        - `视频@全体` / `取消视频@全体`
+        - `直播@全体` / `取消直播@全体`
+    - **示例**: `B站订阅 设置 3 4 开直播 关动态 直播@全体`
 
-*   **`bilisub clear`**
+*   **`B站订阅 清空`**
     **[危险]** 清空当前会话的所有订阅，操作前会请求确认。
-
-### 🛠️ 超级用户指令
-
-*   **跨群管理与清空**
-    - 在 `add`, `del`, `list` 命令后附加 `-g, --group <群号...>` 参数，可以跨群管理订阅。
-    - `bilisub clear -g <群号...>`: 清空**指定群组**的订阅。
-    - `bilisub clear --all`: **[高危]** 清空**所有**目标（所有群和私聊）的订阅。
-
-*   **账号与全局管理**
-    - `bilisub login`: 通过扫描二维码登录B站账号，以获取和保存凭证。
-    - `bilisub status`: 检查当前B站账号凭证的有效状态。
-    - `bilisub logout`: 清除已保存的B站凭证，退出登录。
-    - `bilisub checkall`: 立即对所有已订阅的项目进行一次更新检查。
-    - `bilisub forcepush <ID...>`: 强制推送指定ID订阅的最新内容，无论之前是否已推送。
 
 ### ⚙ 配置文件
 
@@ -101,6 +86,22 @@ __plugin_meta__ = PluginMetadata(
     extra=PluginExtraData(
         author="HibiKier",
         version="1.2.1",
+        superuser_help="""
+### 跨群管理与清空
+
+*   在 `添加`, `删除`, `列表`, `设置`, `检查`, `补发` 命令后附加 `--群 <群号...>` 参数，可以跨群管理订阅。
+*   `B站订阅 清空 --群 <群号...>`: 清空**指定群组**的订阅。
+*   `B站订阅 清空 --全部`: **[高危]** 清空**所有**目标（所有群和私聊）的订阅。
+
+### 账号与全局管理
+
+*   `B站订阅 登录`: 通过扫描二维码登录B站账号，以获取和保存凭证。
+*   `B站订阅 状态`: 检查当前B站账号凭证的有效状态。
+*   `B站订阅 群列表`: 查看哪些群/私聊添加了B站订阅。
+*   `B站订阅 退出登录`: 清除已保存的B站凭证，退出登录。
+*   `B站订阅 检查`: 立即对所有已订阅的项目进行一次更新检查。
+*   `B站订阅 补发 <ID...>`: 强制推送指定ID订阅的最新内容，无论之前是否已推送。
+""".strip(),
         configs=[
             RegisterConfig(
                 module="bilibili_sub",
@@ -206,6 +207,9 @@ driver: Driver = nonebot.get_driver()
 
 _current_sub_index = 0
 _subs_lock = asyncio.Lock()
+
+
+from . import commands as commands
 
 
 @driver.on_startup
@@ -401,8 +405,8 @@ async def send_sub_msg(notification: Notification, sub: BiliSub, bot: Bot):
         logger.warning(f"B站订阅推送收到空消息列表: UID={sub.uid}")
         return
 
-    sub_targets: List[str] = cast(
-        List[str],
+    sub_targets: list[str] = cast(
+        list[str],
         await BiliSubTarget.filter(subscription_id=sub.id).values_list(
             "target_id", flat=True
         ),
@@ -421,6 +425,7 @@ async def send_sub_msg(notification: Notification, sub: BiliSub, bot: Bot):
                 temp_group.append(group_id)
                 logger.debug(f"B站订阅推送准备发送到群: {group_id}, UID={sub.uid}")
 
+                at_all_msg = None
                 try:
                     role_info = await bot.get_group_member_info(
                         group_id=int(group_id),
@@ -432,7 +437,6 @@ async def send_sub_msg(notification: Notification, sub: BiliSub, bot: Bot):
                         f"B站订阅推送机器人在群 {group_id} 中的角色: {bot_role}"
                     )
 
-                    at_all_msg = None
                     if base_config.get("ENABLE_AT_ALL", True) and bot_role in [
                         "owner",
                         "admin",
@@ -509,6 +513,3 @@ async def send_sub_msg(notification: Notification, sub: BiliSub, bot: Bot):
     logger.info(
         f"B站订阅推送完成: UID={sub.uid}, 成功={success_count}, 失败={error_count}, 耗时={total_duration:.2f}秒"
     )
-
-
-from . import commands  # noqa: E402, F401

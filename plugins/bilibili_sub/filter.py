@@ -1,4 +1,5 @@
 import re
+
 from zhenxun.services.log import logger
 
 from .utils import get_user_dynamics
@@ -62,9 +63,9 @@ async def is_ad(uid: int, dynamic_id: str) -> bool:
         logger.debug(f"[广告过滤-API] 开始检查动态内容: UID={uid}, 动态ID={dynamic_id}")
         card_data = target_dynamic.get("card", "")
         if isinstance(card_data, str):
-            try:
-                import json
+            import json
 
+            try:
                 card_json = json.loads(card_data)
                 logger.debug(
                     f"[广告过滤-API] 成功解析动态卡片JSON: UID={uid}, 动态ID={dynamic_id}"
