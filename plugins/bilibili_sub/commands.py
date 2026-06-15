@@ -4,7 +4,6 @@ import time
 from typing import Any, cast
 
 from bilibili_api import bangumi, login_v2
-import nonebot
 from nonebot.adapters import Bot, Event, Message
 from nonebot.log import logger
 from nonebot.matcher import Matcher
@@ -869,13 +868,10 @@ async def handle_check_all(
     else:
         await matcher.send("开始主动检查所有B站订阅，请稍候...")
 
-    bots = nonebot.get_bots()
-    if not bots:
+    if PlatformUtils.get_platform_scope(bot) != "qq_client":
         await MessageUtils.build_message(
-            "没有任何机器人实例在线，无法执行检查。"
+            "B站订阅主动检查需要 OneBot 协议端执行，请在协议端使用。"
         ).finish()
-
-    bot_instance: Bot = next(iter(bots.values()))
 
     if target_ids:
         all_subs = await get_subs_by_targets(target_ids)
@@ -909,10 +905,10 @@ async def handle_check_all(
                             ).values_list("target_id", flat=True),
                         )
                         await send_notification_to_targets(
-                            notification, bot_instance, sub_target_ids
+                            notification, bot, sub_target_ids
                         )
                     else:
-                        await send_sub_msg(notification, sub, bot_instance)
+                        await send_sub_msg(notification, sub, bot)
                 return len(notifications)
         except Exception as e:
             logger.error(f"checkall 检查 UID={sub.uid} 时出错: {e}")
@@ -942,13 +938,11 @@ async def handle_force_push(
             "请提供至少一个要推送的订阅ID (通过 `bilisub list` 查看)。"
         ).finish()
 
-    bots = nonebot.get_bots()
-    if not bots:
+    if PlatformUtils.get_platform_scope(bot) != "qq_client":
         await MessageUtils.build_message(
-            "没有任何机器人实例在线，无法执行推送。"
+            "B站订阅强制推送需要 OneBot 协议端执行，请在协议端使用。"
         ).finish()
 
-    bot_instance: Bot = next(iter(bots.values()))
     target_ids = (
         [f"group_{gid}" for gid in gids.result] if has_group_option(gids) else []
     )
@@ -985,7 +979,7 @@ async def handle_force_push(
                         if not sub_target_ids:
                             continue
                         total_sent += await send_notification_to_targets(
-                            notification, bot_instance, sub_target_ids
+                            notification, bot, sub_target_ids
                         )
                     else:
                         await MessageUtils.build_message(notification.content).send()

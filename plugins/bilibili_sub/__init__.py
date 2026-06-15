@@ -331,14 +331,12 @@ async def check_subscriptions():
             )
             return
 
-        bots = nonebot.get_bots()
-        if not bots:
-            logger.warning("B站订阅检查任务未找到可用的机器人实例")
-            return
-
-        bot_id, bot_instance = next(iter(bots.items()))
+        bot_instance = PlatformUtils.resolve_bot(
+            platform_scope="qq_client",
+            log_cmd="bilibili_sub",
+        )
         if not bot_instance:
-            logger.warning("B站订阅检查任务未找到有效的机器人实例")
+            logger.warning("B站订阅检查任务未找到唯一可用的 OneBot 协议端 Bot")
             return
 
         try:
