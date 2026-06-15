@@ -4,7 +4,7 @@ from datetime import datetime as dt
 from typing import Any, cast
 import uuid
 
-from nonebot import get_bots, get_driver
+from nonebot import get_driver
 from nonebot.adapters.onebot.v11 import Bot, Message
 from nonebot.adapters.onebot.v11.event import GroupMessageEvent
 from nonebot.exception import FinishedException
@@ -58,6 +58,8 @@ async def dispatch_wordcloud_task(params: WordCloudTaskParams) -> None:
             is_cached=True,
             date_type=params.date_type,
             time_range=params.time_range_description,
+            platform_scope=params.platform_scope,
+            bot_id=params.bot_id,
         )
         return
 
@@ -136,6 +138,7 @@ class CloudHandler:
 
     async def handle_message(
         self,
+        bot: Bot,
         event: GroupMessageEvent,
         state: T_State,
         start: dt,
@@ -155,7 +158,9 @@ class CloudHandler:
             destination_group_id=event.group_id,
             my=my,
             user_id=int(event.user_id) if my else None,
+            bot_id=str(bot.self_id),
             event=event,
+            platform_scope=PlatformUtils.get_platform_scope(bot),
             date_type=state.get("date_type"),
         )
         await dispatch_wordcloud_task(params)
@@ -207,6 +212,7 @@ class CloudHandler:
                     query_user_id,
                     query_group_id,
                     (start_tz, stop_tz),
+                    platform_scope=params.platform_scope,
                     chunk_size=chunk_size,
                 )
 
@@ -299,6 +305,8 @@ class CloudHandler:
                 is_cached=False,
                 date_type=params.date_type,
                 time_range=params.time_range_description,
+                platform_scope=params.platform_scope,
+                bot_id=params.bot_id,
             )
         else:
             if is_scheduled:
@@ -310,8 +318,11 @@ class CloudHandler:
                 target = PlatformUtils.get_target(
                     group_id=str(params.destination_group_id)
                 )
-                bots = get_bots()
-                bot = next(iter(bots.values()), None)
+                bot = PlatformUtils.resolve_bot(
+                    bot_id=params.bot_id,
+                    platform_scope=params.platform_scope,
+                    log_cmd="word_clouds",
+                )
                 if target and bot:
                     await msg.send(target=target, bot=bot, at_sender=params.my)
 
@@ -342,6 +353,7 @@ class CloudHandler:
             user_id,
             group_id,
             (start_tz, stop_tz),
+            platform_scope=PlatformUtils.get_platform_scope(event),
         )
 
         is_target_group = self._is_target_group(event, target_group_id)
@@ -419,6 +431,8 @@ class CloudHandler:
         is_cached: bool = False,
         date_type: str | None = None,
         time_range: str | None = None,
+        platform_scope: str | None = None,
+        bot_id: str | None = None,
     ) -> None:
         """直接发送词云消息（不依赖事件）"""
         if not group_id:
@@ -428,12 +442,11 @@ class CloudHandler:
         logger.debug(f"准备直接发送词云消息到群 {group_id}")
 
         try:
-            bots = get_bots()
-            if not bots:
-                logger.error("无法获取任何Bot实例")
-                return
-
-            bot = next(iter(bots.values()), None)
+            bot = PlatformUtils.resolve_bot(
+                bot_id=bot_id,
+                platform_scope=platform_scope or "qq_client",
+                log_cmd="word_clouds",
+            )
             if not bot or not isinstance(bot, Bot):
                 logger.error("无法获取有效的Bot实例")
                 return
@@ -608,6 +621,8 @@ class CloudHandler:
             is_cached=True,
             date_type=date_type,
             time_range=time_range_desc,
+            platform_scope=None,
+            bot_id=None,
         )
         return True
 

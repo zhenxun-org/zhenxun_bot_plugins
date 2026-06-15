@@ -46,6 +46,8 @@ async def scheduled_wordcloud_job(context: ScheduleContext, **kwargs):
         end_time=stop,
         group_id=gid,
         destination_group_id=gid,
+        bot_id=getattr(context, "bot_id", None),
+        platform_scope=getattr(context, "platform_scope", None),
         is_scheduled_task=True,
         date_type="今日",
         is_today=True,
@@ -168,7 +170,13 @@ async def handle_first_receive(
 
         try:
             await cloud_handler.handle_message(
-                event, state, start, stop, my, target_group_id
+                bot,
+                event,
+                state,
+                start,
+                stop,
+                my,
+                target_group_id,
             )
         except FinishedException:
             raise
