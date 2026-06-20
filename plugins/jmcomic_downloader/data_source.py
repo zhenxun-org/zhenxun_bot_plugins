@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from pathlib import Path
 import time
 from typing import ClassVar
-
+import nonebot
 import jmcomic
 from jmcomic import JmAlbumDetail
 from nonebot.adapters.onebot.v11 import Bot
@@ -237,62 +237,47 @@ class CreateZip:
         self.zip_path = ZIP_OUTPUT_PATH / f"{data.album_id}.zip"
         self.encrypted_pdf_path = PDF_OUTPUT_PATH / f"encrypted_{data.album_id}.pdf"
 
-    async def encrypt_pdf(self):
-        # 将PDF加密操作放到线程池中执行
-        def _encrypt():
-            try:
-                with Pdf.open(self.pdf_path) as pdf:
-                    pdf.save(
-                        self.encrypted_pdf_path,
-                        encryption=Encryption(
-                            user=self.password, owner=self.password, R=6
-                        ),
-                    )
-                    logger.info(
-                        f"PDF 已加密并保存到: {self.encrypted_pdf_path}", "jmcomic"
-                    )
-            except Exception as e:
-                logger.error(f"PDF加密失败: {e}", "jmcomic")
-                raise
-
-        await asyncio.to_thread(_encrypt)
-
-    async def create_password_protected_zip(self, file_to_compress: Path):
-        # 将ZIP压缩操作放到线程池中执行
-        def _compress():
-            try:
-                pyminizip.compress(
-                    str(file_to_compress.absolute()),
-                    None,
-                    str(self.zip_path.absolute()),
-                    self.password,
-                    5,
+    def _encrypt_pdf_sync(self):
+        #加密 PDF
+        try:
+            with Pdf.open(self.pdf_path) as pdf:
+                pdf.save(
+                    self.encrypted_pdf_path,
+                    encryption=Encryption(user=self.password, owner=self.password, R=6),
                 )
-                logger.info(f"ZIP 文件已创建并加密: {self.zip_path}", "jmcomic")
-            except Exception as e:
-                logger.error(f"ZIP压缩失败: {e}", "jmcomic")
-                raise
+                logger.info(f"PDF 已加密并保存到: {self.encrypted_pdf_path}", "jmcomic")
+        except Exception as e:
+            logger.error(f"PDF加密失败: {e}", "jmcomic")
+            raise
 
-        await asyncio.to_thread(_compress)
+    def _compress_sync(self, file_to_compress: Path):
+        #压缩成 ZIP
+        try:
+            pyminizip.compress(
+                str(file_to_compress.absolute()),
+                None,
+                str(self.zip_path.absolute()),
+                self.password,
+                5,
+            )
+            logger.info(f"ZIP 文件已创建并加密: {self.zip_path}", "jmcomic")
+        except Exception as e:
+            logger.error(f"ZIP压缩失败: {e}", "jmcomic")
+            raise
 
-    async def create(self) -> Path:
+    def create_sync(self) -> Path:
         if not self.pdf_path.exists():
             logger.warning(f"PDF文件不存在: {self.pdf_path}", "jmcomic")
-            return self.zip_path  # 返回路径，即使文件不存在
-
-        try:
-            if ENCRYPT_PDF_ENABLED:
-                await self.encrypt_pdf()
-                await self.create_password_protected_zip(self.encrypted_pdf_path)
-                if self.encrypted_pdf_path.exists():
-                    # 删除临时加密文件
-                    await asyncio.to_thread(self.encrypted_pdf_path.unlink)
-            else:
-                logger.info("PDF 加密已关闭，直接压缩原始 PDF 文件", "jmcomic")
-                await self.create_password_protected_zip(self.pdf_path)
-        except Exception as e:
-            logger.error(f"创建ZIP文件失败: {e}", "jmcomic")
-            raise
+            return self.zip_path
+            
+        if ENCRYPT_PDF_ENABLED:
+            self._encrypt_pdf_sync()
+            self._compress_sync(self.encrypted_pdf_path)
+            if self.encrypted_pdf_path.exists():
+                self.encrypted_pdf_path.unlink()  # 删除临时文件
+        else:
+            logger.info("PDF 加密已关闭，直接压缩原始 PDF 文件", "jmcomic")
+            self._compress_sync(self.pdf_path)
 
         return self.zip_path
 
@@ -301,24 +286,26 @@ class JmDownload:
     _data: ClassVar[dict[str, list[DetailInfo]]] = {}
 
     @classmethod
+    def _create_zip_in_thread(cls, data: DetailInfo) -> Path:
+        #封装顶层同步函数供 to_thread 调用
+        creator = CreateZip(data)
+        return creator.create_sync()
+
+    @classmethod
     async def upload_file(cls, data: DetailInfo, zip_path: Path | None = None):
         if not zip_path:
             try:
-                # 压缩加密属于 CPU 密集型操作，现在使用异步方法
-                create_zip_instance = CreateZip(data)
-                zip_path = await create_zip_instance.create()
+                # 同步压缩流程丢进线程池异步执行
+                zip_path = await asyncio.to_thread(cls._create_zip_in_thread, data)
             except Exception as e:
                 logger.error(f"创建ZIP文件失败: {e}", "jmcomic")
                 await PlatformUtils.send_message(
-                    bot=data.bot,
-                    user_id=data.user_id,
-                    group_id=data.group_id,
-                    message="ZIP文件创建失败...",
+                    bot=data.bot, user_id=data.user_id, group_id=data.group_id, message="ZIP文件创建失败..."
                 )
                 return
 
         try:
-            if not zip_path.exists():
+            if not zip_path or not zip_path.exists():
                 await PlatformUtils.send_message(
                     bot=data.bot,
                     user_id=data.user_id,
@@ -404,8 +391,6 @@ class JmDownload:
 
         # 在适当的事件循环中运行异步任务
         try:
-            import nonebot
-
             loop = nonebot.get_current_loop()  # 获取 NoneBot 的主事件循环
             asyncio.run_coroutine_threadsafe(process_data_list(), loop)
         except Exception:
