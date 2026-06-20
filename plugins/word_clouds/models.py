@@ -43,6 +43,8 @@ class WordCloudTaskParams(BaseModel):
     end_time: datetime
     group_id: int
     destination_group_id: int
+    bot_id: str | None = None
+    platform_scope: str | None = None
 
     my: bool = False
     user_id: int | None = None

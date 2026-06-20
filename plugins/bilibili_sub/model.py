@@ -1,7 +1,7 @@
 from tortoise import fields
 
-from zhenxun.services.log import logger
 from zhenxun.services.db_context import Model
+from zhenxun.services.log import logger
 
 
 class BiliSub(Model):
@@ -35,7 +35,7 @@ class BiliSub(Model):
     at_all_live = fields.BooleanField(default=False)
     """是否在推送直播时@全体"""
 
-    class Meta:
+    class Meta(Model.Meta):
         table = "bilisub"
         table_description = "B站订阅信息表"
 
@@ -48,7 +48,7 @@ class BiliSubTarget(Model):
     target_id = fields.CharField(255)
     """订阅目标ID (e.g., 'group_123456', 'private_789012')"""
 
-    class Meta:
+    class Meta(Model.Meta):
         table = "bilisub_target"
         table_description = "B站订阅关系表"
         unique_together = ("subscription", "target_id")
