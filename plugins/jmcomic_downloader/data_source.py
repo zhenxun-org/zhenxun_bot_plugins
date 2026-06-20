@@ -238,7 +238,7 @@ class CreateZip:
         self.encrypted_pdf_path = PDF_OUTPUT_PATH / f"encrypted_{data.album_id}.pdf"
 
     def _encrypt_pdf_sync(self):
-        #加密 PDF
+        # 加密 PDF
         try:
             with Pdf.open(self.pdf_path) as pdf:
                 pdf.save(
@@ -251,7 +251,7 @@ class CreateZip:
             raise
 
     def _compress_sync(self, file_to_compress: Path):
-        #压缩成 ZIP
+        # 压缩成 ZIP
         try:
             pyminizip.compress(
                 str(file_to_compress.absolute()),
@@ -269,7 +269,7 @@ class CreateZip:
         if not self.pdf_path.exists():
             logger.warning(f"PDF文件不存在: {self.pdf_path}", "jmcomic")
             return self.zip_path
-            
+
         if ENCRYPT_PDF_ENABLED:
             self._encrypt_pdf_sync()
             self._compress_sync(self.encrypted_pdf_path)
@@ -287,7 +287,7 @@ class JmDownload:
 
     @classmethod
     def _create_zip_in_thread(cls, data: DetailInfo) -> Path:
-        #封装顶层同步函数供 to_thread 调用
+        # 封装顶层同步函数供 to_thread 调用
         creator = CreateZip(data)
         return creator.create_sync()
 
@@ -300,7 +300,10 @@ class JmDownload:
             except Exception as e:
                 logger.error(f"创建ZIP文件失败: {e}", "jmcomic")
                 await PlatformUtils.send_message(
-                    bot=data.bot, user_id=data.user_id, group_id=data.group_id, message="ZIP文件创建失败..."
+                    bot=data.bot,
+                    user_id=data.user_id,
+                    group_id=data.group_id,
+                    message="ZIP文件创建失败...",
                 )
                 return
 
