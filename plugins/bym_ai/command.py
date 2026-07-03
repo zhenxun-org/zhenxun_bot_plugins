@@ -63,8 +63,14 @@ async def _(bot: Bot, arp: Arparma, session: Uninfo):
     group_id = session.group.id if session.group else None
 
     from .data_source import get_memory_config, group_buffer_manager
+
     base_cleaner = memory_manager.cleaner().config(get_memory_config())
-    scoped_cleaner = memory_manager.cleaner().config(get_memory_config()).platform(platform).bot(str(bot.self_id))
+    scoped_cleaner = (
+        memory_manager.cleaner()
+        .config(get_memory_config())
+        .platform(platform)
+        .bot(str(bot.self_id))
+    )
     if group_id:
         scoped_cleaner.group(str(group_id))
 
