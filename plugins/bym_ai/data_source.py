@@ -20,6 +20,7 @@ from zhenxun.services.ai.capabilities import AbstractCapability, WrapRunHandler
 from zhenxun.services.ai.context.memory import (
     Isolation,
     MemoryBuilder,
+    memory_manager,
 )
 from zhenxun.services.ai.context.memory.storage import (
     get_orm_chat_context,
@@ -30,7 +31,7 @@ from zhenxun.services.ai.core.messages import ChatResponse, LLMMessage
 from zhenxun.services.ai.core.templates import PromptTemplate
 from zhenxun.services.ai.flow.agent import Agent
 from zhenxun.services.ai.flow.agent.models import AgentConfig
-from zhenxun.services.ai.flow.base import ConcurrencyPolicy, ConcurrencyScope
+from zhenxun.services.ai.flow.core.models import ConcurrencyPolicy, ConcurrencyScope
 from zhenxun.services.ai.guardrails import (
     GuardrailAction,
     GuardrailResult,
@@ -58,6 +59,9 @@ from .models import (
 GROUP_NAME_CACHE = {}
 
 bym_memory_backend = get_orm_chat_context(BymAiMemoryRecord)
+memory_manager.register_storage_factory(
+    lambda: TortoiseStorageBackend(BymAiVectorRecord), scope=infer_plugin_namespace()
+)
 
 
 async def get_effective_persona_text(group_id: str | None) -> str:
@@ -78,35 +82,20 @@ async def get_effective_persona_text(group_id: str | None) -> str:
 class BymDynamicMemoryCapability(AbstractCapability):
     """针对 BYM 运行时的动态长期记忆工具挂载能力"""
 
-    async def get_tools(self, context: RunContext) -> list[Any]:
+    async def for_run(self, context: RunContext) -> AbstractCapability:
         mode = context.state.get("__bym_effective_mode__", "user")
-        memory_cfg = get_memory_config(effective_mode=mode).build()
+        memory_settings = base_config.get("memory_settings", {})
+        ltm_cfg = memory_settings.get("ltm_config", {})
 
-        if memory_cfg.long_term.enable and memory_cfg.long_term.agentic:
+        if ltm_cfg.get("enable", False) and mode == "user":
             from zhenxun.services.ai.context.memory.capabilities import (
-                AgenticMemoryCapability,
+                LongTermMemoryCapability,
+            )
+            from zhenxun.services.ai.tools.providers.builtin.memory import (
+                MemoryManagementToolkit,
             )
 
-            cap = AgenticMemoryCapability(memory_cfg, infer_plugin_namespace())
-            return await cap.get_tools(context)
-        return []
-
-
-def get_memory_config(effective_mode: str = "user", *args, **kwargs):
-    """获取状态化内存配置"""
-    builder = (
-        MemoryBuilder()
-        .with_base_isolation(Isolation.AGENT_USER())
-        .with_short_term(
-            enable=True,
-            backend=bym_memory_backend,
-        )
-    )
-
-    memory_settings = base_config.get("memory_settings", {})
-    ltm_cfg = memory_settings.get("ltm_config", {})
-    if ltm_cfg.get("enable", False) and effective_mode == "user":
-        ltm_instructions = """\
+            ltm_instructions = """\
 ## 🧠 长期记忆管理系统 (Long-Term Memory)
 作为陪伴型聊天机器人，该系统是你的「无限档案馆」。⚠️注意：系统默认不会提供所有历史，你必须主动搜索。
 
@@ -127,14 +116,25 @@ def get_memory_config(effective_mode: str = "user", *args, **kwargs):
 ### 🔄 更新与删除 (update/delete_memory)
 如果发现用户的某项旧设定发生改变（如搬家了、换工作了），请先搜索出原记忆的 ID，再使用 `update_memory` 或 `delete_memory` 进行维护。\
 """
-        builder.with_long_term(
-            enable=True,
-            backend=TortoiseStorageBackend(BymAiVectorRecord),
-            embedder=ltm_cfg.get("embed_model", "siliconflow/BAAI/bge-m3"),
-            agentic=True,
-            auto_recall=ltm_cfg.get("auto_recall", False),
-            instructions=ltm_instructions,
-        )
+            cap = LongTermMemoryCapability(
+                embedder=ltm_cfg.get("embed_model", "siliconflow/BAAI/bge-m3"),
+                auto_recall=ltm_cfg.get("auto_recall", False),
+                toolkit=MemoryManagementToolkit(instructions=ltm_instructions),
+            )
+
+            return await cap.for_run(context)
+        return self
+
+
+def get_memory_config(effective_mode: str = "user", *args, **kwargs):
+    """获取状态化内存配置"""
+    builder = MemoryBuilder().with_short_term(
+        enable=True,
+        isolation=Isolation.AGENT_USER(),
+        backend=bym_memory_backend,
+    )
+
+    memory_settings = base_config.get("memory_settings", {})
 
     if effective_mode == "user":
         user_mode_cfg = memory_settings.get("user_mode", {})
@@ -158,10 +158,6 @@ def get_memory_config(effective_mode: str = "user", *args, **kwargs):
                 if cfg_key in llm_summary_cfg:
                     summary_kwargs[kwarg_key] = llm_summary_cfg[cfg_key]
             builder.with_llm_summary(**summary_kwargs)
-        else:
-            builder.unlimited()
-    else:
-        builder.unlimited()
 
     return builder
 

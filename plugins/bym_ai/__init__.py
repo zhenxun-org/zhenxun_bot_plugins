@@ -41,7 +41,7 @@ __plugin_meta__ = PluginMetadata(
 """,
     extra=PluginExtraData(
         author="Chtholly & HibiKier",
-        version="1.0",
+        version="1.0.1",
         superuser_help="""### 记忆管理
 - `bym clear [@user...] [-g] [-a]`：清理记忆（指定用户/当前群/整个插件）
 
