@@ -125,7 +125,7 @@ __plugin_meta__ = PluginMetadata(
                             "keep_recent_turns": 3,
                             "summarization_model": "DeepSeek/deepseek-v4-flash",
                             "summarization_prompt": "请以客观、精炼的语言概括以下对话内容。重点保留：1. 核心讨论话题及重要决定；2. 用户的个性特征、核心偏好、提及的生活背景或特殊设定；3. 双方互动的温度与情感基调。无需保留寒暄等客套话。",
-                        }
+                        },
                     },
                     "group_mode": {
                         "initial_load_turns": 10,
@@ -138,8 +138,8 @@ __plugin_meta__ = PluginMetadata(
                             "keep_recent_turns": 10,
                             "summarization_model": "DeepSeek/deepseek-v4-flash",
                             "summarization_prompt": "请客观精炼地概括以下群聊对话。重点保留核心话题、用户特殊设定和AI的参与态度，忽略无意义的闲聊。",
-                        }
-                    }
+                        },
+                    },
                 },
                 help=(
                     "记忆与上下文分离配置。\n"
@@ -162,7 +162,7 @@ __plugin_meta__ = PluginMetadata(
                             "keep_recent_turns": 3,
                             "summarization_model": "DeepSeek/deepseek-v4-flash",
                             "summarization_prompt": "请以客观、精炼的语言概括以下对话内容。重点保留：1. 核心讨论话题及重要决定；2. 用户的个性特征、核心偏好、提及的生活背景或特殊设定；3. 双方互动的温度与情感基调。无需保留寒暄等客套话。",
-                        }
+                        },
                     },
                     "group_mode": {
                         "initial_load_turns": 10,
@@ -175,8 +175,8 @@ __plugin_meta__ = PluginMetadata(
                             "keep_recent_turns": 10,
                             "summarization_model": "DeepSeek/deepseek-v4-flash",
                             "summarization_prompt": "请客观精炼地概括以下群聊对话。重点保留核心话题、用户特殊设定和AI的参与态度，忽略无意义的闲聊。",
-                        }
-                    }
+                        },
+                    },
                 },
                 type=dict,
             ),
@@ -380,10 +380,12 @@ async def _(
     )
     memory_settings = base_config.get("memory_settings", {})
     try:
-        group_config = TypeAdapter(GroupModeMemoryConfig).validate_python(memory_settings.get("group_mode", {}))
+        group_config = TypeAdapter(GroupModeMemoryConfig).validate_python(
+            memory_settings.get("group_mode", {})
+        )
     except Exception:
         group_config = GroupModeMemoryConfig()
-        
+
     chat_model = base_config.get("BYM_AI_CHAT_MODEL", "DeepSeek/deepseek-v4-flash")
 
     if effective_mode == "group" and group_id:
@@ -407,13 +409,19 @@ async def _(
     if not should_reply:
         if effective_mode == "group" and group_id:
             await group_buffer_manager.add_messages(
-                group_key, [user_llm_msg], group_config, is_active_trigger=False, model_name=chat_model
+                group_key,
+                [user_llm_msg],
+                group_config,
+                is_active_trigger=False,
+                model_name=chat_model,
             )
         return
 
     ctx = RunContext(deps=NoneBotDeps(bot=bot, event=event))
     if effective_mode == "group":
-        ctx.state["__bym_history__"] = group_buffer_manager.get_messages(group_key, group_config.idle_timeout)
+        ctx.state["__bym_history__"] = group_buffer_manager.get_messages(
+            group_key, group_config.idle_timeout
+        )
     ctx.state["__bym_is_random_triggered__"] = is_random_triggered
     ctx.state["__bym_effective_mode__"] = effective_mode
 
@@ -421,7 +429,9 @@ async def _(
         from .data_source import get_memory_config
 
         if effective_mode == "group":
-            current_history = group_buffer_manager.get_messages(group_key, group_config.idle_timeout)
+            current_history = group_buffer_manager.get_messages(
+                group_key, group_config.idle_timeout
+            )
             response = await bym_agent.run(
                 final_input,
                 context=ctx,
@@ -442,7 +452,11 @@ async def _(
             if response.llm_messages:
                 msgs_to_add.extend(response.llm_messages)
             await group_buffer_manager.add_messages(
-                group_key, msgs_to_add, group_config, is_active_trigger=True, model_name=chat_model
+                group_key,
+                msgs_to_add,
+                group_config,
+                is_active_trigger=True,
+                model_name=chat_model,
             )
 
         if result_text:
@@ -475,7 +489,11 @@ async def _(
         logger.info(f"BYM AI 门控静默拦截: {e}", "BYM_AI", session=session)
         if effective_mode == "group" and group_id:
             await group_buffer_manager.add_messages(
-                group_key, [user_llm_msg], group_config, is_active_trigger=False, model_name=chat_model
+                group_key,
+                [user_llm_msg],
+                group_config,
+                is_active_trigger=False,
+                model_name=chat_model,
             )
     except LLMException as e:
         logger.error(f"BYM AI LLM异常: {e}", "BYM_AI", session=session)
