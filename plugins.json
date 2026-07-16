@@ -493,5 +493,16 @@
         "version": "0.1",
         "plugin_type": "NORMAL",
         "is_dir": true
+    },
+    {
+        "name": "漫画翻译",
+        "module": "manga_translator",
+        "module_path": "plugins.manga_translator",
+        "description": "基于 Cotrans API 的图片/漫画翻译，支持多语种",
+        "usage": "漫画翻译 -t CHS -s L --translator google\n    指令：\n        图片翻译/漫画翻译/翻译图片/翻译漫画 [图片]\n        -t 目标语言(CHS/ENG/JPN等) -s 尺寸(S/M/L/X)\n        --translator 翻译引擎(google/gpt3.5等)",
+        "author": "秦心",
+        "version": "2.0",
+        "plugin_type": "NORMAL",
+        "is_dir": true
     }
 ]
