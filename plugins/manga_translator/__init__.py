@@ -68,7 +68,9 @@ __plugin_meta__ = PluginMetadata(
         version="2.0",
         plugin_type=PluginType.NORMAL,
         limits=[
-            BaseBlock(result="当前有任务正在处理，请稍等...", watch_type=LimitWatchType.GROUP),
+            BaseBlock(
+                result="当前有任务正在处理，请稍等...", watch_type=LimitWatchType.GROUP
+            ),
         ],
     ).to_dict(),
 )
@@ -89,7 +91,9 @@ async def _api_get(url: str) -> dict:
         return resp.json()
 
 
-async def _api_post_form(url: str, data: dict, file_bytes: bytes | None = None, filename: str = "image.png") -> dict:
+async def _api_post_form(
+    url: str, data: dict, file_bytes: bytes | None = None, filename: str = "image.png"
+) -> dict:
     """POST multipart/form-data 请求"""
     async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
         if file_bytes:
@@ -104,7 +108,9 @@ async def _api_post_form(url: str, data: dict, file_bytes: bytes | None = None, 
 async def _download_bytes(url: str) -> Optional[bytes]:
     """下载二进制内容"""
     try:
-        async with httpx.AsyncClient(timeout=HTTP_TIMEOUT, follow_redirects=True) as client:
+        async with httpx.AsyncClient(
+            timeout=HTTP_TIMEOUT, follow_redirects=True
+        ) as client:
             resp = await client.get(url)
             if resp.status_code == 200:
                 return resp.content
@@ -156,7 +162,9 @@ async def _submit_task(
         "size": size,
     }
     url = f"{API_BASE}/task/upload/v1"
-    logger.info(f"提交翻译: url={url}, size={size}, lang={target_lang}, translator={translator}")
+    logger.info(
+        f"提交翻译: url={url}, size={size}, lang={target_lang}, translator={translator}"
+    )
     return await _api_post_form(url, form_data, file_bytes, filename)
 
 
@@ -264,8 +272,12 @@ async def _handle_first_receive(
                 "status": "处理中",
                 "not_found": "未找到",
             }
-            detail = result.get("status") or result.get("error") or result.get("pos") or ""
-            await manga_trans.finish(f"task_id: {task_id}\n状态: {status_map.get(msg_type, msg_type)} {detail}".strip())
+            detail = (
+                result.get("status") or result.get("error") or result.get("pos") or ""
+            )
+            await manga_trans.finish(
+                f"task_id: {task_id}\n状态: {status_map.get(msg_type, msg_type)} {detail}".strip()
+            )
         except Exception as e:
             await manga_trans.finish(f"查询出错: {e}")
 
@@ -366,8 +378,27 @@ def _parse_params(text: str, state: T_State):
     m = re.search(r"-t\s+(\S+)", text)
     if m:
         lang = m.group(1).upper()
-        valid_langs = {"CHS", "CHT", "ENG", "JPN", "KOR", "FRA", "DEU", "RUS",
-                       "ESP", "PTB", "ITA", "NLD", "PLK", "HUN", "ROM", "TRK", "UKR", "VIN", "CSY"}
+        valid_langs = {
+            "CHS",
+            "CHT",
+            "ENG",
+            "JPN",
+            "KOR",
+            "FRA",
+            "DEU",
+            "RUS",
+            "ESP",
+            "PTB",
+            "ITA",
+            "NLD",
+            "PLK",
+            "HUN",
+            "ROM",
+            "TRK",
+            "UKR",
+            "VIN",
+            "CSY",
+        }
         if lang in valid_langs:
             state["target_lang"] = lang
 
@@ -400,7 +431,9 @@ def _extract_image_from_event(event: GroupMessageEvent) -> str:
     return ""
 
 
-async def _build_result_message(task_id: str, mask_url: str, original_bytes: bytes) -> Message:
+async def _build_result_message(
+    task_id: str, mask_url: str, original_bytes: bytes
+) -> Message:
     """下载蒙版 + 合成原图 + 构建结果消息"""
     if not mask_url:
         return f"task_id: {task_id}\n翻译完成但结果为空 (图片可能无文字)"
@@ -411,14 +444,15 @@ async def _build_result_message(task_id: str, mask_url: str, original_bytes: byt
     save_path = CACHE_DIR / f"translated-{task_id}.png"
     save_path.write_bytes(final_bytes)
     return (
-        MessageSegment.image(str(save_path))
-        + f"task_id: {task_id}\n"
+        MessageSegment.image(str(save_path)) + f"task_id: {task_id}\n"
         "由 Cotrans (VoileLabs) 提供翻译\n"
         "https://cotrans.touhou.ai/"
     )
 
 
-async def _wait_for_result(task_id: str, group_id: str, original_bytes: bytes) -> Message:
+async def _wait_for_result(
+    task_id: str, group_id: str, original_bytes: bytes
+) -> Message:
     """轮询等待翻译结果 (最多 120 秒)，超时则加入后台队列"""
     for _ in range(40):
         await asyncio.sleep(3)
