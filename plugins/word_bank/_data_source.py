@@ -1,10 +1,9 @@
+import ujson as json
 from nonebot_plugin_alconna import At, Image, UniMessage, UniMsg
 from nonebot_plugin_alconna import At as alcAt
 from nonebot_plugin_alconna import Image as alcImage
 from nonebot_plugin_alconna import Text as alcText
 from nonebot_plugin_uninfo import Uninfo
-import ujson as json
-
 from zhenxun.configs.path_config import DATA_PATH
 from zhenxun.utils.image_utils import ImageTemplate
 from zhenxun.utils.message import MessageUtils

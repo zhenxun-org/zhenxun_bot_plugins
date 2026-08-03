@@ -1,7 +1,6 @@
 import re
 import time
 from pathlib import Path
-from typing import Optional, Dict
 
 from zhenxun.services.log import logger
 
@@ -51,7 +50,7 @@ def get_path_with_mkdir(base_dir: Path, *parts: str) -> Path:
     return path
 
 
-def cookies_str_to_dict(cookies_str: str) -> Dict[str, str]:
+def cookies_str_to_dict(cookies_str: str) -> dict[str, str]:
     """将cookies字符串转换为字典"""
     cookies = {}
     if not cookies_str:
@@ -69,7 +68,7 @@ def cookies_str_to_dict(cookies_str: str) -> Dict[str, str]:
     return cookies
 
 
-def dict_to_cookies_str(cookies_dict: Dict[str, str]) -> str:
+def dict_to_cookies_str(cookies_dict: dict[str, str]) -> str:
     """将字典转换为cookies字符串"""
     if not cookies_dict:
         return ""
@@ -80,7 +79,7 @@ def dict_to_cookies_str(cookies_dict: Dict[str, str]) -> str:
         return ""
 
 
-def extract_url_from_text(text: str) -> Optional[str]:
+def extract_url_from_text(text: str) -> str | None:
     """从文本中提取第一个URL"""
     url_pattern = re.compile(
         r"https?://(?:[-\w.]|(?:%[\da-fA-F]{2}))+[/\w\.-]*(?:\?[/\w\.-=%&+]*)?"

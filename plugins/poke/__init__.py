@@ -1,13 +1,12 @@
 import os
 import random
 
+import ujson as json
 from nonebot import on_notice
 from nonebot.adapters.onebot.v11 import Bot, PokeNotifyEvent
 from nonebot.adapters.onebot.v11.message import MessageSegment
 from nonebot.plugin import PluginMetadata
 from nonebot.rule import to_me
-import ujson as json
-
 from zhenxun.configs.config import BotConfig, Config
 from zhenxun.configs.path_config import IMAGE_PATH, RECORD_PATH
 from zhenxun.configs.utils import PluginExtraData

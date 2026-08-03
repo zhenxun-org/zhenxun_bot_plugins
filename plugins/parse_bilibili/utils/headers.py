@@ -1,9 +1,7 @@
-from typing import Dict
-
 from zhenxun.utils.user_agent import get_user_agent_str
 
 
-def get_bilibili_headers() -> Dict[str, str]:
+def get_bilibili_headers() -> dict[str, str]:
     """获取B站请求头"""
     user_agent = get_user_agent_str()
 
@@ -18,7 +16,7 @@ def get_bilibili_headers() -> Dict[str, str]:
     return headers
 
 
-def get_bilibili_video_headers() -> Dict[str, str]:
+def get_bilibili_video_headers() -> dict[str, str]:
     """获取B站视频请求头"""
     headers = get_bilibili_headers()
     headers.update(
@@ -30,7 +28,7 @@ def get_bilibili_video_headers() -> Dict[str, str]:
     return headers
 
 
-def get_bilibili_live_headers() -> Dict[str, str]:
+def get_bilibili_live_headers() -> dict[str, str]:
     """获取B站直播请求头"""
     headers = get_bilibili_headers()
     headers.update(
@@ -42,7 +40,7 @@ def get_bilibili_live_headers() -> Dict[str, str]:
     return headers
 
 
-def get_bilibili_article_headers() -> Dict[str, str]:
+def get_bilibili_article_headers() -> dict[str, str]:
     """获取B站专栏请求头"""
     headers = get_bilibili_headers()
     headers.update(

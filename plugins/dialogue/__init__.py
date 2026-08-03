@@ -4,7 +4,6 @@ from nonebot.permission import SUPERUSER
 from nonebot.plugin import PluginMetadata
 from nonebot_plugin_alconna import At, Target, Text, UniMsg
 from nonebot_plugin_uninfo import Uninfo
-
 from zhenxun.configs.utils import Command, PluginExtraData
 from zhenxun.models.group_console import GroupConsole
 from zhenxun.services.log import logger

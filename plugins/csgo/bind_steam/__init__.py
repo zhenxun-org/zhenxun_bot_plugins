@@ -3,7 +3,6 @@ import re
 from nonebot.plugin import PluginMetadata
 from nonebot_plugin_alconna import Arparma
 from nonebot_plugin_uninfo import Uninfo
-
 from zhenxun.configs.utils import PluginExtraData
 from zhenxun.services.log import logger
 from zhenxun.utils.message import MessageUtils

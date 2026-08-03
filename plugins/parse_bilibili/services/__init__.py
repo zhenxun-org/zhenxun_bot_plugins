@@ -11,7 +11,7 @@ __all__ = [
     "CoverService",
     "DownloadManager",
     "DownloadTask",
-    "download_manager",
     "ParserService",
     "ScreenshotService",
+    "download_manager",
 ]

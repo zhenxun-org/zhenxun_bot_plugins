@@ -9,7 +9,6 @@ from nonebot_plugin_alconna import UniMessage, Voice
 from nonebot_plugin_alconna.uniseg import Image
 from nonebot_plugin_uninfo import Uninfo
 from pydantic import TypeAdapter
-
 from zhenxun import ui
 from zhenxun.configs.utils import (
     PluginExtraData,
@@ -507,4 +506,4 @@ async def _(
             await MessageUtils.build_failure_message().finish(reply_to=True)
 
 
-from . import command  # noqa: E402, F401
+from . import command  # noqa: F401

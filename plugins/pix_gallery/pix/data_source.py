@@ -1,8 +1,7 @@
-from pathlib import Path
 import random
+from pathlib import Path
 
 from tortoise.expressions import Q
-
 from zhenxun.configs.config import Config
 from zhenxun.configs.path_config import TEMP_PATH
 from zhenxun.utils.common_utils import SqlUtils

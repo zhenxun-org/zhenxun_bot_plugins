@@ -1,5 +1,4 @@
 from tortoise import fields
-
 from zhenxun.services.db_context import Model
 
 
@@ -84,11 +83,7 @@ class RussianUser(Model):
         """
         user, _ = await cls.get_or_create(user_id=user_id, group_id=group_id)
         if type_ == "win":
-            _max = (
-                user.max_winning_streak
-                if user.max_winning_streak > user.winning_streak + 1
-                else user.winning_streak + 1
-            )
+            _max = max(user.winning_streak + 1, user.max_winning_streak)
             user.win_count = user.win_count + 1
             user.winning_streak = user.winning_streak + 1
             user.losing_streak = 0
@@ -102,11 +97,7 @@ class RussianUser(Model):
                 ]
             )
         elif type_ == "lose":
-            _max = (
-                user.max_losing_streak
-                if user.max_losing_streak > user.losing_streak + 1
-                else user.losing_streak + 1
-            )
+            _max = max(user.losing_streak + 1, user.max_losing_streak)
             user.fail_count = user.fail_count + 1
             user.losing_streak = user.losing_streak + 1
             user.winning_streak = 0

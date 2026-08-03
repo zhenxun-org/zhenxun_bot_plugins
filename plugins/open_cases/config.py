@@ -1,7 +1,6 @@
 from enum import Enum
 
 from pydantic import BaseModel
-
 from zhenxun.configs.path_config import IMAGE_PATH
 
 BUFF_URL = "https://buff.163.com/api/market/goods"

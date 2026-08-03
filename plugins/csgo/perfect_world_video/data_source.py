@@ -1,10 +1,9 @@
 import asyncio
-from pathlib import Path
 import time
+from pathlib import Path
 
 from nonebot_plugin_uninfo import Uninfo
 from tortoise.transactions import atomic
-
 from zhenxun.services.log import logger
 from zhenxun.utils.http_utils import AsyncHttpx
 
@@ -46,7 +45,7 @@ class PerfectWorldVideoManager:
 
             response = await CallApi.get_video_list(steam_id)
 
-            asyncio.create_task(  # noqa: RUF006
+            asyncio.create_task(
                 cls._save_user_videos(
                     user_id, steam_id, response.data, save_user_id=not is_query
                 )

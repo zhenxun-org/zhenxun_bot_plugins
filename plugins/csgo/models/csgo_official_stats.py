@@ -1,7 +1,6 @@
 from typing import TYPE_CHECKING
 
 from tortoise import fields
-
 from zhenxun.services.db_context import Model
 
 from .csgo_map_stats import CsgoMapStats

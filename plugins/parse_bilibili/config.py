@@ -1,4 +1,3 @@
-from typing import Optional, Dict
 import asyncio
 import time
 
@@ -24,7 +23,7 @@ class GroupSettings(BaseModel):
     )
 
 
-def cookies_str_to_dict(cookies_str: str) -> Dict[str, str]:
+def cookies_str_to_dict(cookies_str: str) -> dict[str, str]:
     """将cookies字符串转换为字典"""
     cookies = {}
     if not cookies_str:
@@ -49,7 +48,7 @@ base_config = Config.get(MODULE_NAME)
 HTTP_TIMEOUT = 30
 HTTP_CONNECT_TIMEOUT = 10
 
-bili_credential: Optional[Credential] = None
+bili_credential: Credential | None = None
 _credential_lock = asyncio.Lock()
 _credential_loaded = False
 _last_refresh_check_time = 0
@@ -116,7 +115,7 @@ async def save_credential_to_file(credential: Credential):
             logger.error("保存 Credential 失败", e=e)
 
 
-def get_credential() -> Optional[Credential]:
+def get_credential() -> Credential | None:
     """获取当前的全局 Credential 对象"""
     return bili_credential
 

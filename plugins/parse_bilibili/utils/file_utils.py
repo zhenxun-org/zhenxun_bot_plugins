@@ -1,6 +1,5 @@
 import asyncio
 from pathlib import Path
-from typing import Optional, Tuple
 
 from zhenxun.services.log import logger
 
@@ -9,7 +8,7 @@ from ..config import PLUGIN_TEMP_DIR
 
 async def merge_media_files(
     video_path: Path,
-    audio_path: Optional[Path],
+    audio_path: Path | None,
     output_path: Path,
     log_output: bool = False,
 ) -> bool:
@@ -29,7 +28,7 @@ async def merge_media_files(
         logger.error(f"音频文件不存在: {audio_path}")
         return False
 
-    async def _run_ffmpeg(vcodec: str, acodec: str) -> Tuple[bool, str]:
+    async def _run_ffmpeg(vcodec: str, acodec: str) -> tuple[bool, str]:
         """运行FFmpeg命令并确保其进程被管理"""
         command = ["ffmpeg", "-y", "-i", str(video_path.resolve())]
         if audio_path:
@@ -125,7 +124,7 @@ def get_temp_file_path(
     prefix: str,
     suffix: str,
     identifier: str,
-    title: Optional[str] = None,
+    title: str | None = None,
 ) -> Path:
     """生成临时文件路径"""
     filename = f"{prefix}{identifier}{suffix}"

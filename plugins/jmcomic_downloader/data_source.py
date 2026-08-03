@@ -1,16 +1,16 @@
 import asyncio
+import time
 from dataclasses import dataclass
 from pathlib import Path
-import time
 from typing import ClassVar
-import nonebot
+
 import jmcomic
+import nonebot
+import pyminizip
+import yaml
 from jmcomic import JmAlbumDetail
 from nonebot.adapters.onebot.v11 import Bot
 from pikepdf import Encryption, Pdf
-import pyminizip
-import yaml
-
 from zhenxun.configs.path_config import DATA_PATH, TEMP_PATH
 from zhenxun.services.log import logger
 from zhenxun.utils.http_utils import AsyncHttpx

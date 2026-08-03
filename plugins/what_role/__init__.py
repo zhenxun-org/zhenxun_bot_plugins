@@ -18,7 +18,6 @@ from nonebot_plugin_alconna.builtins.extensions.reply import ReplyMergeExtension
 from nonebot_plugin_alconna.uniseg.tools import image_fetch
 from nonebot_plugin_uninfo import Uninfo
 from nonebot_plugin_waiter import waiter
-
 from zhenxun.configs.config import BotConfig
 from zhenxun.configs.utils import Command, PluginExtraData
 from zhenxun.services.log import logger

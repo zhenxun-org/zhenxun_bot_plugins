@@ -4,7 +4,7 @@ from typing import Any
 from zhenxun.services.log import logger
 from zhenxun.utils.http_utils import AsyncHttpx
 
-from .model import MusicMetaData, MusicHelper
+from .model import MusicHelper, MusicMetaData
 
 DOMAIN = "https://music.163.com"
 REAL_IP = "58.100.87.193"

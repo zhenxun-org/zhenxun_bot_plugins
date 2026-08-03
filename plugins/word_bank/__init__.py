@@ -1,6 +1,5 @@
 import nonebot
 from nonebot.plugin import PluginMetadata
-
 from zhenxun.configs.utils import PluginExtraData, RegisterConfig
 from zhenxun.services.log import logger
 from zhenxun.utils.enum import PluginType

@@ -1,26 +1,26 @@
 import asyncio
-from typing import Dict, Optional, cast
+from typing import cast
 
 import httpx
-from arclet.alconna import Alconna, Arparma, Args
-from bilibili_api import Picture, exceptions as BiliExceptions, login_v2
+from arclet.alconna import Alconna, Args, Arparma
+from bilibili_api import Picture, login_v2
+from bilibili_api import exceptions as BiliExceptions
 from bilibili_api.utils.network import get_session
 from nonebot import on_command
 from nonebot.adapters import Bot, Event
 from nonebot.adapters.onebot.v11 import MessageSegment
 from nonebot.matcher import Matcher
 from nonebot.permission import SUPERUSER
-from nonebot_plugin_alconna import AlconnaMatches, AlconnaMatcher, on_alconna
+from nonebot_plugin_alconna import AlconnaMatcher, AlconnaMatches, on_alconna
 from zhenxun.builtin_plugins.superuser.plugin_config_manager import pconf_cmd
-
 from zhenxun.services.log import logger
+
 from .config import get_credential, save_credential_to_file
 from .services.cover_service import CoverService
 from .services.download_service import DownloadTask, download_manager
 from .services.network_service import ParserService
 from .utils.exceptions import BilibiliBaseException
 from .utils.url_parser import extract_bilibili_url_from_event
-
 
 bili_cover_cmd = Alconna("bili封面")
 
@@ -143,7 +143,7 @@ credential_status_matcher = on_command(
     "bili状态", permission=SUPERUSER, priority=5, block=True
 )
 
-login_sessions: Dict[str, login_v2.QrCodeLogin] = {}
+login_sessions: dict[str, login_v2.QrCodeLogin] = {}
 
 
 @login_matcher.handle()
@@ -156,13 +156,13 @@ async def handle_login_start(bot: Bot, event: Event, matcher: Matcher):
     logger.info(f"用户 {user_id} 请求 B站扫码登录")
     await matcher.send("正在生成登录二维码，请稍候...")
 
-    login_instance: Optional[login_v2.QrCodeLogin] = None
+    login_instance: login_v2.QrCodeLogin | None = None
     try:
         login_instance = login_v2.QrCodeLogin(platform=login_v2.QrCodeLoginChannel.WEB)
         await login_instance.generate_qrcode()
         login_sessions[user_id] = login_instance
 
-        qr_bytes: Optional[bytes] = None
+        qr_bytes: bytes | None = None
         try:
             qr_pic: Picture = login_instance.get_qrcode_picture()
             qr_bytes = qr_pic.content
@@ -192,8 +192,7 @@ async def handle_login_start(bot: Bot, event: Event, matcher: Matcher):
         await matcher.finish(f"连接B站API失败，请稍后再试 (错误: {e})。")
     except Exception as e:
         logger.error("启动登录流程时发生意外错误", e=e)
-        if user_id in login_sessions:
-            del login_sessions[user_id]
+        login_sessions.pop(user_id, None)
         await matcher.finish("启动登录流程时发生错误，请检查日志。")
 
 
@@ -273,9 +272,9 @@ async def handle_credential_status(bot: Bot, event: Event, matcher: Matcher):
     if not credential:
         await matcher.finish("当前未登录B站账号，请使用 `bili登录` 命令登录。")
 
-    is_valid: Optional[bool] = None
-    need_refresh: Optional[bool] = None
-    error_msg: Optional[str] = None
+    is_valid: bool | None = None
+    need_refresh: bool | None = None
+    error_msg: str | None = None
 
     try:
         results = await asyncio.gather(

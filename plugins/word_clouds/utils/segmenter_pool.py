@@ -2,10 +2,9 @@ import asyncio
 from pathlib import Path
 from typing import Any
 
+import spacy_pkuseg as pkuseg
 from nonebot import get_driver
 from nonebot.utils import run_sync
-import spacy_pkuseg as pkuseg
-
 from zhenxun.services.log import logger
 
 from ..config import WordCloudConfig

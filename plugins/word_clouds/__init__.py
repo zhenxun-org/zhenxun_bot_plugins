@@ -1,5 +1,4 @@
 from nonebot.plugin import PluginMetadata
-
 from zhenxun.configs.utils import Command, PluginExtraData, RegisterConfig
 from zhenxun.utils.enum import PluginType
 

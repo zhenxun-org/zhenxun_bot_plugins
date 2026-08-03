@@ -5,7 +5,6 @@ from nonebot.plugin import PluginMetadata
 from nonebot_plugin_alconna import Alconna, Args, Arparma, Match, on_alconna
 from nonebot_plugin_htmlrender import template_to_pic
 from nonebot_plugin_uninfo import Uninfo
-
 from zhenxun.configs.config import BotConfig, Config
 from zhenxun.configs.utils import (
     AICallableParam,

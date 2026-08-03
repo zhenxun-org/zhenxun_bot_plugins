@@ -1,12 +1,11 @@
-from io import BytesIO
 import os
 import random
+from io import BytesIO
 
-from nonebot.utils import run_sync
 import numpy as np
+from nonebot.utils import run_sync
 from PIL import Image as IMG
 from wordcloud import WordCloud
-
 from zhenxun.services.log import logger
 
 from .config import WordCloudConfig, base_config

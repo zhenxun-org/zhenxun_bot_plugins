@@ -1,12 +1,11 @@
-from pathlib import Path
 import shutil
+from pathlib import Path
 
 from nonebot import on_message
 from nonebot.plugin import PluginMetadata
 from nonebot.rule import to_me
 from nonebot_plugin_alconna import UniMsg
 from nonebot_plugin_uninfo import Uninfo
-
 from zhenxun.configs.config import BotConfig, Config
 from zhenxun.configs.path_config import DATA_PATH
 from zhenxun.configs.utils import PluginExtraData, RegisterConfig

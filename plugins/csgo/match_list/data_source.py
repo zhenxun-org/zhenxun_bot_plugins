@@ -39,7 +39,7 @@ class MatchListManager:
             raise CsgoDataQueryException("用户隐藏了战绩...")
 
         # 异步保存比赛数据
-        asyncio.create_task(cls.save_match_list(steam_id, response.data.match_list))  # noqa: RUF006
+        asyncio.create_task(cls.save_match_list(steam_id, response.data.match_list))
 
         return response.data.match_list
 

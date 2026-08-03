@@ -1,40 +1,34 @@
+import asyncio
 import base64
-from pathlib import Path
 import re
 import time
-from typing import Optional
 from io import BytesIO
-from .common import format_number, format_duration
+from pathlib import Path
 
 import aiofiles
-
-from bs4 import BeautifulSoup
 import jinja2
-from nonebot_plugin_alconna import UniMsg, UniMessage, Text, Image
-
-from zhenxun import ui
-from zhenxun.ui.models import MarkdownData
-from zhenxun.utils.http_utils import AsyncHttpx
-
 from bilibili_api import comment
 from bilibili_api.comment import CommentResourceType, OrderType
-
-from zhenxun.services.log import logger
-
-from ..model import ArticleInfo, LiveInfo, VideoInfo, SeasonInfo, UserInfo
-import asyncio
+from bs4 import BeautifulSoup
 from nonebot.adapters.onebot.v11 import MessageSegment as V11MessageSegment
+from nonebot_plugin_alconna import Image, Text, UniMessage, UniMsg
+from zhenxun import ui
+from zhenxun.services.log import logger
+from zhenxun.ui.models import MarkdownData
 from zhenxun.utils.decorator.retry import Retry
+from zhenxun.utils.http_utils import AsyncHttpx
+
 from ..config import (
+    IMAGE_CACHE_DIR,
     SEND_VIDEO_MAX_RETRIES,
     SEND_VIDEO_RETRY_DELAY,  # type: ignore
     SEND_VIDEO_TIMEOUT,
-    IMAGE_CACHE_DIR,
     base_config,
     bili_credential,
 )
+from ..model import ArticleInfo, LiveInfo, SeasonInfo, UserInfo, VideoInfo
 from ..utils.exceptions import DownloadError
-
+from .common import format_duration, format_number
 
 TEMPLATE_DIR = Path(__file__).parent.parent / "templates"
 FONT_FILE = TEMPLATE_DIR / "vanfont.ttf"
@@ -72,7 +66,7 @@ class ImageHelper:
             return False
 
     @staticmethod
-    async def get_image_as_base64(path: Path) -> Optional[str]:
+    async def get_image_as_base64(path: Path) -> str | None:
         """转换图片为Base64"""
         if not (path.exists() and path.stat().st_size > 0):
             return None
@@ -181,7 +175,7 @@ class MessageBuilder:
     @staticmethod
     async def build_article_message(
         info: ArticleInfo, render_enabled: bool = False
-    ) -> Optional[UniMsg]:
+    ) -> UniMsg | None:
         """构建文章/动态信息消息"""
         logger.debug(
             f"构建文章/动态消息: {info.type} {info.id}, 渲染模式: {render_enabled}"
@@ -329,7 +323,7 @@ class MessageBuilder:
         return UniMessage(segments)
 
 
-async def render_video_info_to_image(info: VideoInfo) -> Optional[bytes]:
+async def render_video_info_to_image(info: VideoInfo) -> bytes | None:
     """渲染视频信息为图片"""
     logger.debug("开始渲染 VideoInfo (style_blue with icons)")
 
@@ -443,7 +437,7 @@ async def render_video_info_to_image(info: VideoInfo) -> Optional[bytes]:
     return await ui.render(component, viewport={"width": 780, "height": 10})
 
 
-async def render_season_info_to_image(info: SeasonInfo) -> Optional[bytes]:
+async def render_season_info_to_image(info: SeasonInfo) -> bytes | None:
     """渲染番剧信息为图片"""
     logger.debug("开始渲染 SeasonInfo (style_blue)")
 
@@ -498,7 +492,7 @@ async def render_season_info_to_image(info: SeasonInfo) -> Optional[bytes]:
     return await ui.render(component, viewport={"width": 420, "height": 10})
 
 
-async def render_user_info_to_image(info: UserInfo) -> Optional[bytes]:
+async def render_user_info_to_image(info: UserInfo) -> bytes | None:
     """使用 zhenxun.ui 渲染更美观的用户信息为图片"""
     logger.debug(f"开始使用 zhenxun.ui 渲染更美观的用户信息: {info.name}")
 
@@ -527,7 +521,7 @@ async def render_user_info_to_image(info: UserInfo) -> Optional[bytes]:
     return await ui.render(component, viewport={"width": 500, "height": 10})
 
 
-async def render_live_info_to_image(info: LiveInfo) -> Optional[bytes]:
+async def render_live_info_to_image(info: LiveInfo) -> bytes | None:
     """使用 zhenxun.ui 渲染直播间信息为图片"""
     logger.debug(f"开始使用 zhenxun.ui 渲染直播间信息: {info.title}")
 
@@ -558,7 +552,7 @@ async def render_live_info_to_image(info: LiveInfo) -> Optional[bytes]:
     return await ui.render(component, viewport={"width": 500, "height": 10})
 
 
-async def render_unimsg_to_image(message: UniMsg) -> Optional[bytes]:
+async def render_unimsg_to_image(message: UniMsg) -> bytes | None:
     """将 UniMsg 渲染成图片"""
     logger.debug("开始渲染UniMsg消息")
 

@@ -1,13 +1,12 @@
 import asyncio
+import random
 from asyncio import Semaphore, Task, sleep
 from copy import deepcopy
 from datetime import datetime
-import random
 from typing import Literal
 
 from tortoise.expressions import F
 from tortoise.functions import Concat
-
 from zhenxun.services.log import logger
 from zhenxun.utils.http_utils import AsyncHttpx
 

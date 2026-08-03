@@ -1,8 +1,8 @@
+from zhenxun.configs.config import Config
 from zhenxun.configs.path_config import IMAGE_PATH
 from zhenxun.services.log import logger
 from zhenxun.utils.http_utils import AsyncHttpx
 from zhenxun.utils.image_utils import BuildImage
-from zhenxun.configs.config import Config
 
 URL = "https://weibo.com/ajax/side/hotSearch"
 

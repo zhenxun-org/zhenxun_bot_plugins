@@ -4,7 +4,6 @@ import time
 
 from nonebot_plugin_uninfo import Uninfo
 from tortoise.transactions import atomic
-
 from zhenxun.configs.config import Config
 from zhenxun.services.log import logger
 from zhenxun.utils.http_utils import AsyncHttpx
@@ -358,7 +357,7 @@ class CsgoManager:
                 response.data.score_list.reverse()
                 response.data.pvp_score = response.data.score_list[-1].score
 
-            asyncio.create_task(  # noqa: RUF006
+            asyncio.create_task(
                 cls._save_user_platform_data(
                     user_id,
                     steam_id,
@@ -634,7 +633,7 @@ class CsgoManager:
                 def pad_and_slice(data_list: list, target_length: int) -> list:
                     """补0"""
                     if not data_list:
-                        return [0] * target_length  #
+                        return [0] * target_length
                     current_length = len(data_list)
                     if current_length >= target_length:
                         return data_list[-target_length:]
@@ -660,7 +659,7 @@ class CsgoManager:
                 response.data.history_rws.reverse()
                 response.data.history_comprehensive_scores.reverse()
 
-            asyncio.create_task(  # noqa: RUF006
+            asyncio.create_task(
                 cls._save_user_official_data(
                     user_id, steam_id, response.data, save_user_id=not is_query
                 )

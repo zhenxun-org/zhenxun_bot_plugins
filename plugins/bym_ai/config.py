@@ -1,5 +1,4 @@
 import tomli
-
 from zhenxun.configs.config import Config
 from zhenxun.configs.path_config import DATA_PATH
 from zhenxun.services.log import logger

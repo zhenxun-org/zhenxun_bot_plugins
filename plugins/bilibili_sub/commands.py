@@ -20,7 +20,6 @@ from nonebot_plugin_alconna import (
 )
 from nonebot_plugin_session import EventSession
 from nonebot_plugin_waiter import prompt_until
-
 from zhenxun import ui
 from zhenxun.models.group_console import GroupConsole
 from zhenxun.ui.models import LayoutData, NotebookData, UserInfoBlock

@@ -1,7 +1,7 @@
-import subprocess
 import json
-import re
 import os
+import re
+import subprocess
 
 
 def get_changed_files():

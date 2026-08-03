@@ -3,8 +3,8 @@
 使用注册器模式管理装备类型和效果
 """
 
-from collections.abc import Callable
 import random
+from collections.abc import Callable
 
 from pydantic import BaseModel
 
@@ -106,7 +106,6 @@ def register_standard_weapon(russian: Russian, user_id: str):
             "标准左轮",
             "你中弹了！",
         )
-    return None
 
 
 @weapon_register(
@@ -159,7 +158,6 @@ def register_deceiver_weapon(russian: Russian, user_id: str):
             "欺诈左轮",
             "触发了欺诈轨迹！你中弹了！",
         )
-    return None
 
 
 @weapon_register(
