@@ -1,15 +1,15 @@
-import time
-import json
 import asyncio
+import json
 import shutil
-from pathlib import Path
-from typing import Optional, Dict, Any
+import time
 from collections import OrderedDict
-from nonebot_plugin_session import EventSession
+from pathlib import Path
+from typing import Any
 
+from nonebot_plugin_session import EventSession
 from zhenxun.services.log import logger
 
-from ..config import base_config, PLUGIN_CACHE_DIR, IMAGE_CACHE_DIR, PLUGIN_TEMP_DIR
+from ..config import IMAGE_CACHE_DIR, PLUGIN_CACHE_DIR, PLUGIN_TEMP_DIR, base_config
 
 VIDEO_CACHE_DIR = PLUGIN_CACHE_DIR / "video_cache"
 VIDEO_CACHE_DIR.mkdir(parents=True, exist_ok=True)
@@ -21,8 +21,8 @@ _video_cache_lock = asyncio.Lock()
 _url_cache_lock = asyncio.Lock()
 _clean_lock = asyncio.Lock()
 
-_video_cache_index: Dict[str, Dict[str, Any]] = {}
-_url_context_caches: Dict[str, OrderedDict[str, float]] = {}
+_video_cache_index: dict[str, dict[str, Any]] = {}
+_url_context_caches: dict[str, OrderedDict[str, float]] = {}
 _URL_CONTEXT_CACHE_CAPACITY = 100
 
 _video_cache_initialized = False
@@ -124,7 +124,7 @@ class CacheService:
         _url_cache_initialized = True
 
     @classmethod
-    async def get_video_cache(cls, video_id: str, page_num: int = 0) -> Optional[Path]:
+    async def get_video_cache(cls, video_id: str, page_num: int = 0) -> Path | None:
         """获取视频缓存文件路径"""
         if not _video_cache_initialized:
             await cls._init_video_cache()
@@ -289,7 +289,7 @@ class CacheService:
         asyncio.create_task(cls._save_url_cache_to_disk())
 
     @classmethod
-    async def clear_url_cache(cls, context_key: Optional[str] = None):
+    async def clear_url_cache(cls, context_key: str | None = None):
         """清空URL缓存"""
         if not _url_cache_initialized:
             await cls._init_url_cache()
@@ -383,8 +383,7 @@ class CacheService:
                                 f"删除缓存文件失败: {file_path}, 错误: {e}", "B站解析"
                             )
 
-                if cache_key in _video_cache_index:
-                    del _video_cache_index[cache_key]
+                _video_cache_index.pop(cache_key, None)
 
             if to_clean:
                 await cls._save_video_cache_index()

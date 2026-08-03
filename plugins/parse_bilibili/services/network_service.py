@@ -1,9 +1,7 @@
 import urllib.parse
 from pathlib import Path
-from typing import List, Optional, Union
 
 import httpx
-
 from zhenxun.services.log import logger
 from zhenxun.utils.exception import AllURIsFailedError
 from zhenxun.utils.http_utils import AsyncHttpx
@@ -19,7 +17,7 @@ from ..utils.headers import get_bilibili_headers
 from ..utils.url_parser import ResourceType, UrlParserRegistry
 
 
-async def download_bilibili_file(url: Union[str, List[str]], file_path: Path) -> bool:
+async def download_bilibili_file(url: str | list[str], file_path: Path) -> bool:
     """
     下载B站文件，利用 AsyncHttpx 的健壮下载能力。
     支持传入单个URL字符串或URL列表，第一个URL为主地址，其余为备用地址。
@@ -54,7 +52,7 @@ async def download_bilibili_file(url: Union[str, List[str]], file_path: Path) ->
         logger.error(
             f"下载文件 {file_path.name} 时发生未预期的错误: {type(e).__name__}: {e}"
         )
-        logger.error(f"错误详情: {type(e).__name__}: {str(e)}")
+        logger.error(f"错误详情: {type(e).__name__}: {e!s}")
         if hasattr(e, "__dict__"):
             logger.error(f"错误属性: {e.__dict__}")
         raise DownloadError(
@@ -119,7 +117,7 @@ class ParserService:
     @staticmethod
     async def fetch_resource_info(
         resource_type: ResourceType, resource_id: str, parsed_url: str
-    ) -> Union[VideoInfo, LiveInfo, ArticleInfo, UserInfo, SeasonInfo]:
+    ) -> VideoInfo | LiveInfo | ArticleInfo | UserInfo | SeasonInfo:
         """根据资源类型和ID获取详细信息"""
         from .api_service import BilibiliApiService
         from .utility_service import ScreenshotService
@@ -156,8 +154,8 @@ class ParserService:
                 uid=int(resource_id), parsed_url=parsed_url
             )
         elif resource_type == ResourceType.BANGUMI:
-            ss_id: Optional[int] = None
-            ep_id: Optional[int] = None
+            ss_id: int | None = None
+            ep_id: int | None = None
             if resource_id.startswith("ss"):
                 ss_id = int(resource_id[2:])
             elif resource_id.startswith("ep"):
@@ -176,7 +174,7 @@ class ParserService:
     @classmethod
     async def parse(
         cls, url: str
-    ) -> Union[VideoInfo, LiveInfo, ArticleInfo, UserInfo, SeasonInfo]:
+    ) -> VideoInfo | LiveInfo | ArticleInfo | UserInfo | SeasonInfo:
         """解析Bilibili URL，返回相应的信息模型"""
         original_url = url.strip()
         logger.debug(f"开始解析URL: {original_url}", "B站解析")

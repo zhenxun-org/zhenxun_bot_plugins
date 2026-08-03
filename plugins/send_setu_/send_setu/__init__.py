@@ -15,7 +15,6 @@ from nonebot_plugin_alconna import (
     store_true,
 )
 from nonebot_plugin_session import EventSession
-
 from zhenxun.configs.config import BotConfig
 from zhenxun.configs.utils import (
     Command,

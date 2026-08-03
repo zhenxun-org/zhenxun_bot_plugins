@@ -1,6 +1,4 @@
-from typing import Optional, Union
-
-from nonebot_plugin_alconna import UniMsg, UniMessage, Image
+from nonebot_plugin_alconna import Image, UniMessage, UniMsg
 from zhenxun.services.log import logger
 from zhenxun.utils.http_utils import AsyncHttpx
 
@@ -14,8 +12,8 @@ class CoverService:
 
     @staticmethod
     async def _extract_cover_url(
-        content_info: Union[VideoInfo, SeasonInfo],
-    ) -> Optional[str]:
+        content_info: VideoInfo | SeasonInfo,
+    ) -> str | None:
         """从内容信息中提取封面URL"""
         cover_url = getattr(content_info, "pic", None) or getattr(
             content_info, "cover", None

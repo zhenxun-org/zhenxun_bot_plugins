@@ -1,7 +1,6 @@
 from nonebot import on_regex
 from nonebot.permission import SUPERUSER
 from nonebot_plugin_alconna import Alconna, Args, Field, Option, on_alconna, store_true
-
 from zhenxun.utils.rules import admin_check
 
 _add_matcher = on_regex(

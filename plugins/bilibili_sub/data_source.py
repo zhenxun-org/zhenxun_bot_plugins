@@ -1,17 +1,16 @@
 import asyncio
 import base64
+import json
+import time
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import Enum, auto
-import json
-import time
 
+import httpx
+import nonebot
 from bilibili_api import bangumi, search
 from bilibili_api import user as bilibili_user_module
 from bilibili_api.exceptions import ResponseCodeException
-import httpx
-import nonebot
-
 from zhenxun import ui
 from zhenxun.services.log import logger
 from zhenxun.ui.models import NotebookData

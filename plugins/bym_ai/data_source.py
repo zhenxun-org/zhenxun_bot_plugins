@@ -1,15 +1,9 @@
+import time
 from collections import defaultdict
 from datetime import datetime
-import time
 from typing import Any
 
 from pydantic import BaseModel, Field
-
-from zhenxun.services.ai.context.memory.compression import (
-    MultimodalPlaceholderReducer,
-    LLMSummarizerReducer,
-)
-
 from zhenxun.builtin_plugins.sign_in.utils import (
     get_level_and_next_impression,
     level2attitude,
@@ -21,6 +15,10 @@ from zhenxun.services.ai.context.memory import (
     Isolation,
     MemoryBuilder,
     memory_manager,
+)
+from zhenxun.services.ai.context.memory.compression import (
+    LLMSummarizerReducer,
+    MultimodalPlaceholderReducer,
 )
 from zhenxun.services.ai.context.memory.storage import (
     get_orm_chat_context,
@@ -38,7 +36,7 @@ from zhenxun.services.ai.guardrails import (
     output_guardrail,
 )
 from zhenxun.services.ai.llm.api import generate_structured
-from zhenxun.services.ai.run import RunContext, Inject
+from zhenxun.services.ai.run import Inject, RunContext
 from zhenxun.services.group_settings_service import group_settings_service
 from zhenxun.services.log import logger
 from zhenxun.utils.utils import infer_plugin_namespace

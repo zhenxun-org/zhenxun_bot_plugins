@@ -2,7 +2,6 @@ import asyncio
 from pathlib import Path
 
 from nonebot_plugin_htmlrender import get_browser
-
 from zhenxun.services.log import logger
 from zhenxun.utils.image_utils import BuildImage
 

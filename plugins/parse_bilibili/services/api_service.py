@@ -1,37 +1,34 @@
 import asyncio
+from typing import Any, cast
 from urllib.parse import parse_qs, urlparse
-from typing import Dict, Any, Optional, List, cast
 
 import httpx
+from bilibili_api import article, live, user, video
 from bilibili_api import exceptions as BiliExceptions
-from bilibili_api import live, video, article, user
-
 from zhenxun.services.log import logger
 from zhenxun.utils.decorator.retry import Retry
 from zhenxun.utils.http_utils import AsyncHttpx
 
 from ..config import get_credential
 from ..model import (
-    Owner,
-    Stat,
-    VideoInfo,
+    ArticleInfo,
     LiveInfo,
-    UserInfo,
-    UserStat,
+    Owner,
     SeasonInfo,
     SeasonStat,
-    ArticleInfo,
+    Stat,
+    UserInfo,
+    UserStat,
+    VideoInfo,
 )
-
 from ..utils.exceptions import (
     BilibiliRequestError,
     BilibiliResponseError,
-    ResourceNotFoundError,
-    ResourceForbiddenError,
-    UrlParseError,
     RateLimitError,
+    ResourceForbiddenError,
+    ResourceNotFoundError,
+    UrlParseError,
 )
-
 
 RETRYABLE_EXCEPTIONS = (
     BiliExceptions.NetworkException,
@@ -59,7 +56,7 @@ class BilibiliApiService:
             raise UrlParseError(f"无效的视频ID格式: {vid}")
 
     @staticmethod
-    def _map_video_info_to_model(info: Dict[str, Any], parsed_url: str) -> VideoInfo:
+    def _map_video_info_to_model(info: dict[str, Any], parsed_url: str) -> VideoInfo:
         """将API返回的视频信息映射到VideoInfo模型"""
         owner = Owner(
             mid=info["owner"]["mid"],
@@ -114,7 +111,7 @@ class BilibiliApiService:
         return video_model
 
     @staticmethod
-    def _map_live_info_to_model(info: Dict[str, Any], parsed_url: str) -> LiveInfo:
+    def _map_live_info_to_model(info: dict[str, Any], parsed_url: str) -> LiveInfo:
         """将API返回的直播间信息映射到LiveInfo模型"""
         room_info = info["room_info"]
         anchor_info = info.get("anchor_info", {}).get("base_info", {})
@@ -422,28 +419,28 @@ class BilibiliApiService:
                 return_exceptions=True,
             )
 
-            user_info_data: Optional[Dict[str, Any]] = None
-            relation_info_data: Optional[Dict[str, Any]] = None
-            up_stat_data: Optional[Dict[str, Any]] = None
+            user_info_data: dict[str, Any] | None = None
+            relation_info_data: dict[str, Any] | None = None
+            up_stat_data: dict[str, Any] | None = None
             errors = []
 
             if isinstance(results[0], Exception):
                 errors.append(f"get_user_info 失败: {results[0]}")
                 logger.error("获取 user_info 失败", e=results[0])
             else:
-                user_info_data = cast(Dict[str, Any], results[0])
+                user_info_data = cast(dict[str, Any], results[0])
 
             if isinstance(results[1], Exception):
                 errors.append(f"get_relation_info 失败: {results[1]}")
                 logger.error("获取 relation_info 失败", e=results[1])
             else:
-                relation_info_data = cast(Dict[str, Any], results[1])
+                relation_info_data = cast(dict[str, Any], results[1])
 
             if isinstance(results[2], Exception):
                 errors.append(f"get_up_stat 失败: {results[2]}")
                 logger.error("获取 up_stat 失败", e=results[2])
             else:
-                up_stat_data = cast(Dict[str, Any], results[2])
+                up_stat_data = cast(dict[str, Any], results[2])
 
             if not user_info_data:
                 error_msg = ", ".join(errors)
@@ -518,7 +515,7 @@ class BilibiliApiService:
 
     @staticmethod
     def _map_season_info_to_model(
-        result: Dict[str, Any], parsed_url: str, target_ep_id: Optional[int] = None
+        result: dict[str, Any], parsed_url: str, target_ep_id: int | None = None
     ) -> SeasonInfo:
         """将API返回的番剧信息映射到SeasonInfo模型"""
         stat_data = result.get("stat", {})
@@ -564,7 +561,7 @@ class BilibiliApiService:
         )
 
         if target_ep_id:
-            episodes: List[Dict[str, Any]] = result.get("episodes", [])
+            episodes: list[dict[str, Any]] = result.get("episodes", [])
             for episode in episodes:
                 if (
                     episode.get("ep_id") == target_ep_id
@@ -584,7 +581,7 @@ class BilibiliApiService:
     @staticmethod
     @Retry.api(exception=RETRYABLE_EXCEPTIONS)  # type: ignore
     async def get_bangumi_info(
-        parsed_url: str, season_id: Optional[int] = None, ep_id: Optional[int] = None
+        parsed_url: str, season_id: int | None = None, ep_id: int | None = None
     ) -> SeasonInfo:
         """获取番剧/电影信息"""
         if not season_id and not ep_id:

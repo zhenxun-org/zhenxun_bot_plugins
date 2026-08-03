@@ -1,6 +1,5 @@
 from nonebot.permission import SUPERUSER
 from nonebot_plugin_alconna import Alconna, Args, on_alconna
-
 from zhenxun.utils.rules import ensure_group
 
 _open_matcher = on_alconna(

@@ -1,10 +1,9 @@
-from io import BytesIO
 import random
 import time
+from io import BytesIO
 
 from nonebot_plugin_uninfo import Uninfo
 from pydantic import BaseModel, Field
-
 from zhenxun.models.group_member_info import GroupInfoUser
 from zhenxun.models.user_console import UserConsole
 from zhenxun.utils.image_utils import BuildImage

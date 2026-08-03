@@ -2,7 +2,6 @@ from pathlib import Path
 
 import nonebot
 from nonebot.plugin import PluginMetadata
-
 from zhenxun.configs.config import Config
 from zhenxun.configs.path_config import IMAGE_PATH
 from zhenxun.configs.utils import PluginExtraData

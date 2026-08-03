@@ -1,14 +1,13 @@
 import asyncio
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 from urllib.parse import parse_qs, urlparse
 
 from bilibili_api import bangumi, video
 from nonebot import get_driver
 from nonebot.adapters import Bot, Event
 from nonebot_plugin_alconna import AlconnaMatcher
-
 from zhenxun.services.log import logger
 
 from ..config import (
@@ -41,7 +40,7 @@ class DownloadManager:
     def __init__(self):
         self._initialized = False
         self.active_tasks: set[asyncio.Task] = set()
-        self.semaphore: Optional[asyncio.Semaphore] = None
+        self.semaphore: asyncio.Semaphore | None = None
 
     def initialize(self):
         """初始化下载管理器，启动工作者协程"""
@@ -51,9 +50,7 @@ class DownloadManager:
         self._initialized = True
         logger.info(f"下载管理器已初始化，最大并发数: {MAX_CONCURRENT_DOWNLOADS}")
 
-    async def add_task(
-        self, task: DownloadTask, matcher: Optional[AlconnaMatcher] = None
-    ):
+    async def add_task(self, task: DownloadTask, matcher: AlconnaMatcher | None = None):
         """为下载任务创建后台任务，并进行并发控制"""
         if matcher and self.semaphore and self.semaphore.locked():
             await matcher.send(
@@ -97,8 +94,8 @@ class DownloadManager:
 
     @staticmethod
     def _estimate_video_size(
-        video_stream: Dict[str, Any],
-        audio_stream: Optional[Dict[str, Any]],
+        video_stream: dict[str, Any],
+        audio_stream: dict[str, Any] | None,
         duration_seconds: float,
     ) -> float:
         """估算视频大小（MB）"""
@@ -115,12 +112,12 @@ class DownloadManager:
 
     @staticmethod
     def _select_appropriate_quality(
-        video_streams: List[Dict[str, Any]],
-        audio_streams: List[Dict[str, Any]],
+        video_streams: list[dict[str, Any]],
+        audio_streams: list[dict[str, Any]],
         duration_seconds: float,
         max_size_mb: float = 100.0,
-        initial_quality_id: Optional[int] = None,
-    ) -> Tuple[Dict[str, Any], Optional[Dict[str, Any]], bool]:
+        initial_quality_id: int | None = None,
+    ) -> tuple[dict[str, Any], dict[str, Any] | None, bool]:
         """根据大小限制选择合适的视频和音频流"""
         quality_preference = [120, 116, 112, 80, 74, 64, 32, 16]
         quality_reduced = False
@@ -396,7 +393,7 @@ class DownloadManager:
             video_obj = await ep.turn_to_video()
         play_info = await video_obj.get_download_url(page_index=0)
 
-        downloaded_file_path: Optional[Path] = None
+        downloaded_file_path: Path | None = None
 
         if "dash" in play_info and (dash_info := play_info.get("dash")):
             logger.debug("处理 DASH 流")

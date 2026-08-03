@@ -1,7 +1,7 @@
 import asyncio
+import time
 from datetime import datetime
 from pathlib import Path
-import time
 from typing import cast
 
 import nonebot
@@ -10,7 +10,6 @@ from nonebot.internal.adapter import Bot
 from nonebot.plugin import PluginMetadata
 from nonebot_plugin_alconna import UniMessage
 from nonebot_plugin_apscheduler import scheduler
-
 from zhenxun.configs.config import Config
 from zhenxun.configs.utils import PluginExtraData, RegisterConfig
 from zhenxun.models.group_console import GroupConsole
@@ -439,18 +438,18 @@ async def send_sub_msg(notification: Notification, sub: BiliSub, bot: Bot):
                     ]:
                         should_at = False
                         if (
-                            notification.type == NotificationType.LIVE
-                            and sub.at_all_live
-                        ):
-                            should_at = True
-                        elif (
-                            notification.type == NotificationType.VIDEO
-                            and sub.at_all_video
-                        ):
-                            should_at = True
-                        elif (
-                            notification.type == NotificationType.DYNAMIC
-                            and sub.at_all_dynamic
+                            (
+                                notification.type == NotificationType.LIVE
+                                and sub.at_all_live
+                            )
+                            or (
+                                notification.type == NotificationType.VIDEO
+                                and sub.at_all_video
+                            )
+                            or (
+                                notification.type == NotificationType.DYNAMIC
+                                and sub.at_all_dynamic
+                            )
                         ):
                             should_at = True
 

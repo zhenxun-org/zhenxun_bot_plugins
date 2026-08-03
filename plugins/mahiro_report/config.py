@@ -1,5 +1,4 @@
 from pydantic import BaseModel
-
 from zhenxun.configs.path_config import DATA_PATH
 
 REPORT_PATH = DATA_PATH / "mahiro_report"

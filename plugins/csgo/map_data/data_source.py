@@ -2,7 +2,6 @@ import asyncio
 
 from nonebot_plugin_uninfo import Uninfo
 from tortoise.transactions import atomic
-
 from zhenxun.services.log import logger
 
 from .._data_source import CallApi, CsgoManager
@@ -72,7 +71,7 @@ class CsgoMapDataManager:
 
         result = await CallApi.get_map_rate(steam_id, season)
 
-        asyncio.create_task(  # noqa: RUF006
+        asyncio.create_task(
             cls._save_user_map_rate(user_id, steam_id, season, result.data, is_query)
         )
         return result.data

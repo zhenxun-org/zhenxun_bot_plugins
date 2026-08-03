@@ -1,13 +1,12 @@
 from __future__ import annotations
 
 import asyncio
+import re
 from collections import OrderedDict
 from dataclasses import dataclass, field
-import re
 from typing import Any, ClassVar
 
 from tortoise.expressions import Q
-
 from zhenxun.services.log import logger
 
 from ._config import ScopeType, WordType
@@ -52,7 +51,7 @@ class WordBankShard:
     regex: list[WordBankEntry] = field(default_factory=list)
 
     @classmethod
-    def from_rows(cls, rows: list[dict[str, Any]]) -> "WordBankShard":
+    def from_rows(cls, rows: list[dict[str, Any]]) -> WordBankShard:
         shard = cls()
         for row in rows:
             entry = WordBankEntry(

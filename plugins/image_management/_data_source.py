@@ -1,8 +1,7 @@
-from pathlib import Path
 import random
+from pathlib import Path
 
 import aiofiles
-
 from zhenxun.configs.path_config import IMAGE_PATH
 from zhenxun.services.log import logger
 from zhenxun.utils.http_utils import AsyncHttpx

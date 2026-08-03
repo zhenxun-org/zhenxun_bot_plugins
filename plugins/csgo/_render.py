@@ -1,4 +1,5 @@
 from pathlib import Path
+
 from nonebot.compat import model_dump
 from zhenxun import ui
 

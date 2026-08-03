@@ -1,6 +1,6 @@
-import nonebot
 from pathlib import Path
 
+import nonebot
 from zhenxun.configs.config import Config
 
 nonebot.load_plugins(str(Path(__file__).parent.resolve()))

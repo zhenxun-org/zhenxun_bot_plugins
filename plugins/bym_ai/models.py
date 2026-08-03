@@ -1,6 +1,6 @@
 import time
-from pydantic import BaseModel, Field
 
+from pydantic import BaseModel, Field
 from zhenxun.services.ai.context.memory.storage import AbstractMemoryRecord
 from zhenxun.services.ai.context.rag import AbstractVectorRecord
 from zhenxun.services.ai.core.messages import LLMMessage

@@ -3,7 +3,6 @@ from urllib import parse
 
 import feedparser
 from lxml import etree
-
 from zhenxun.services.log import logger
 from zhenxun.utils.http_utils import AsyncHttpx
 
@@ -24,11 +23,7 @@ async def get_repass(url: str, max_: int) -> list[str]:
     put_line = []
     text = (await AsyncHttpx.get(url)).text
     d = feedparser.parse(text)
-    max_ = (
-        max_
-        if max_ < len([e.link for e in d.entries])
-        else len([e.link for e in d.entries])
-    )
+    max_ = min(len([e.link for e in d.entries]), max_)
     url_list = [e.link for e in d.entries][:max_]
     for u in url_list:
         try:

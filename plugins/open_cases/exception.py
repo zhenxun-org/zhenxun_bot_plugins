@@ -1,8 +1,6 @@
 class NotLoginRequired(Exception):
     """未登录异常"""
 
-    pass
-
 
 class CallApiError(Exception):
     """调用api异常"""

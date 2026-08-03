@@ -1,6 +1,5 @@
 from nonebot_plugin_alconna import Alconna, Args, on_alconna
 from nonebot_plugin_alconna import At as alcAt
-
 from zhenxun.utils.rules import ensure_group
 
 _russian_matcher = on_alconna(

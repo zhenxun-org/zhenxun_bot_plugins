@@ -1,8 +1,8 @@
 import asyncio
+import uuid
 from collections import Counter
 from datetime import datetime as dt
 from typing import Any, cast
-import uuid
 
 from nonebot import get_driver
 from nonebot.adapters.onebot.v11 import Bot, Message
@@ -12,7 +12,6 @@ from nonebot.matcher import Matcher
 from nonebot.params import Arg
 from nonebot.typing import T_State
 from nonebot_plugin_alconna import Arparma, At, Match
-
 from zhenxun.services.log import logger
 from zhenxun.utils.message import MessageUtils
 from zhenxun.utils.platform import PlatformUtils
@@ -528,11 +527,12 @@ class CloudHandler:
 
         if start.date() == stop.date():
             return f"{start.strftime('%Y-%m-%d')}"
-        elif (stop - start).days <= 7:
-            return f"{start.strftime('%Y-%m-%d')} 至 {stop.strftime('%Y-%m-%d')}"
-        elif start.year == stop.year and start.month == stop.month:
-            return f"{start.strftime('%Y-%m-%d')} 至 {stop.strftime('%Y-%m-%d')}"
-        elif start.year == stop.year:
+        elif (
+            (stop - start).days <= 7
+            or start.year == stop.year
+            and start.month == stop.month
+            or start.year == stop.year
+        ):
             return f"{start.strftime('%Y-%m-%d')} 至 {stop.strftime('%Y-%m-%d')}"
         else:
             return f"{start_str} 至 {stop_str}"

@@ -1,5 +1,4 @@
 from tortoise import fields
-
 from zhenxun.services.db_context import Model
 
 # 1.狂牙武器箱

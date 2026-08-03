@@ -20,7 +20,6 @@ from nonebot_plugin_alconna import (
 )
 from nonebot_plugin_alconna import Image as alcImage
 from nonebot_plugin_uninfo import Uninfo
-
 from zhenxun.configs.config import Config
 from zhenxun.configs.utils import PluginExtraData
 from zhenxun.services.log import logger
@@ -80,7 +79,7 @@ __plugin_meta__ = PluginMetadata(
                     查看词条 --id 2    : 查看词条序号为2的全部回答
                     查看词条 谁是萝莉 --all: 查看全局词条 谁是萝莉 的全部回答
                     查看词条 --id 2 --all: 查看全局词条序号为2的全部回答
-    """.strip(),  # noqa: E501
+    """.strip(),
     extra=PluginExtraData(
         author="HibiKier & yajiwa",
         version="0.1",

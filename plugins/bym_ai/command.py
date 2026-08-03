@@ -12,7 +12,6 @@ from nonebot_plugin_alconna import (
 from nonebot_plugin_alconna.uniseg import At
 from nonebot_plugin_uninfo import Uninfo
 from nonebot_plugin_waiter import prompt
-
 from zhenxun.builtin_plugins.superuser.plugin_config_manager import pconf_cmd
 from zhenxun.services.ai.context.memory import memory_manager
 from zhenxun.services.group_settings_service import group_settings_service
@@ -20,9 +19,9 @@ from zhenxun.services.log import logger
 from zhenxun.utils.message import MessageUtils
 from zhenxun.utils.platform import PlatformUtils
 
+from . import build_persona_list
 from .config import PERSONAS_CACHE, load_prompts, save_prompts
 from .data_source import base_config
-from . import build_persona_list
 
 bym_cmd = on_alconna(
     Alconna(

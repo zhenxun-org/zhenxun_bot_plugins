@@ -1,13 +1,12 @@
 import asyncio
-from io import BytesIO
 import os
 import random
+from io import BytesIO
 
 from nonebot.adapters import Bot
 from nonebot.exception import ActionFailed
 from nonebot_plugin_alconna import UniMessage
 from nonebot_plugin_uninfo import Uninfo
-
 from zhenxun.configs.config import BotConfig, Config
 from zhenxun.configs.path_config import IMAGE_PATH
 from zhenxun.models.user_console import UserConsole

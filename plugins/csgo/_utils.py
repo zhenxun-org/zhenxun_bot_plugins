@@ -1,6 +1,5 @@
 from nonebot.params import Depends
 from nonebot_plugin_alconna import At, Match
-
 from zhenxun.utils.message import MessageUtils
 
 from .config import CURRENT_SEASON

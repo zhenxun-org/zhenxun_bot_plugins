@@ -1,6 +1,5 @@
 import nonebot
 from nonebot.drivers import Driver
-
 from zhenxun.configs.config import BotConfig
 from zhenxun.services.ai.context.memory import memory_manager
 from zhenxun.utils.decorator.shop import shop_register
@@ -18,7 +17,6 @@ driver: Driver = nonebot.get_driver()
 )
 async def _(user_id: str):
     from nonebot.matcher import current_bot, current_event
-
     from zhenxun.utils.platform import PlatformUtils
 
     try:

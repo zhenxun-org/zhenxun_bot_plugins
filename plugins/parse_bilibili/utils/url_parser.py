@@ -2,12 +2,12 @@ import json
 import re
 from abc import ABC, abstractmethod
 from enum import Enum, auto
-from typing import Any, ClassVar, Dict, List, Optional, Pattern, Tuple, Type
+from re import Pattern
+from typing import Any, ClassVar
 
 from nonebot.adapters import Bot, Event
 from nonebot_plugin_alconna.uniseg import Hyper, Reply
 from nonebot_plugin_alconna.uniseg.tools import reply_fetch
-
 from zhenxun.services.log import logger
 
 from ..utils.exceptions import UnsupportedUrlError, UrlParseError
@@ -30,19 +30,17 @@ class UrlParser(ABC):
 
     PRIORITY: ClassVar[int] = 100
     RESOURCE_TYPE: ClassVar[ResourceType] = None  # type: ignore
-    PATTERN: ClassVar[Optional[Pattern]] = None
+    PATTERN: ClassVar[Pattern | None] = None
 
     @classmethod
     @abstractmethod
     def can_parse(cls, url: str) -> bool:
         """检查是否可以解析指定URL"""
-        pass
 
     @classmethod
     @abstractmethod
-    def parse(cls, url: str) -> Tuple[ResourceType, str]:
+    def parse(cls, url: str) -> tuple[ResourceType, str]:
         """解析URL，提取资源类型和ID"""
-        pass
 
 
 class RegexUrlParser(UrlParser):
@@ -59,7 +57,7 @@ class RegexUrlParser(UrlParser):
         return bool(cls.PATTERN.search(url))
 
     @classmethod
-    def parse(cls, url: str) -> Tuple[ResourceType, str]:
+    def parse(cls, url: str) -> tuple[ResourceType, str]:
         """解析URL，提取资源类型和ID"""
         if not cls.RESOURCE_TYPE:
             raise ValueError(f"解析器 {cls.__name__} 未定义资源类型")
@@ -93,7 +91,7 @@ class VideoUrlParser(RegexUrlParser):
     )
 
     @classmethod
-    def parse(cls, url: str) -> Tuple[ResourceType, str]:
+    def parse(cls, url: str) -> tuple[ResourceType, str]:
         """
         重写 parse 方法以处理更复杂的正则表达式。
         它可以从路径或URL参数中提取视频ID。
@@ -166,7 +164,7 @@ class BangumiUrlParser(RegexUrlParser):
         return False
 
     @classmethod
-    def parse(cls, url: str) -> Tuple[ResourceType, str]:
+    def parse(cls, url: str) -> tuple[ResourceType, str]:
         """解析URL，提取资源类型和ID，增强番剧链接解析能力"""
         try:
             return super().parse(url)
@@ -190,7 +188,7 @@ class PureVideoIdParser(RegexUrlParser):
     PATTERN = re.compile(r"(?:av|AV)(\d+)|(?:bv|BV)([A-Za-z0-9]+)")
 
     @classmethod
-    def parse(cls, url: str) -> Tuple[ResourceType, str]:
+    def parse(cls, url: str) -> tuple[ResourceType, str]:
         """解析纯视频ID"""
         match = cls.PATTERN.search(url)
         if not match:
@@ -210,10 +208,10 @@ class PureVideoIdParser(RegexUrlParser):
 class UrlParserRegistry:
     """URL解析器注册表"""
 
-    _parsers: List[Type[UrlParser]] = []
+    _parsers: list[type[UrlParser]] = []
 
     @classmethod
-    def register(cls, parser_class: Type[UrlParser]):
+    def register(cls, parser_class: type[UrlParser]):
         """注册解析器"""
         if parser_class not in cls._parsers:
             cls._parsers.append(parser_class)
@@ -221,7 +219,7 @@ class UrlParserRegistry:
             logger.debug(f"注册URL解析器: {parser_class.__name__}", "B站解析")
 
     @classmethod
-    def get_parser(cls, url: str) -> Optional[Type[UrlParser]]:
+    def get_parser(cls, url: str) -> type[UrlParser] | None:
         """获取能够解析指定URL的解析器"""
         for parser in cls._parsers:
             if parser.can_parse(url):
@@ -229,7 +227,7 @@ class UrlParserRegistry:
         return None
 
     @classmethod
-    def parse(cls, url: str) -> Tuple[ResourceType, str]:
+    def parse(cls, url: str) -> tuple[ResourceType, str]:
         """解析URL"""
         parser = cls.get_parser(url)
         if not parser:
@@ -253,7 +251,7 @@ UrlParserRegistry.register(BangumiUrlParser)
 UrlParserRegistry.register(PureVideoIdParser)
 
 
-def _extract_url_from_hyper_or_json(raw_str: str) -> Optional[str]:
+def _extract_url_from_hyper_or_json(raw_str: str) -> str | None:
     """从Hyper(小程序/JSON卡片)的原始数据中提取B站URL"""
     qqdocurl_match = re.search(r'"qqdocurl"\s*:\s*"([^"]+)"', raw_str)
     if qqdocurl_match:
@@ -298,7 +296,7 @@ def _extract_url_from_hyper_or_json(raw_str: str) -> Optional[str]:
     return None
 
 
-def extract_bilibili_url_from_miniprogram(raw_str: str) -> Optional[str]:
+def extract_bilibili_url_from_miniprogram(raw_str: str) -> str | None:
     """从小程序消息提取B站URL（现在是_extract_url_from_hyper_or_json的包装）"""
     logger.debug(f"开始解析小程序/卡片消息，原始数据长度: {len(raw_str)}")
     url = _extract_url_from_hyper_or_json(raw_str)
@@ -307,9 +305,7 @@ def extract_bilibili_url_from_miniprogram(raw_str: str) -> Optional[str]:
     return url
 
 
-def extract_bilibili_url_from_message(
-    message, check_hyper: bool = True
-) -> Optional[str]:
+def extract_bilibili_url_from_message(message, check_hyper: bool = True) -> str | None:
     """从消息提取B站URL"""
     target_url = None
 
@@ -361,7 +357,7 @@ def extract_bilibili_url_from_message(
 
 def parse_bilibili_url(
     url: str,
-) -> Tuple[Optional[ResourceType], Optional[str], Optional[Dict[str, Any]]]:
+) -> tuple[ResourceType | None, str | None, dict[str, Any] | None]:
     """解析B站URL，返回资源类型、资源ID和额外信息"""
     resource_type = None
     resource_id = None
@@ -392,7 +388,7 @@ def parse_bilibili_url(
     return resource_type, resource_id, url_info_dict
 
 
-async def extract_bilibili_url_from_json_data(json_data: str) -> Optional[str]:
+async def extract_bilibili_url_from_json_data(json_data: str) -> str | None:
     """从JSON数据中提取B站URL"""
     if not json_data:
         return None
@@ -403,12 +399,12 @@ async def extract_bilibili_url_from_json_data(json_data: str) -> Optional[str]:
     return url
 
 
-async def extract_bilibili_url_from_event(bot: Bot, event: Event) -> Optional[str]:
+async def extract_bilibili_url_from_event(bot: Bot, event: Event) -> str | None:
     """从事件中提取B站URL（包括回复和当前消息）"""
     target_url = None
 
     try:
-        reply: Optional["Reply"] = await reply_fetch(event, bot)  # type: ignore
+        reply: Reply | None = await reply_fetch(event, bot)  # type: ignore
         if reply and reply.msg:
             logger.debug("找到回复消息，使用通用提取器...")
             target_url = extract_bilibili_url_from_message(reply.msg)

@@ -1,5 +1,4 @@
 from nonebot_plugin_uninfo import Uninfo
-
 from zhenxun.services.log import logger
 
 from .._data_source import CsgoManager

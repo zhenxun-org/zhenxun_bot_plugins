@@ -6,7 +6,6 @@ from nonebot.rule import to_me
 from nonebot_plugin_alconna import Alconna, Arparma, on_alconna
 from nonebot_plugin_uninfo import Uninfo
 from tortoise.functions import Count, Sum
-
 from zhenxun.configs.config import BotConfig
 from zhenxun.configs.utils import (
     AICallableParam,

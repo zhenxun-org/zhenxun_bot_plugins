@@ -1,7 +1,6 @@
 import contextlib
 
 import nonebot
-
 from zhenxun.configs.config import Config
 from zhenxun.configs.utils import NoSuchConfig
 from zhenxun.services.log import logger

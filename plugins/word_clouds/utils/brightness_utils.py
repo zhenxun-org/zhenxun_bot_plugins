@@ -3,7 +3,6 @@ from io import BytesIO
 import numpy as np
 from PIL import Image
 from wordcloud import WordCloud
-
 from zhenxun.services.log import logger
 
 
