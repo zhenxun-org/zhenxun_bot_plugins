@@ -1,6 +1,6 @@
 import asyncio
 from typing import Any, cast
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
 import httpx
 from bilibili_api import article, live, user, video
@@ -145,6 +145,32 @@ class BilibiliApiService:
         return live_model
 
     @staticmethod
+    def _strip_p_param(url: str) -> str:
+        """移除视频 URL 上的 p 分P参数（保留其它 query，如 t= 播放进度）"""
+        try:
+            parsed = urlparse(url)
+            if not parsed.query:
+                return url
+            query_params = parse_qs(parsed.query, keep_blank_values=True)
+            query_params.pop("p", None)
+            if not query_params:
+                new_query = ""
+            else:
+                new_query = urlencode(query_params, doseq=True)
+            return urlunparse(
+                (
+                    parsed.scheme,
+                    parsed.netloc,
+                    parsed.path,
+                    parsed.params,
+                    new_query,
+                    parsed.fragment,
+                )
+            )
+        except Exception:
+            return url
+
+    @staticmethod
     async def get_video_info(vid: str, parsed_url: str) -> VideoInfo:
         """获取视频信息"""
         logger.debug(f"获取视频信息: {vid}, URL: {parsed_url}", "B站解析")
@@ -161,6 +187,12 @@ class BilibiliApiService:
 
             logger.debug(f"创建VideoInfo模型: {vid}", "B站解析")
             video_model = BilibiliApiService._map_video_info_to_model(info, parsed_url)
+
+            # 单P视频(videos==1)时移除 URL 上的 ?p=1 冗余分P参数；
+            # 多P视频保留 p 参数以保证链接直达正确的分P(p>1)。
+            if info.get("videos") == 1:
+                parsed_url = BilibiliApiService._strip_p_param(parsed_url)
+                video_model.parsed_url = parsed_url
 
             page_index = 0
             try:

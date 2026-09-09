@@ -35,6 +35,7 @@ from .services.download_service import DownloadTask, download_manager
 from .services.network_service import ParserService
 from .utils.exceptions import (
     BilibiliBaseException,
+    RateLimitError,
     ResourceNotFoundError,
     UnsupportedUrlError,
     UrlParseError,
@@ -439,6 +440,12 @@ async def _(
         logger.info(
             f"被动解析：资源不存在: {target_url}, 错误: {e.message}", session=session
         )
+    except RateLimitError as e:
+        logger.warning(
+            f"被动解析：B站风控/限频(412): {target_url}. 原因: {e.message}",
+            session=session,
+        )
+        await UniMessage(Text("请求失败412啦，bili的反爬好厉害！")).send()  # type: ignore
     except (UrlParseError, UnsupportedUrlError) as e:
         logger.warning(
             f"被动解析：URL解析失败: {target_url}. 原因: {e.message}", session=session

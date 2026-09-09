@@ -6,6 +6,7 @@ from zhenxun.services.log import logger
 from zhenxun.utils.exception import AllURIsFailedError
 from zhenxun.utils.http_utils import AsyncHttpx
 
+from ..config import get_credential
 from ..model import ArticleInfo, LiveInfo, SeasonInfo, UserInfo, VideoInfo
 from ..utils.exceptions import (
     DownloadError,
@@ -22,10 +23,11 @@ async def download_bilibili_file(url: str | list[str], file_path: Path) -> bool:
     下载B站文件，利用 AsyncHttpx 的健壮下载能力。
     支持传入单个URL字符串或URL列表，第一个URL为主地址，其余为备用地址。
     """
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.127 Safari/537.36",
-        "Referer": "https://www.bilibili.com",
-    }
+    headers = get_bilibili_headers()
+
+    # 下载携带 B 站登录 Cookie，保障需要登录态/更高清晰度的资源可正常下载
+    cred = get_credential()
+    cookies = cred.get_cookies() if cred else None
 
     # 处理URL输入（支持单个URL或URL列表）
     url_list = url if isinstance(url, list) else [url]
@@ -33,7 +35,11 @@ async def download_bilibili_file(url: str | list[str], file_path: Path) -> bool:
     logger.info(f"开始下载文件: {file_path.name} (使用 AsyncHttpx)")
     try:
         success = await AsyncHttpx.download_file(
-            url=url, path=file_path, headers=headers, stream=True
+            url=url,
+            path=file_path,
+            headers=headers,
+            cookies=cookies,
+            stream=True,
         )
         if not success:
             raise DownloadError(f"下载文件 {file_path.name} 失败，但未抛出异常。")
@@ -79,10 +85,22 @@ class ParserService:
                 if not original_url.startswith(("http://", "https://")):
                     original_url = f"https://{original_url}"
 
+                # 关键：b23.tv 短链请求不跟随重定向(follow_redirects=False)，
+                # 直接读取 302 Location 拿到最终地址，避免 httpx 跟随重定向去抓取
+                # bilibili 视频网页而被风控(HTTP 412)拦截。
                 response = await AsyncHttpx.get(
-                    original_url, timeout=10, headers=get_bilibili_headers()
+                    original_url,
+                    timeout=10,
+                    headers=get_bilibili_headers(),
+                    follow_redirects=False,
+                    accept_status_codes=(301, 302, 303, 307, 308),
                 )
-                resolved_url = str(response.url)
+
+                location = response.headers.get("location")
+                if location:
+                    resolved_url = str(response.url.join(location))
+                else:
+                    resolved_url = str(response.url)
 
                 parsed_url_obj = urllib.parse.urlparse(resolved_url)
                 query_params = urllib.parse.parse_qs(parsed_url_obj.query)
@@ -106,7 +124,7 @@ class ParserService:
 
                 logger.debug(f"短链接解析结果: {clean_url}", "B站解析")
                 return clean_url
-            except (ShortUrlError, httpx.HTTPError) as e:
+            except (ShortUrlError, httpx.HTTPError, AllURIsFailedError) as e:
                 logger.warning(
                     f"短链接解析失败 {original_url}: {e}，将使用原始链接继续尝试解析",
                     "B站解析",
