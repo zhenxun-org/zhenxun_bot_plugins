@@ -73,7 +73,7 @@ async def merge_media_files(
                 try:
                     process.terminate()
                     await asyncio.wait_for(process.wait(), timeout=2.0)
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     logger.warning(
                         f"终止 FFmpeg 进程 ({process.pid}) 超时，将强制杀死。"
                     )

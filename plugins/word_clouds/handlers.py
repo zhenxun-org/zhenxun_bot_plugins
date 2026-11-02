@@ -261,7 +261,7 @@ class CloudHandler:
                 await self._send_word_cloud_result(image_bytes, params)
                 logger.info(f"词云任务 {task_id} 完成")
 
-        except asyncio.TimeoutError:
+        except TimeoutError:
             logger.warning(f"词云生成任务 {task_id} 执行超时 ({timeout}秒)")
             if not params.is_scheduled_task:
                 await self._send_error_message(

@@ -269,7 +269,7 @@ async def _check_and_send_update(
                 await send_sub_msg(notification, sub, bot)
             update_count += len(notifications)
 
-    except asyncio.TimeoutError:
+    except TimeoutError:
         logger.error(f"B站订阅检查任务超时: UID={sub.uid}, 名称={sub.uname}")
     except Exception as e:
         logger.error(

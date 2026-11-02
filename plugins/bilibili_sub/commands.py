@@ -998,7 +998,7 @@ async def handle_force_push(
                 results.append(
                     f"ℹ️ 未能为 [{db_id}] {sub.uname} 获取到可推送的最新内容。"
                 )
-        except asyncio.TimeoutError:
+        except TimeoutError:
             results.append(f"❌ 为 [{db_id}] {sub.uname} 获取内容超时。")
         except Exception as e:
             logger.error(f"强制推送时发生错误: ID={db_id}", e=e)

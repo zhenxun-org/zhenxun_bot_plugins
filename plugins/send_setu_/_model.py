@@ -1,6 +1,7 @@
+from typing import Self
+
 from tortoise import fields
 from tortoise.expressions import Q
-from typing_extensions import Self
 from zhenxun.services.db_context import Model
 from zhenxun.utils.common_utils import SqlUtils
 
