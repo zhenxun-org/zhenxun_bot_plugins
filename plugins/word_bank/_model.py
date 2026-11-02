@@ -3,12 +3,11 @@ import re
 import time
 import uuid
 from datetime import datetime
-from typing import Any, ClassVar, NamedTuple
+from typing import Any, ClassVar, NamedTuple, Self
 
 from nonebot_plugin_alconna import At, AtAll, Image, Text, UniMessage
 from tortoise import Tortoise, fields
 from tortoise.expressions import Q
-from typing_extensions import Self
 from zhenxun.configs.config import BotConfig
 from zhenxun.configs.path_config import DATA_PATH
 from zhenxun.services.db_context import Model

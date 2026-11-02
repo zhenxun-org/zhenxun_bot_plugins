@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone
 from pathlib import Path
 
 from nonebot.plugin import PluginMetadata
@@ -35,7 +35,7 @@ def format_datetime(dt: datetime) -> str:
     try:
         # 假设原始时间是UTC时间，转换为上海时区
         if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=timezone.utc)
+            dt = dt.replace(tzinfo=UTC)
 
         # 转换为上海时区
         dt_shanghai = dt.astimezone(SHANGHAI_TZ)
